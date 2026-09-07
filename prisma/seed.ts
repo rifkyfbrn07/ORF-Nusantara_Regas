@@ -116,8 +116,8 @@ async function main() {
 
   await prisma.user.upsert({
     where: { email: 'admin@fieldops.local' },
-    update: { employeeId: 'FO-ADM-001', name: 'FIELDOPS Administrator', passwordHash: adminPasswordHash, role: Role.ADMIN, position: 'System Administrator', isActive: true, departmentId: deptOps.id },
-    create: { employeeId: 'FO-ADM-001', name: 'FIELDOPS Administrator', email: 'admin@fieldops.local', passwordHash: adminPasswordHash, role: Role.ADMIN, position: 'System Administrator', isActive: true, departmentId: deptOps.id },
+    update: { employeeId: 'FO-ADM-001', name: 'System Administrator', passwordHash: adminPasswordHash, role: Role.ADMIN, position: 'System Administrator', isActive: true, departmentId: deptOps.id },
+    create: { employeeId: 'FO-ADM-001', name: 'System Administrator', email: 'admin@fieldops.local', passwordHash: adminPasswordHash, role: Role.ADMIN, position: 'System Administrator', isActive: true, departmentId: deptOps.id },
   });
 
   // 6. Create Manager

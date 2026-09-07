@@ -63,6 +63,7 @@ export async function updateProfileAction(input: ProfileUpdateInput) {
       position: updated.position,
       departmentId: updated.departmentId,
       avatarUrl: updated.avatarUrl,
+      isActive: updated.isActive,
     });
 
     // Record Audit Log

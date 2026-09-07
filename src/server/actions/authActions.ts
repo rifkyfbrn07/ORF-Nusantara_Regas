@@ -41,6 +41,7 @@ export async function loginAction(formData: LoginInput) {
     position: user.position,
     departmentId: user.departmentId,
     avatarUrl: user.avatarUrl,
+    isActive: user.isActive,
   });
 
   // Record audit log

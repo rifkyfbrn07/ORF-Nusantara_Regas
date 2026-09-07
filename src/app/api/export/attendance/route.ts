@@ -3,6 +3,8 @@ import { prisma } from '@/lib/db/prisma';
 import { getSession } from '@/lib/auth/session';
 import { formatJakartaTime } from '@/lib/time';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
   const session = await getSession();
   if (!session || session.role !== 'MANAGER') {

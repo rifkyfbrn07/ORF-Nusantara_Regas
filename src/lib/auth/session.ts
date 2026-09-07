@@ -4,12 +4,14 @@ import { Role } from '@prisma/client';
 import { prisma } from '@/lib/db/prisma';
 
 const SESSION_COOKIE_NAME = 'fieldops_session_token';
-const AUTH_SECRET = process.env.AUTH_SECRET;
 
-if (!AUTH_SECRET) {
-  throw new Error('AUTH_SECRET must be configured. See .env.example.');
+function getAuthSecretKey(): Uint8Array {
+  const secret = process.env.AUTH_SECRET;
+  if (!secret) {
+    throw new Error('AUTH_SECRET must be configured in environment variables. See .env.example.');
+  }
+  return new TextEncoder().encode(secret);
 }
-const key = new TextEncoder().encode(AUTH_SECRET);
 
 export interface SessionUser {
   id: string;
@@ -20,12 +22,14 @@ export interface SessionUser {
   position: string;
   departmentId?: string | null;
   avatarUrl?: string | null;
+  isActive: boolean;
 }
 
 /**
  * Encrypts and creates a signed JWT session token
  */
 export async function signSession(payload: SessionUser): Promise<string> {
+  const key = getAuthSecretKey();
   return new SignJWT({ ...payload })
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
@@ -38,6 +42,7 @@ export async function signSession(payload: SessionUser): Promise<string> {
  */
 export async function verifySession(token: string): Promise<SessionUser | null> {
   try {
+    const key = getAuthSecretKey();
     const { payload } = await jwtVerify(token, key, {
       algorithms: ['HS256'],
     });
@@ -109,6 +114,7 @@ export async function requireAuth(): Promise<SessionUser> {
     position: user.position,
     departmentId: user.departmentId,
     avatarUrl: user.avatarUrl,
+    isActive: user.isActive,
   };
 }
 

@@ -3,6 +3,8 @@ import { prisma } from '@/lib/db/prisma';
 import { formatJakartaDate, formatJakartaTime } from '@/lib/time';
 import { createNotification, notifyAllManagers } from '@/server/services/notificationService';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
   const authHeader = request.headers.get('authorization');
   const querySecret = request.nextUrl.searchParams.get('secret');

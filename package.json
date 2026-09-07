@@ -13,6 +13,9 @@
     "postinstall": "prisma generate",
     "db:push": "prisma db push",
     "db:seed": "prisma db seed",
+    "seed": "tsx prisma/adminSeed.ts",
+    "seed:admin": "tsx prisma/adminSeed.ts",
+    "seed:all": "tsx prisma/seed.ts",
     "db:studio": "prisma studio",
     "db:migrate": "prisma migrate dev"
   },
