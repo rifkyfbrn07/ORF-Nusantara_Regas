@@ -30,7 +30,12 @@ export default function LoginPage() {
         router.refresh();
       }
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Terjadi kesalahan sistem.');
+      const msg = err instanceof Error ? err.message : 'Terjadi kesalahan sistem.';
+      if (msg.includes('was not found on the server') || msg.includes('Failed to fetch')) {
+        window.location.reload();
+        return;
+      }
+      setError(msg);
       setLoading(false);
     }
   };
