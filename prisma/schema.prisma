@@ -1,0 +1,353 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  MANAGER
+  OPERATOR
+}
+
+enum ScheduleStatus {
+  WORK
+  OFF
+}
+
+enum AttendanceStatus {
+  HADIR
+  TERLAMBAT
+  BELUM_ABSEN
+  ABSENT
+  IZIN
+  CUTI
+  SAKIT
+  OFF
+}
+
+enum LeaveType {
+  LEAVE
+  PERMISSION
+  SICK
+}
+
+enum RequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum HandoverStatus {
+  DRAFT
+  SUBMITTED
+  ACKNOWLEDGED
+}
+
+enum ChecklistStatus {
+  PENDING
+  COMPLETED
+}
+
+enum ChecklistItemStatus {
+  YES
+  NO
+  NA
+}
+
+enum NotificationType {
+  SHIFT_REMINDER
+  ATTENDANCE_ALERT
+  LEAVE_STATUS
+  SHIFT_EXCHANGE
+  SYSTEM
+  HSSE
+  ANNOUNCEMENT
+}
+
+enum AnnouncementPriority {
+  NORMAL
+  IMPORTANT
+  URGENT
+}
+
+enum AnnouncementTargetType {
+  ALL
+  SHIFT
+  OPERATOR
+}
+
+model Department {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  code        String   @unique
+  description String?
+  users       User[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Location {
+  id             String          @id @default(cuid())
+  name           String          @unique
+  code           String          @unique
+  address        String?
+  schedules      Schedule[]
+  hsseChecklists HSSEChecklist[]
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+}
+
+model Shift {
+  id             String          @id @default(cuid())
+  name           String          @unique // e.g. "Shift 1"
+  code           String          @unique // e.g. "SHIFT_1"
+  startTime      String          // e.g. "07:00"
+  endTime        String          // e.g. "15:00"
+  durationHours  Int             @default(8)
+  description    String?
+  requiredCount  Int             @default(6) // required manpower for coverage calculation
+  isActive       Boolean         @default(true)
+  schedules      Schedule[]
+  handovers      Handover[]
+  hsseChecklists HSSEChecklist[]
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+}
+
+model User {
+  id                     String          @id @default(cuid())
+  employeeId             String          @unique // e.g. "OP-001"
+  name                   String
+  email                  String          @unique
+  passwordHash           String
+  role                   Role            @default(OPERATOR)
+  position               String          // e.g. "Operator ORF"
+  phone                  String?
+  avatarUrl              String?
+  isActive               Boolean         @default(true)
+  departmentId           String?
+  department             Department?     @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  schedules              Schedule[]
+  attendances            Attendance[]
+  leaveRequests          LeaveRequest[]  @relation("OperatorLeaves")
+  reviewedLeaves         LeaveRequest[]  @relation("ManagerReviewedLeaves")
+  requestedExchanges     ShiftExchange[] @relation("RequesterExchanges")
+  targetExchanges        ShiftExchange[] @relation("TargetExchanges")
+  reviewedExchanges      ShiftExchange[] @relation("ManagerReviewedExchanges")
+  outgoingHandovers      Handover[]      @relation("OutgoingHandovers")
+  incomingHandovers      Handover[]      @relation("IncomingHandovers")
+  hsseChecklists         HSSEChecklist[]
+  notifications          Notification[]
+  auditLogs              AuditLog[]
+  createdAnnouncements   Announcement[]  @relation("CreatedAnnouncements")
+  createdAt              DateTime        @default(now())
+  updatedAt              DateTime        @updatedAt
+
+  @@index([email])
+  @@index([employeeId])
+  @@index([role])
+}
+
+model Schedule {
+  id                 String          @id @default(cuid())
+  userId             String
+  user               User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  shiftId            String
+  shift              Shift           @relation(fields: [shiftId], references: [id])
+  locationId         String
+  location           Location        @relation(fields: [locationId], references: [id])
+  date               String          // "YYYY-MM-DD" formatted in Asia/Jakarta
+  status             ScheduleStatus  @default(WORK)
+  notes              String?
+  attendances        Attendance[]
+  requesterExchanges ShiftExchange[] @relation("RequesterSchedule")
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+
+  @@unique([userId, date])
+  @@index([userId, date])
+  @@index([date, shiftId])
+  @@index([status])
+}
+
+model Attendance {
+  id               String           @id @default(cuid())
+  userId           String
+  user             User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  scheduleId       String?
+  schedule         Schedule?        @relation(fields: [scheduleId], references: [id], onDelete: SetNull)
+  date             String           // "YYYY-MM-DD"
+  checkIn          DateTime?        // Exact server timestamp
+  checkOut         DateTime?        // Exact server timestamp
+  status           AttendanceStatus @default(BELUM_ABSEN)
+  lateMinutes      Int              @default(0)
+  checkInLocation  String?
+  checkOutLocation String?
+  notes            String?
+  verifiedBy       String?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  @@unique([userId, date])
+  @@index([userId, date])
+  @@index([date, status])
+  @@index([status])
+  @@index([scheduleId])
+}
+
+model LeaveRequest {
+  id           String        @id @default(cuid())
+  userId       String
+  user         User          @relation("OperatorLeaves", fields: [userId], references: [id], onDelete: Cascade)
+  type         LeaveType     @default(LEAVE)
+  startDate    String        // "YYYY-MM-DD"
+  endDate      String        // "YYYY-MM-DD"
+  reason       String
+  attachmentUrl String?
+  status       RequestStatus @default(PENDING)
+  reviewedById String?
+  reviewedBy   User?         @relation("ManagerReviewedLeaves", fields: [reviewedById], references: [id])
+  reviewedAt   DateTime?
+  reviewerNote String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  @@index([userId, status])
+  @@index([startDate, endDate])
+  @@index([status])
+}
+
+model ShiftExchange {
+  id                  String        @id @default(cuid())
+  requesterId         String
+  requester           User          @relation("RequesterExchanges", fields: [requesterId], references: [id], onDelete: Cascade)
+  requesterScheduleId String
+  requesterSchedule   Schedule      @relation("RequesterSchedule", fields: [requesterScheduleId], references: [id], onDelete: Cascade)
+  targetUserId        String
+  targetUser          User          @relation("TargetExchanges", fields: [targetUserId], references: [id], onDelete: Cascade)
+  targetDate          String        // "YYYY-MM-DD"
+  reason              String
+  status              RequestStatus @default(PENDING)
+  reviewedById        String?
+  reviewedBy          User?         @relation("ManagerReviewedExchanges", fields: [reviewedById], references: [id])
+  reviewedAt          DateTime?
+  reviewerNote        String?
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+
+  @@index([requesterId, status])
+  @@index([targetUserId, status])
+  @@index([status])
+}
+
+model Handover {
+  id                 String         @id @default(cuid())
+  date               String         // "YYYY-MM-DD"
+  shiftId            String
+  shift              Shift          @relation(fields: [shiftId], references: [id])
+  outgoingOperatorId String
+  outgoingOperator   User           @relation("OutgoingHandovers", fields: [outgoingOperatorId], references: [id])
+  incomingOperatorId String
+  incomingOperator   User           @relation("IncomingHandovers", fields: [incomingOperatorId], references: [id])
+  operationalNotes   String
+  equipmentStatus    String         // e.g. "Normal / All operational"
+  issues             String?
+  pendingTasks       String?
+  safetyNotes        String?
+  status             HandoverStatus @default(DRAFT)
+  acknowledgedAt     DateTime?
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+
+  @@index([date, shiftId])
+  @@index([outgoingOperatorId])
+  @@index([incomingOperatorId])
+  @@index([status])
+}
+
+model HSSEChecklist {
+  id         String              @id @default(cuid())
+  date       String              // "YYYY-MM-DD"
+  shiftId    String
+  shift      Shift               @relation(fields: [shiftId], references: [id])
+  operatorId String
+  operator   User                @relation(fields: [operatorId], references: [id])
+  locationId String
+  location   Location            @relation(fields: [locationId], references: [id])
+  status     ChecklistStatus     @default(PENDING)
+  notes      String?
+  items      HSSEChecklistItem[]
+  createdAt  DateTime            @default(now())
+  updatedAt  DateTime            @updatedAt
+
+  @@index([date, shiftId])
+  @@index([operatorId])
+  @@index([status])
+}
+
+model HSSEChecklistItem {
+  id          String              @id @default(cuid())
+  checklistId String
+  checklist   HSSEChecklist       @relation(fields: [checklistId], references: [id], onDelete: Cascade)
+  itemKey     String              // e.g. "PPE_VERIFIED"
+  label       String              // e.g. "APD (Helmet, Safety Shoes, Glasses, Gloves) Lengkap"
+  status      ChecklistItemStatus @default(YES)
+  note        String?
+
+  @@index([checklistId])
+}
+
+model Announcement {
+  id          String                 @id @default(cuid())
+  title       String
+  message     String
+  priority    AnnouncementPriority   @default(NORMAL)
+  targetType  AnnouncementTargetType @default(ALL)
+  targetId    String?                // shiftId or operatorId if targeted
+  startAt     DateTime               @default(now())
+  endAt       DateTime?
+  createdById String
+  createdBy   User                   @relation("CreatedAnnouncements", fields: [createdById], references: [id])
+  isActive    Boolean                @default(true)
+  createdAt   DateTime               @default(now())
+  updatedAt   DateTime               @updatedAt
+
+  @@index([priority])
+  @@index([targetType, targetId])
+  @@index([startAt, endAt])
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      NotificationType @default(SYSTEM)
+  title     String
+  message   String
+  link      String?
+  isRead    Boolean          @default(false)
+  createdAt DateTime         @default(now())
+
+  @@index([userId, isRead])
+  @@index([createdAt])
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action    String   // e.g. "LOGIN", "CHECK_IN", "APPROVE_LEAVE"
+  entity    String   // e.g. "Attendance", "Schedule", "LeaveRequest"
+  entityId  String?
+  metadata  String?  // JSON stringified payload / details
+  ipAddress String?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
+}
