@@ -8,7 +8,7 @@ import { FsuVesselIllustration } from '@/components/branding/FsuVesselIllustrati
 
 export default function LoginPage() {
   const router = useRouter();
-  const [identifier, setIdentifier] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -20,9 +20,9 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const res = await loginAction({ identifier, password });
+      const res = await loginAction({ username, password });
       if (!res.success) {
-        setError(res.error || 'Login gagal. Periksa username/nama dan kata sandi Anda.');
+        setError(res.error || 'Login gagal. Periksa username dan kata sandi Anda.');
         setLoading(false);
       } else {
         router.push(res.redirectTo || '/');
@@ -37,12 +37,6 @@ export default function LoginPage() {
       setError(msg);
       setLoading(false);
     }
-  };
-
-  const handleQuickFill = (demoIdentifier: string, demoPass: string) => {
-    setIdentifier(demoIdentifier);
-    setPassword(demoPass);
-    setError(null);
   };
 
   return (
@@ -98,24 +92,24 @@ export default function LoginPage() {
 
           {/* Login Form */}
           <form onSubmit={handleSubmit} className="mt-4 space-y-3.5">
-            {/* Username / Nama */}
+            {/* Username */}
             <div className="anim-fade-up stagger-1">
               <label
-                htmlFor="login-identifier"
+                htmlFor="login-username"
                 className="text-xs font-bold text-[#1E293B] block mb-1"
               >
-                Username / Nama
+                Username <span className="text-[#E1251B]">*</span>
               </label>
               <div className="relative">
                 <UserIcon className="h-4 w-4 absolute left-3.5 top-3.5 text-slate-400 pointer-events-none" />
                 <input
-                  id="login-identifier"
+                  id="login-username"
                   type="text"
                   required
                   autoComplete="username"
-                  value={identifier}
-                  onChange={(e) => setIdentifier(e.target.value)}
-                  placeholder="Masukkan username atau nama"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  placeholder="Masukkan username"
                   className="w-full pl-10 pr-4 py-2.5 text-sm bg-white border border-[#CBD7E6] rounded-xl text-[#1E293B] placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#1769AA]/20 focus:border-[#1769AA] transition"
                 />
               </div>
@@ -127,7 +121,7 @@ export default function LoginPage() {
                 htmlFor="login-password"
                 className="text-xs font-bold text-[#1E293B] block mb-1"
               >
-                Kata Sandi
+                Password *
               </label>
               <div className="relative">
                 <Lock className="h-4 w-4 absolute left-3.5 top-3.5 text-slate-400 pointer-events-none" />
@@ -152,8 +146,6 @@ export default function LoginPage() {
               </div>
             </div>
 
-            {/* Remember Me & Forgot Password removed — login kini berbasis username */}
-
             {/* Big Blue MASUK Button */}
             <button
               type="submit"
@@ -167,47 +159,14 @@ export default function LoginPage() {
                 </>
               ) : (
                 <>
-                  <span>MASUK</span>
+                  <span>Masuk</span>
                   <ArrowRight className="h-4 w-4" />
                 </>
               )}
             </button>
           </form>
 
-          {/* Quick Demo Credentials */}
-          <div className="anim-fade-up stagger-5 mt-5 pt-4 border-t border-slate-100">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400 flex items-center gap-1">
-                <UserCheck className="w-3 h-3 text-[#1769AA]" /> Akun Uji Coba Cepat
-              </span>
-              <span className="text-[10px] text-slate-400">Admin/Manager/Operator</span>
-            </div>
-            <div className="grid grid-cols-3 gap-1.5">
-              <button
-                type="button"
-                onClick={() => handleQuickFill('admin', 'Admin123!')}
-                className="py-1.5 px-2 bg-purple-50/60 hover:bg-purple-100/70 border border-purple-200/80 rounded-lg text-[11px] font-bold text-purple-800 transition text-center cursor-pointer"
-              >
-                Admin
-              </button>
-              <button
-                type="button"
-                onClick={() => handleQuickFill('manager', 'Manager123!')}
-                className="py-1.5 px-2 bg-blue-50/60 hover:bg-blue-100/70 border border-blue-200/80 rounded-lg text-[11px] font-bold text-[#0B3568] transition text-center cursor-pointer"
-              >
-                Manager
-              </button>
-              <button
-                type="button"
-                onClick={() => handleQuickFill('operator1', 'Operator123!')}
-                className="py-1.5 px-2 bg-emerald-50/60 hover:bg-emerald-100/70 border border-emerald-200/80 rounded-lg text-[11px] font-bold text-emerald-800 transition text-center cursor-pointer"
-              >
-                Operator
-              </button>
-            </div>
-          </div>
-
-          {/* Footer Notice matching Mockup */}
+          {/* Footer Notice */}
           <div className="mt-4 text-center text-[10px] text-[#64748B] font-medium flex items-center justify-center gap-1">
             <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
             <span>Akses dibatasi hanya untuk personel dan manajemen yang berwenang.</span>

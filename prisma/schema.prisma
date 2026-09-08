@@ -135,9 +135,9 @@ model Shift {
 model User {
   id                     String          @id @default(cuid())
   employeeId             String          @unique // e.g. "OP-001"
-  username               String?         @unique // identifier login utama (selain nama); email hanya data profil
+  username               String?         @unique // identifier login utama; email hanya data profil opsional
   name                   String
-  email                  String          @unique
+  email                  String?         @unique // opsional — data profil, bukan credential login
   passwordHash           String
   role                   Role            @default(OPERATOR)
   position               String          // e.g. "Operator ORF"
@@ -158,6 +158,7 @@ model User {
   hsseChecklists         HSSEChecklist[]
   notifications          Notification[]
   auditLogs              AuditLog[]
+  picPrograms            ProgramKerja[]  @relation("ProgramKerjaPic")
   createdAnnouncements   Announcement[]  @relation("CreatedAnnouncements")
   createdAt              DateTime        @default(now())
   updatedAt              DateTime        @updatedAt
@@ -385,6 +386,11 @@ model ProgramKerja {
   progress    Int             @default(0)   // Realisasi (R) keseluruhan dalam %
   status      ProgramStatus   @default(PLAN)
   notes       String?         // Keterangan dari dokumen
+  deadline    DateTime?       // Tenggat pelaksanaan (opsional)
+  picId       String?         // PIC/Operator penanggung jawab (opsional)
+  pic         User?           @relation("ProgramKerjaPic", fields: [picId], references: [id], onDelete: SetNull)
+  picProgress Int             @default(0)   // Progress yang di-update PIC/operator
+  tasks       ProgramKerjaTask[]
   months      ProgramKerjaMonth[]
   createdAt   DateTime        @default(now())
   updatedAt   DateTime        @updatedAt
@@ -393,6 +399,22 @@ model ProgramKerja {
   @@index([year])
   @@index([category])
   @@index([status])
+  @@index([picId])
+}
+
+model ProgramKerjaTask {
+  id        String      @id @default(cuid())
+  programId String
+  program   ProgramKerja @relation(fields: [programId], references: [id], onDelete: Cascade)
+  label     String
+  isDone    Boolean     @default(false)
+  doneAt    DateTime?
+  doneById  String?
+  order     Int         @default(0)
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  @@index([programId])
 }
 
 model ProgramKerjaMonth {

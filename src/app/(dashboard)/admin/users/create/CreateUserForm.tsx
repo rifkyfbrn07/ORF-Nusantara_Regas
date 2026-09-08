@@ -39,11 +39,12 @@ export default function CreateUserForm({ departments }: CreateUserFormProps) {
 
   const [formData, setFormData] = useState({
     name: '',
+    username: '',
     email: '',
     employeeId: '',
     password: '',
     confirmPassword: '',
-    role: 'OPERATOR' as 'ADMIN' | 'MANAGER' | 'OPERATOR',
+    role: 'OPERATOR' as 'MANAGER' | 'OPERATOR',
     position: '',
     departmentId: departments[0]?.id || '',
     phone: '',
@@ -54,6 +55,8 @@ export default function CreateUserForm({ departments }: CreateUserFormProps) {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
+  // Kebijakan: sistem hanya memiliki 1 ADMIN utama (seed) —
+  // Admin hanya dapat membuat akun MANAGER & OPERATOR.
   const roleConfigs = [
     {
       role: 'OPERATOR' as const,
@@ -68,13 +71,6 @@ export default function CreateUserForm({ departments }: CreateUserFormProps) {
       icon: UserCog,
       badgeColor: 'bg-blue-50 text-[#0066B3] border-blue-200',
       description: 'Akses supervisi operasional, approval izin & cuti, plotting jadwal, monitoring manpower & HSSE.',
-    },
-    {
-      role: 'ADMIN' as const,
-      label: 'System Administrator',
-      icon: Shield,
-      badgeColor: 'bg-purple-50 text-purple-700 border-purple-200',
-      description: 'Akses administrator sistem, manajemen pengguna, reset kata sandi, pengaturan platform & audit trail.',
     },
   ];
 

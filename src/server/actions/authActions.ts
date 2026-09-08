@@ -13,11 +13,10 @@ export async function loginAction(formData: LoginInput) {
     return { success: false, error: parse.error.issues[0]?.message || 'Input tidak valid' };
   }
 
-  const { identifier, password } = parse.data;
-  const idTrimmed = identifier.trim();
+  const { username, password } = parse.data;
+  const idTrimmed = username.trim();
 
-  // Prioritas 1: username (exact → case-insensitive)
-  // Prioritas 2: nama (case-insensitive). Email BUKAN identifier login.
+  // Login HANYA menggunakan username (email & nama bukan credential).
   let user = await prisma.user.findUnique({
     where: { username: idTrimmed },
     include: { department: true },
@@ -25,27 +24,21 @@ export async function loginAction(formData: LoginInput) {
 
   if (!user) {
     const candidates = await prisma.user.findMany({
-      where: {
-        OR: [
-          { username: { equals: idTrimmed, mode: 'insensitive' } },
-          { name: { equals: idTrimmed, mode: 'insensitive' } },
-        ],
-      },
+      where: { username: { equals: idTrimmed, mode: 'insensitive' } },
       include: { department: true },
       take: 2,
     });
-    // Bila beberapa nama identik, gunakan yang aktif terlebih dahulu
     user = candidates.find((c) => c.isActive) || candidates[0] || null;
   }
 
   if (!user || !user.isActive) {
-    return { success: false, error: 'Username/nama atau kata sandi salah, atau akun nonaktif.' };
+    return { success: false, error: 'Username atau kata sandi salah, atau akun nonaktif.' };
   }
 
   // Verify bcrypt password
   const isValidPassword = await bcrypt.compare(password, user.passwordHash);
   if (!isValidPassword) {
-    return { success: false, error: 'Username/nama atau kata sandi salah.' };
+    return { success: false, error: 'Username atau kata sandi salah.' };
   }
 
   // Create session
@@ -68,7 +61,7 @@ export async function loginAction(formData: LoginInput) {
     action: 'LOGIN',
     entity: 'User',
     entityId: user.id,
-    metadata: { role: user.role, identifier: idTrimmed },
+    metadata: { role: user.role, username: user.username },
   });
 
   return {

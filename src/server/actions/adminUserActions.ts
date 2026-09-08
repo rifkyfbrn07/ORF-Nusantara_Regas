@@ -34,8 +34,12 @@ export async function createAdminUserAction(input: AdminUserCreateInput) {
     const parsed = adminUserCreateSchema.safeParse(input);
     if (!parsed.success) return { success: false, error: parsed.error.issues[0]?.message };
     const { password, username, ...data } = parsed.data;
+    // Kebijakan: hanya 1 ADMIN utama — pembuatan akun baru hanya MANAGER/OPERATOR.
+    if ((data.role as string) === 'ADMIN') {
+      return { success: false, error: 'Sistem hanya memiliki 1 ADMIN utama. Buat akun MANAGER atau OPERATOR.' };
+    }
     const finalUsername = await resolveUniqueUsername(prisma, username, data.name);
-    const user = await prisma.user.create({ data: { name: data.name, email: data.email, employeeId: data.employeeId, username: finalUsername, role: data.role, position: data.position, isActive: data.isActive, departmentId: data.departmentId || null, phone: data.phone || null, avatarUrl: data.avatarUrl || null, passwordHash: await bcrypt.hash(password, 12) } });
+    const user = await prisma.user.create({ data: { name: data.name, email: data.email || null, employeeId: data.employeeId, username: finalUsername, role: data.role, position: data.position, isActive: data.isActive, departmentId: data.departmentId || null, phone: data.phone || null, avatarUrl: data.avatarUrl || null, passwordHash: await bcrypt.hash(password, 12) } });
     await recordAuditLog({ userId: admin.id, action: 'ADMIN_CREATE_USER', entity: 'User', entityId: user.id, metadata: { email: user.email, username: user.username, role: user.role } });
     userPaths();
     return { success: true, user };
@@ -55,15 +59,22 @@ export async function updateAdminUserAction(input: AdminUserUpdateInput) {
     if (id === admin.id && data.role && data.role !== 'ADMIN') {
       return { success: false, error: 'Anda tidak dapat menurunkan role akun sendiri.' };
     }
-    const existing = await prisma.user.findUnique({ where: { id }, select: { name: true } });
+    const existing = await prisma.user.findUnique({ where: { id }, select: { name: true, role: true } });
     if (!existing) return { success: false, error: 'Akun tidak ditemukan.' };
+    // Kebijakan 1 ADMIN utama: tidak ada eskalasi ke ADMIN, ADMIN utama tidak didemote.
+    if (data.role && data.role === 'ADMIN' && existing.role !== 'ADMIN') {
+      return { success: false, error: 'Sistem hanya memiliki 1 ADMIN utama. Role tidak dapat diubah menjadi ADMIN.' };
+    }
+    if (existing.role === 'ADMIN' && data.role && data.role !== 'ADMIN') {
+      return { success: false, error: 'ADMIN utama tidak dapat diubah role-nya.' };
+    }
     let finalUsername: string | undefined;
     if (username !== undefined) {
       const usernameCheck = usernameSchema.safeParse(username);
       if (!usernameCheck.success) return { success: false, error: usernameCheck.error.issues[0]?.message };
       finalUsername = await resolveUniqueUsername(prisma, usernameCheck.data, data.name || existing.name, id);
     }
-    const user = await prisma.user.update({ where: { id }, data: { ...data, ...(finalUsername ? { username: finalUsername } : {}), departmentId: data.departmentId || null, phone: data.phone || null, avatarUrl: data.avatarUrl || null } });
+    const user = await prisma.user.update({ where: { id }, data: { ...data, ...(finalUsername ? { username: finalUsername } : {}), email: data.email || null, departmentId: data.departmentId || null, phone: data.phone || null, avatarUrl: data.avatarUrl || null } });
     await recordAuditLog({ userId: admin.id, action: 'ADMIN_UPDATE_USER', entity: 'User', entityId: user.id, metadata: { email: user.email, username: user.username, role: user.role, isActive: user.isActive } });
     userPaths();
     return { success: true, user };

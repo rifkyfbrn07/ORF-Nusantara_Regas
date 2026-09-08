@@ -7,10 +7,7 @@ export const usernameSchema = z
   .regex(/^[a-zA-Z0-9._-]+$/, 'Username hanya boleh huruf, angka, titik, garis bawah, dan strip');
 
 export const loginSchema = z.object({
-  identifier: z
-    .string()
-    .min(3, 'Username atau nama minimal 3 karakter')
-    .max(120, 'Username atau nama maksimal 120 karakter'),
+  username: usernameSchema,
   password: z.string().min(6, 'Kata sandi minimal 6 karakter'),
 });
 
@@ -140,12 +137,14 @@ const avatarUrlSchema = z
 
 const adminUserBaseSchema = z.object({
   name: z.string().min(3, 'Nama lengkap minimal 3 karakter'),
-  email: z.string().email('Format email tidak valid'),
+  email: z
+    .union([z.literal(''), z.string().email('Format email tidak valid')])
+    .optional(),
   employeeId: z.string().min(3, 'Employee ID minimal 3 karakter'),
-  username: usernameSchema.optional(),
+  username: usernameSchema,
   password: z.string().min(8, 'Kata sandi minimal 8 karakter'),
   confirmPassword: z.string(),
-  role: z.enum(['ADMIN', 'MANAGER', 'OPERATOR'] as const).default('OPERATOR'),
+  role: z.enum(['MANAGER', 'OPERATOR'] as const).default('OPERATOR'),
   position: z.string().min(2, 'Jabatan minimal 2 karakter'),
   departmentId: z.string().optional(),
   phone: z.string().optional(),
@@ -160,7 +159,12 @@ export const adminUserCreateSchema = adminUserBaseSchema.refine(
 
 export const adminUserUpdateSchema = adminUserBaseSchema
   .omit({ password: true, confirmPassword: true })
-  .extend({ id: z.string().min(1) });
+  .extend({
+    id: z.string().min(1),
+    // Saat update, role existing (termasuk ADMIN utama) boleh dipertahankan;
+    // eskalasi ke ADMIN diblokir di server action.
+    role: z.enum(['ADMIN', 'MANAGER', 'OPERATOR'] as const).optional(),
+  });
 export const adminPasswordResetSchema = z.object({ id: z.string().min(1), password: z.string().min(8, 'Kata sandi minimal 8 karakter') });
 export type AdminUserCreateInput = z.infer<typeof adminUserCreateSchema>;
 export type AdminUserUpdateInput = z.infer<typeof adminUserUpdateSchema>;
