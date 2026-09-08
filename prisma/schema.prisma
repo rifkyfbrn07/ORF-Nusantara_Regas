@@ -117,13 +117,13 @@ model Location {
 
 model Shift {
   id             String          @id @default(cuid())
-  name           String          @unique // e.g. "Shift 1"
-  code           String          @unique // e.g. "SHIFT_1"
-  startTime      String          // e.g. "07:00"
-  endTime        String          // e.g. "15:00"
+  name           String          @unique
+  code           String          @unique
+  startTime      String
+  endTime        String
   durationHours  Int             @default(8)
   description    String?
-  requiredCount  Int             @default(6) // required manpower for coverage calculation
+  requiredCount  Int             @default(6)
   isActive       Boolean         @default(true)
   schedules      Schedule[]
   handovers      Handover[]
@@ -134,13 +134,13 @@ model Shift {
 
 model User {
   id                     String          @id @default(cuid())
-  employeeId             String          @unique // e.g. "OP-001"
-  username               String?         @unique // identifier login utama; email hanya data profil opsional
+  employeeId             String          @unique
+  username               String          @unique
   name                   String
-  email                  String?         @unique // opsional — data profil, bukan credential login
+  email                  String?         @unique
   passwordHash           String
   role                   Role            @default(OPERATOR)
-  position               String          // e.g. "Operator ORF"
+  position               String
   phone                  String?
   avatarUrl              String?
   isActive               Boolean         @default(true)
@@ -176,7 +176,7 @@ model Schedule {
   shift              Shift           @relation(fields: [shiftId], references: [id])
   locationId         String
   location           Location        @relation(fields: [locationId], references: [id])
-  date               String          // "YYYY-MM-DD" formatted in Asia/Jakarta
+  date               String
   status             ScheduleStatus  @default(WORK)
   notes              String?
   attendances        Attendance[]
@@ -196,9 +196,9 @@ model Attendance {
   user             User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   scheduleId       String?
   schedule         Schedule?        @relation(fields: [scheduleId], references: [id], onDelete: SetNull)
-  date             String           // "YYYY-MM-DD"
-  checkIn          DateTime?        // Exact server timestamp
-  checkOut         DateTime?        // Exact server timestamp
+  date             String
+  checkIn          DateTime?
+  checkOut         DateTime?
   status           AttendanceStatus @default(BELUM_ABSEN)
   lateMinutes      Int              @default(0)
   checkInLocation  String?
@@ -216,21 +216,21 @@ model Attendance {
 }
 
 model LeaveRequest {
-  id           String        @id @default(cuid())
-  userId       String
-  user         User          @relation("OperatorLeaves", fields: [userId], references: [id], onDelete: Cascade)
-  type         LeaveType     @default(LEAVE)
-  startDate    String        // "YYYY-MM-DD"
-  endDate      String        // "YYYY-MM-DD"
-  reason       String
+  id            String        @id @default(cuid())
+  userId        String
+  user          User          @relation("OperatorLeaves", fields: [userId], references: [id], onDelete: Cascade)
+  type          LeaveType     @default(LEAVE)
+  startDate     String
+  endDate       String
+  reason        String
   attachmentUrl String?
-  status       RequestStatus @default(PENDING)
-  reviewedById String?
-  reviewedBy   User?         @relation("ManagerReviewedLeaves", fields: [reviewedById], references: [id])
-  reviewedAt   DateTime?
-  reviewerNote String?
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
+  status        RequestStatus @default(PENDING)
+  reviewedById  String?
+  reviewedBy    User?         @relation("ManagerReviewedLeaves", fields: [reviewedById], references: [id])
+  reviewedAt    DateTime?
+  reviewerNote  String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
 
   @@index([userId, status])
   @@index([startDate, endDate])
@@ -245,7 +245,7 @@ model ShiftExchange {
   requesterSchedule   Schedule      @relation("RequesterSchedule", fields: [requesterScheduleId], references: [id], onDelete: Cascade)
   targetUserId        String
   targetUser          User          @relation("TargetExchanges", fields: [targetUserId], references: [id], onDelete: Cascade)
-  targetDate          String        // "YYYY-MM-DD"
+  targetDate          String
   reason              String
   status              RequestStatus @default(PENDING)
   reviewedById        String?
@@ -262,15 +262,15 @@ model ShiftExchange {
 
 model Handover {
   id                 String         @id @default(cuid())
-  date               String         // "YYYY-MM-DD"
-  shiftId            String
-  shift              Shift          @relation(fields: [shiftId], references: [id])
+  date               String
+  shiftId             String
+  shift               Shift          @relation(fields: [shiftId], references: [id])
   outgoingOperatorId String
   outgoingOperator   User           @relation("OutgoingHandovers", fields: [outgoingOperatorId], references: [id])
   incomingOperatorId String
   incomingOperator   User           @relation("IncomingHandovers", fields: [incomingOperatorId], references: [id])
   operationalNotes   String
-  equipmentStatus    String         // e.g. "Normal / All operational"
+  equipmentStatus    String
   issues             String?
   pendingTasks       String?
   safetyNotes        String?
@@ -287,7 +287,7 @@ model Handover {
 
 model HSSEChecklist {
   id         String              @id @default(cuid())
-  date       String              // "YYYY-MM-DD"
+  date       String
   shiftId    String
   shift      Shift               @relation(fields: [shiftId], references: [id])
   operatorId String
@@ -309,8 +309,8 @@ model HSSEChecklistItem {
   id          String              @id @default(cuid())
   checklistId String
   checklist   HSSEChecklist       @relation(fields: [checklistId], references: [id], onDelete: Cascade)
-  itemKey     String              // e.g. "PPE_VERIFIED"
-  label       String              // e.g. "APD (Helmet, Safety Shoes, Glasses, Gloves) Lengkap"
+  itemKey     String
+  label       String
   status      ChecklistItemStatus @default(YES)
   note        String?
 
@@ -323,7 +323,7 @@ model Announcement {
   message     String
   priority    AnnouncementPriority   @default(NORMAL)
   targetType  AnnouncementTargetType @default(ALL)
-  targetId    String?                // shiftId or operatorId if targeted
+  targetId    String?
   startAt     DateTime               @default(now())
   endAt       DateTime?
   createdById String
@@ -356,10 +356,10 @@ model AuditLog {
   id        String   @id @default(cuid())
   userId    String?
   user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
-  action    String   // e.g. "LOGIN", "CHECK_IN", "APPROVE_LEAVE"
-  entity    String   // e.g. "Attendance", "Schedule", "LeaveRequest"
+  action    String
+  entity    String
   entityId  String?
-  metadata  String?  // JSON stringified payload / details
+  metadata  String?
   ipAddress String?
   createdAt DateTime @default(now())
 
@@ -368,32 +368,26 @@ model AuditLog {
   @@index([createdAt])
 }
 
-// ============================================================================
-// PROGRAM KERJA — Departemen Distribusi Gas & Manajemen ORF
-// Source of truth: "PROGRAM KERJA DEPARTEMEN DISTRIBUSI GAS DAN MANAJEMEN ORF
-// TAHUN 2026" (P = Plan, R = Realisasi)
-// ============================================================================
-
 model ProgramKerja {
-  id          String          @id @default(cuid())
-  year        Int             // Tahun program (e.g. 2026)
-  category    ProgramCategory // A. PENGADAAN / B. RAPAT KOORDINASI / C. OPERASIONAL RUTIN / D. AUDIT
-  sequence    Int             // Nomor baris pada dokumen sumber
-  name        String          // Nama program kerja sesuai dokumen
-  plan        String?         // Deskripsi Plan (P) dari dokumen, jika ada
-  realization String?         // Deskripsi Realisasi (R) dari dokumen, jika ada
-  planTarget  Int             @default(100) // Target Plan (P) dalam %
-  progress    Int             @default(0)   // Realisasi (R) keseluruhan dalam %
-  status      ProgramStatus   @default(PLAN)
-  notes       String?         // Keterangan dari dokumen
-  deadline    DateTime?       // Tenggat pelaksanaan (opsional)
-  picId       String?         // PIC/Operator penanggung jawab (opsional)
-  pic         User?           @relation("ProgramKerjaPic", fields: [picId], references: [id], onDelete: SetNull)
-  picProgress Int             @default(0)   // Progress yang di-update PIC/operator
+  id          String             @id @default(cuid())
+  year        Int
+  category    ProgramCategory
+  sequence    Int
+  name        String
+  plan        String?
+  realization String?
+  planTarget  Int                @default(100)
+  progress    Int                @default(0)
+  status      ProgramStatus      @default(PLAN)
+  notes       String?
+  deadline    DateTime?
+  picId       String?
+  pic         User?              @relation("ProgramKerjaPic", fields: [picId], references: [id], onDelete: SetNull)
+  picProgress Int                @default(0)
   tasks       ProgramKerjaTask[]
   months      ProgramKerjaMonth[]
-  createdAt   DateTime        @default(now())
-  updatedAt   DateTime        @updatedAt
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
 
   @@unique([year, category, name])
   @@index([year])
@@ -421,10 +415,10 @@ model ProgramKerjaMonth {
   id          String      @id @default(cuid())
   programId   String
   program     ProgramKerja @relation(fields: [programId], references: [id], onDelete: Cascade)
-  month       Int         // 1 = Jan ... 12 = Des
-  week        Int         // 1 = I, 2 = II, 3 = III, 4 = IV (minggu pada dokumen)
-  target      Int         @default(100) // Target Plan (P) bulan ini (%)
-  realization Int         @default(0)   // Realisasi (R) minggu ini (%)
+  month       Int
+  week        Int
+  target      Int         @default(100)
+  realization Int         @default(0)
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
 
