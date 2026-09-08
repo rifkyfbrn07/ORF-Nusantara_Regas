@@ -9,6 +9,7 @@ export default async function AdminUsersPage() {
       select: {
         id: true,
         name: true,
+        username: true,
         email: true,
         employeeId: true,
         role: true,
@@ -25,5 +26,6 @@ export default async function AdminUsersPage() {
     }),
     prisma.department.findMany({ orderBy: { name: 'asc' } }),
   ]);
+
   return <UsersClient users={users} departments={departments} />;
 }
