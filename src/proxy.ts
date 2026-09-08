@@ -66,7 +66,22 @@ export async function proxy(request: NextRequest) {
   }
 
   // Non-manager attempting manager area → DENIED, bounce to own workspace
-  if (isManagerArea && role !== 'MANAGER') {
+  const ADMIN_ALLOWED_MANAGER_PATHS = ['/manager/program-kerja', '/manager/jadwal-operator'];
+  // REGAS: ADMIN diizinkan mengakses fitur Program Kerja & Jadwal Operator.
+  // Defense-in-depth tetap berlaku: kedua halaman memverifikasi ulang role
+  // via requireRole() dengan claims yang di-rehydrate dari PostgreSQL.
+  const isAdminAllowedManagerRoute =
+    role === 'ADMIN' &&
+    ADMIN_ALLOWED_MANAGER_PATHS.some(
+      (p) => pathname === p || pathname.startsWith(`${p}/`)
+    );
+
+  // REGAS: ADMIN super administrator — full access (defense-in-depth tetap di page level)
+  if (role === 'ADMIN' && !isLoginPage) {
+    return NextResponse.next();
+  }
+
+  if (isManagerArea && role !== 'MANAGER' && !isAdminAllowedManagerRoute) {
     return NextResponse.redirect(new URL(role === 'ADMIN' ? '/admin/dashboard' : '/operator/dashboard', request.url));
   }
 

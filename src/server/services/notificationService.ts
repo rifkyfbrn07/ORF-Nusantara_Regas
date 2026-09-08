@@ -69,3 +69,77 @@ export async function markAllNotificationsAsRead(userId: string) {
     data: { isRead: true },
   });
 }
+
+// ============================================================================
+// PERSONAL NOTIFICATION — kirim pemberitahuan ke user tertentu / semua operator
+// Otorisasi dilakukan di action layer; scope recipient dibatasi per role sender:
+// - ADMIN   -> siapa saja (termasuk MANAGER & ADMIN lain)
+// - MANAGER -> hanya OPERATOR
+// ============================================================================
+
+export interface SendPersonalParams {
+  senderId: string;
+  senderRole: 'ADMIN' | 'MANAGER';
+  recipientIds: string[]; // bisa berisi sentinel 'ALL_OPERATORS'
+  title: string;
+  message: string;
+  link?: string;
+}
+
+export async function sendPersonalNotifications(params: SendPersonalParams) {
+  const { senderRole, recipientIds, title, message, link } = params;
+
+  let targetIds: string[];
+  if (recipientIds.includes('ALL_OPERATORS')) {
+    const operators = await prisma.user.findMany({
+      where: { role: 'OPERATOR', isActive: true },
+      select: { id: true },
+    });
+    targetIds = operators.map((o) => o.id);
+  } else {
+    const users = await prisma.user.findMany({
+      where: { id: { in: recipientIds }, isActive: true },
+      select: { id: true, role: true },
+    });
+    const allowed = senderRole === 'ADMIN' ? users : users.filter((u) => u.role === 'OPERATOR');
+    targetIds = allowed.map((u) => u.id);
+  }
+
+  if (targetIds.length === 0) {
+    throw new Error('Tidak ada penerima valid (manager hanya dapat mengirim ke operator).');
+  }
+
+  await prisma.notification.createMany({
+    data: targetIds.map((userId) => ({
+      userId,
+      type: 'SYSTEM' as const,
+      title,
+      message,
+      link: link || '/notifications',
+      isRead: false,
+    })),
+  });
+
+  return { sent: targetIds.length };
+}
+
+/** Statistik notifikasi untuk dashboard admin */
+export async function getNotificationStats() {
+  const [unread, total, announcements] = await Promise.all([
+    prisma.notification.count({ where: { isRead: false } }),
+    prisma.notification.count(),
+    prisma.announcement.count({ where: { isActive: true } }),
+  ]);
+  return { unread, total, announcements };
+}
+
+/** Daftar notifikasi terbaru seluruh sistem (khusus ADMIN) */
+export async function getAllNotifications(limit = 50) {
+  return prisma.notification.findMany({
+    orderBy: { createdAt: 'desc' },
+    take: limit,
+    include: {
+      user: { select: { id: true, name: true, username: true, role: true } },
+    },
+  });
+}

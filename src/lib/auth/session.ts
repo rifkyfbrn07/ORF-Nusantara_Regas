@@ -16,6 +16,7 @@ function getAuthSecretKey(): Uint8Array {
 export interface SessionUser {
   id: string;
   name: string;
+  username?: string | null;
   email: string;
   employeeId: string;
   role: Role;
@@ -99,7 +100,7 @@ export async function requireAuth(): Promise<SessionUser> {
   const user = await prisma.user.findUnique({
     where: { id: session.id },
     select: {
-      id: true, name: true, email: true, employeeId: true, role: true,
+      id: true, name: true, username: true, email: true, employeeId: true, role: true,
       position: true, departmentId: true, avatarUrl: true, isActive: true,
     },
   });
@@ -108,6 +109,7 @@ export async function requireAuth(): Promise<SessionUser> {
   return {
     id: user.id,
     name: user.name,
+    username: user.username,
     email: user.email,
     employeeId: user.employeeId,
     role: user.role,

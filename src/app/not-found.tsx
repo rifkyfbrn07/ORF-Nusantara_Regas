@@ -52,7 +52,7 @@ export default function NotFound() {
       </div>
 
       <p className="mt-6 text-[11px] text-[#64748B]">
-        Pertamina Nusantara Regas · REGAS FIELDOPS
+        Distribusi Gas & ORF · Operational Workforce & Shift Management
       </p>
     </div>
   );

@@ -13,28 +13,46 @@ export async function loginAction(formData: LoginInput) {
     return { success: false, error: parse.error.issues[0]?.message || 'Input tidak valid' };
   }
 
-  const { email, password } = parse.data;
+  const { identifier, password } = parse.data;
+  const idTrimmed = identifier.trim();
 
-  // Query user from PostgreSQL
-  const user = await prisma.user.findUnique({
-    where: { email },
+  // Prioritas 1: username (exact → case-insensitive)
+  // Prioritas 2: nama (case-insensitive). Email BUKAN identifier login.
+  let user = await prisma.user.findUnique({
+    where: { username: idTrimmed },
     include: { department: true },
   });
 
+  if (!user) {
+    const candidates = await prisma.user.findMany({
+      where: {
+        OR: [
+          { username: { equals: idTrimmed, mode: 'insensitive' } },
+          { name: { equals: idTrimmed, mode: 'insensitive' } },
+        ],
+      },
+      include: { department: true },
+      take: 2,
+    });
+    // Bila beberapa nama identik, gunakan yang aktif terlebih dahulu
+    user = candidates.find((c) => c.isActive) || candidates[0] || null;
+  }
+
   if (!user || !user.isActive) {
-    return { success: false, error: 'Email atau kata sandi salah, atau akun nonaktif.' };
+    return { success: false, error: 'Username/nama atau kata sandi salah, atau akun nonaktif.' };
   }
 
   // Verify bcrypt password
   const isValidPassword = await bcrypt.compare(password, user.passwordHash);
   if (!isValidPassword) {
-    return { success: false, error: 'Email atau kata sandi salah.' };
+    return { success: false, error: 'Username/nama atau kata sandi salah.' };
   }
 
   // Create session
   await setSessionCookie({
     id: user.id,
     name: user.name,
+    username: user.username,
     email: user.email,
     employeeId: user.employeeId,
     role: user.role,
@@ -50,7 +68,7 @@ export async function loginAction(formData: LoginInput) {
     action: 'LOGIN',
     entity: 'User',
     entityId: user.id,
-    metadata: { role: user.role, email: user.email },
+    metadata: { role: user.role, identifier: idTrimmed },
   });
 
   return {

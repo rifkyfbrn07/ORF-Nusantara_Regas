@@ -3,8 +3,8 @@ import { prisma } from '@/lib/db/prisma';
 import CreateUserForm from './CreateUserForm';
 
 export const metadata = {
-  title: 'Tambah Pengguna Baru | REGAS FIELDOPS Admin',
-  description: 'Form pendaftaran akun personil baru sistem REGAS FIELDOPS',
+  title: 'Tambah Pengguna Baru | Distribusi Gas & ORF Admin',
+  description: 'Form pendaftaran akun personil baru sistem Distribusi Gas & ORF',
 };
 
 export default async function CreateUserPage() {

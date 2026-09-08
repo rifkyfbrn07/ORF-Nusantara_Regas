@@ -9,7 +9,7 @@ export default async function ManagerReportsPage({
 }: {
   searchParams: Promise<{ startDate?: string; endDate?: string }>;
 }) {
-  await requireRole(['MANAGER']);
+  await requireRole(['MANAGER', 'ADMIN']);
   const resolvedParams = await searchParams;
   const startDate = resolvedParams.startDate || '2026-09-01';
   const endDate = resolvedParams.endDate || '2026-09-30';

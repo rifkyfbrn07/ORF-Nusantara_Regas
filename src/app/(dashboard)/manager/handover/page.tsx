@@ -7,7 +7,7 @@ import { ClipboardList, ArrowRight, Clock, AlertTriangle, ShieldCheck } from 'lu
 import { PageHeader } from '@/components/ui/PageHeader';
 
 export default async function ManagerHandoverPage() {
-  await requireRole(['MANAGER']);
+  await requireRole(['MANAGER', 'ADMIN']);
   const handovers = await getAllHandovers();
 
   return (

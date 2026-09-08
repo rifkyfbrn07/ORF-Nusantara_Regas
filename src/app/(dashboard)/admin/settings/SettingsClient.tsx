@@ -315,7 +315,7 @@ export default function SettingsClient({ stats: initialStats }: SettingsClientPr
             href="/admin/about"
             className="flex-1 sm:flex-none text-center px-4 py-2 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition"
           >
-            Tentang FIELDOPS
+            Tentang Distribusi Gas & ORF
           </Link>
           <Link
             href="/admin/users"

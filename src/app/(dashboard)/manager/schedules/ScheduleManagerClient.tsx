@@ -13,12 +13,12 @@ import {
   X,
   Calendar,
   MapPin,
-  CalendarDays,
   LayoutGrid,
   Table as TableIcon,
 } from 'lucide-react';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { UserAvatar } from '@/components/ui/UserAvatar';
+import { Modal } from '@/components/ui/Modal';
 import {
   createScheduleAction,
   updateScheduleAction,
@@ -594,26 +594,34 @@ export function ScheduleManagerClient({
 
       {/* 5. Standardized Add/Edit Modal (Sticky Header, Scrollable Body, Sticky Footer) */}
       {showAddModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-3 sm:p-4 anim-fade">
-          <div className="bg-white rounded-2xl max-w-lg w-full shadow-2xl border border-slate-200 flex flex-col max-h-[calc(100vh-32px)] overflow-hidden">
-            {/* Modal Sticky Header */}
-            <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-white shrink-0">
-              <div className="flex items-center gap-2">
-                <CalendarDays className="h-4.5 w-4.5 text-[#0066B3]" />
-                <h3 className="font-extrabold text-sm sm:text-base text-[#0F315A]">
-                  {editingSchedule ? 'Ubah Penugasan Jadwal Kerja' : 'Tambah Jadwal Kerja Baru'}
-                </h3>
-              </div>
+        <Modal
+          open
+          onClose={() => setShowAddModal(false)}
+          size="md"
+          eyebrow="SHIFT ASSIGNMENT"
+          title={editingSchedule ? 'Ubah Penugasan Jadwal Kerja' : 'Tambah Jadwal Kerja Baru'}
+          footer={
+            <div className="flex items-center justify-end gap-2">
               <button
+                type="button"
                 onClick={() => setShowAddModal(false)}
-                className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition cursor-pointer"
+                className="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition cursor-pointer"
               >
-                <X className="h-5 w-5" />
+                Batal
+              </button>
+              <button
+                type="submit"
+                form="schedule-form"
+                disabled={loading}
+                className="px-5 py-2 text-xs font-bold bg-[#0066B3] hover:bg-[#005596] text-white rounded-xl shadow-xs transition cursor-pointer"
+              >
+                {loading ? 'Menyimpan...' : 'Simpan Jadwal'}
               </button>
             </div>
-
+          }
+        >
             {/* Modal Scrollable Body */}
-            <form id="schedule-form" onSubmit={handleSaveSchedule} className="p-5 space-y-4 overflow-y-auto flex-1">
+            <form id="schedule-form" onSubmit={handleSaveSchedule} className="space-y-4">
               {error && (
                 <div className="p-3 bg-red-50 text-red-700 text-xs font-semibold rounded-xl flex items-center gap-2 border border-red-200">
                   <AlertCircle className="h-4 w-4 shrink-0" />
@@ -703,51 +711,38 @@ export function ScheduleManagerClient({
                 />
               </div>
             </form>
+        </Modal>
+      )}
 
-            {/* Modal Sticky Footer */}
-            <div className="px-5 py-3.5 border-t border-slate-100 flex items-center justify-end gap-2 bg-[#F8FAFC] shrink-0">
+      {/* 6. Standardized Duplicate Modal */}
+      {showDuplicateModal && (
+        <Modal
+          open
+          onClose={() => setShowDuplicateModal(false)}
+          size="sm"
+          eyebrow="DUPLIKASI"
+          title="Duplikasi Jadwal Harian"
+          footer={
+            <div className="flex items-center justify-end gap-2">
               <button
                 type="button"
-                onClick={() => setShowAddModal(false)}
-                className="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-200 rounded-xl transition cursor-pointer"
+                onClick={() => setShowDuplicateModal(false)}
+                className="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition cursor-pointer"
               >
                 Batal
               </button>
               <button
                 type="submit"
-                form="schedule-form"
+                form="dup-form"
                 disabled={loading}
                 className="px-5 py-2 text-xs font-bold bg-[#0066B3] hover:bg-[#005596] text-white rounded-xl shadow-xs transition cursor-pointer"
               >
-                {loading ? 'Menyimpan...' : 'Simpan Jadwal'}
+                {loading ? 'Menduplikasi...' : 'Duplikasi Sekarang'}
               </button>
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* 6. Standardized Duplicate Modal */}
-      {showDuplicateModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-3 sm:p-4 anim-fade">
-          <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl border border-slate-200 flex flex-col overflow-hidden">
-            {/* Header */}
-            <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-white shrink-0">
-              <div className="flex items-center gap-2">
-                <Copy className="h-4.5 w-4.5 text-[#0066B3]" />
-                <h3 className="font-extrabold text-sm sm:text-base text-[#0F315A]">
-                  Duplikasi Jadwal Harian
-                </h3>
-              </div>
-              <button
-                onClick={() => setShowDuplicateModal(false)}
-                className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition cursor-pointer"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            {/* Body */}
-            <form id="dup-form" onSubmit={handleDuplicate} className="p-5 space-y-4">
+          }
+        >
+            <form id="dup-form" onSubmit={handleDuplicate} className="space-y-4">
               <p className="text-xs text-slate-500 leading-relaxed">
                 Salin seluruh alokasi operator dan rotasi shift dari tanggal sumber ke tanggal target secara otomatis.
               </p>
@@ -781,27 +776,7 @@ export function ScheduleManagerClient({
                 />
               </div>
             </form>
-
-            {/* Footer */}
-            <div className="px-5 py-3.5 border-t border-slate-100 flex items-center justify-end gap-2 bg-[#F8FAFC] shrink-0">
-              <button
-                type="button"
-                onClick={() => setShowDuplicateModal(false)}
-                className="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-200 rounded-xl transition cursor-pointer"
-              >
-                Batal
-              </button>
-              <button
-                type="submit"
-                form="dup-form"
-                disabled={loading}
-                className="px-5 py-2 text-xs font-bold bg-[#0066B3] hover:bg-[#005596] text-white rounded-xl shadow-xs transition cursor-pointer"
-              >
-                {loading ? 'Menduplikasi...' : 'Duplikasi Sekarang'}
-              </button>
-            </div>
-          </div>
-        </div>
+        </Modal>
       )}
     </div>
   );

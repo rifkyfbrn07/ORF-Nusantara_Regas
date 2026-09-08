@@ -21,7 +21,7 @@ interface PageProps {
 }
 
 export default async function WorkforcePage({ searchParams }: PageProps) {
-  await requireRole(['MANAGER']);
+  await requireRole(['MANAGER', 'ADMIN']);
   const params = await searchParams;
   const today = formatJakartaDate();
   const dateQuery = typeof params.date === 'string' ? params.date : today;

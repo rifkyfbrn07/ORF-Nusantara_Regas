@@ -71,8 +71,8 @@ export function DashboardShell({
         />
       </div>
 
-      {/* Main Content Area (Offset by 250px on desktop) */}
-      <div className="md:pl-[250px] flex flex-col min-h-screen w-full transition-all duration-200">
+      {/* Main Content Area (Offset by 230px on desktop) */}
+      <div className="md:pl-[230px] flex flex-col min-h-screen w-full transition-all duration-200">
         {/* Top Header */}
         <TopHeader
           user={user}

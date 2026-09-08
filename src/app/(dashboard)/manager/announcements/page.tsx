@@ -6,7 +6,7 @@ import { AnnouncementsClient } from './AnnouncementsClient';
 import { PageHeader } from '@/components/ui/PageHeader';
 
 export default async function ManagerAnnouncementsPage() {
-  await requireRole(['MANAGER']);
+  await requireRole(['MANAGER', 'ADMIN']);
   const todayStr = formatJakartaDate();
 
   const [announcements, shifts, operators] = await Promise.all([

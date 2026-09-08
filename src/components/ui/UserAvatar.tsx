@@ -31,50 +31,60 @@ interface UserAvatarProps {
   size?: number;
   /** Optional attendance/status indicator dot */
   status?: UserAvatarStatus | null;
-  /** Extra ring classes (e.g. "ring-2 ring-white") */
+  /** Extra ring/border classes */
   className?: string;
   /** Title/tooltip text */
   title?: string;
 }
 
-/** Derives at most two initials: "Andi Pratama" -> "AP", "Dimas" -> "D" */
-function getInitials(name: string): string {
+/**
+ * Derives at most two initials from a name:
+ * "System Administrator" -> "SA"
+ * "Budi Santoso" -> "BS"
+ * "Rifky Febrian" -> "RF"
+ * "Andi" -> "A"
+ */
+export function getUserInitials(name: string): string {
   const parts = (name || '').trim().split(/\s+/).filter(Boolean);
   if (parts.length === 0) return '?';
-  if (parts.length === 1) return parts[0].charAt(0).toUpperCase();
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
   return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
 }
 
 /**
- * Reusable user avatar with guaranteed-safe fallback:
- * photo -> initials -> "?" icon. Never renders a broken image.
+ * Pure circular user avatar with guaranteed-safe fallback:
+ * photo -> initials -> "?" icon.
+ * Guaranteed 100% circular, zero rectangular background bleeding.
  */
 export function UserAvatar({
   name,
   avatarUrl,
-  size = 36,
+  size = 34,
   status,
   className,
   title,
 }: UserAvatarProps) {
   const [photoFailed, setPhotoFailed] = useState(false);
   const showPhoto = Boolean(avatarUrl) && !photoFailed;
-  const dotSize = Math.max(8, Math.round(size * 0.28));
+  const dotSize = Math.max(7, Math.round(size * 0.26));
 
   return (
     <span
-      className={clsx('relative inline-flex shrink-0 select-none', className)}
-      style={{ width: size, height: size }}
+      className={clsx(
+        'relative inline-flex shrink-0 select-none rounded-full overflow-hidden items-center justify-center aspect-square',
+        className
+      )}
+      style={{ width: size, height: size, minWidth: size, minHeight: size }}
       title={title ?? name}
       aria-label={name}
     >
-      {/* Initials fallback layer (always rendered underneath the photo) */}
+      {/* Initials fallback layer (always circular) */}
       <span
-        className="h-full w-full rounded-full bg-[#123E7A] text-white font-bold flex items-center justify-center uppercase overflow-hidden ring-1 ring-inset ring-white/10"
-        style={{ fontSize: Math.max(9, Math.round(size * 0.36)) }}
+        className="h-full w-full rounded-full bg-[#0F315A] text-white font-bold flex items-center justify-center uppercase select-none tracking-tight"
+        style={{ fontSize: Math.max(9, Math.round(size * 0.38)) }}
         aria-hidden={showPhoto}
       >
-        {getInitials(name)}
+        {getUserInitials(name)}
       </span>
 
       {showPhoto && (
@@ -91,7 +101,7 @@ export function UserAvatar({
       {status && STATUS_DOT_COLORS[status] && (
         <span
           className={clsx(
-            'absolute -bottom-0.5 -right-0.5 rounded-full ring-2 ring-white',
+            'absolute bottom-0 right-0 rounded-full ring-2 ring-white',
             STATUS_DOT_COLORS[status]
           )}
           style={{ width: dotSize, height: dotSize }}

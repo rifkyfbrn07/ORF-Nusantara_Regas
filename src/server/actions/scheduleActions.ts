@@ -7,7 +7,7 @@ import { revalidatePath } from 'next/cache';
 
 export async function createScheduleAction(input: ScheduleInput) {
   try {
-    const manager = await requireRole(['MANAGER']);
+    const manager = await requireRole(['MANAGER', 'ADMIN']);
     const parse = scheduleSchema.safeParse(input);
     if (!parse.success) {
       return { success: false, error: parse.error.issues[0]?.message };
@@ -31,7 +31,7 @@ export async function createScheduleAction(input: ScheduleInput) {
 
 export async function updateScheduleAction(id: string, input: Partial<ScheduleInput>) {
   try {
-    const manager = await requireRole(['MANAGER']);
+    const manager = await requireRole(['MANAGER', 'ADMIN']);
     const schedule = await updateSchedule({
       id,
       ...input,
@@ -51,7 +51,7 @@ export async function updateScheduleAction(id: string, input: Partial<ScheduleIn
 
 export async function deleteScheduleAction(scheduleId: string) {
   try {
-    const manager = await requireRole(['MANAGER']);
+    const manager = await requireRole(['MANAGER', 'ADMIN']);
     await deleteSchedule(scheduleId, manager.id);
 
     revalidatePath('/manager/schedules');
@@ -65,7 +65,7 @@ export async function deleteScheduleAction(scheduleId: string) {
 
 export async function duplicateScheduleAction(sourceDate: string, targetDate: string) {
   try {
-    const manager = await requireRole(['MANAGER']);
+    const manager = await requireRole(['MANAGER', 'ADMIN']);
     const parse = duplicateScheduleSchema.safeParse({ sourceDate, targetDate });
     if (!parse.success) {
       return { success: false, error: parse.error.issues[0]?.message };

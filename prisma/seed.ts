@@ -717,6 +717,11 @@ async function main() {
   });
 
   console.log('----------------------------------------------------');
+  // 15b. Username backfill (login berbasis username/nama)
+  const { ensureUsernames } = await import('./usernameBackfill');
+  const userCount = await ensureUsernames(prisma);
+  console.log(`✓ Username backfill: ${userCount} user diperbarui`);
+
   console.log('✓ Database Seeding Successfully Completed!');
   console.log('Demo Credentials:');
   console.log('  Manager  : manager@fieldops.local / Manager123!');

@@ -3,17 +3,21 @@ import { prisma } from '@/lib/db/prisma';
 import SettingsClient from './SettingsClient';
 
 export const metadata = {
-  title: 'Pengaturan Sistem & Database | REGAS FIELDOPS Admin',
-  description: 'Monitoring kesehatan database, keamanan sesi, dan konfigurasi sistem REGAS FIELDOPS',
+  title: 'Pengaturan Sistem & Database | Distribusi Gas & ORF Admin',
+  description: 'Monitoring kesehatan database, keamanan sesi, dan konfigurasi sistem Distribusi Gas & ORF',
 };
+
+/** Ping database & ukur latensi (dipisah agar aman dari aturan purity render). */
+async function pingDatabaseLatency(): Promise<number> {
+  const startTime = Date.now();
+  await prisma.$queryRaw`SELECT 1`;
+  return Date.now() - startTime;
+}
 
 export default async function AdminSettingsPage() {
   await requireAdmin();
 
-  const startTime = Date.now();
-  // Quick database latency ping
-  await prisma.$queryRaw`SELECT 1`;
-  const dbLatencyMs = Date.now() - startTime;
+  const dbLatencyMs = await pingDatabaseLatency();
 
   const [
     totalUsers,

@@ -9,7 +9,7 @@ interface PageHeaderProps {
 }
 
 export function PageHeader({
-  eyebrow = 'PERTAMINA NUSANTARA REGAS · FIELDOPS',
+  eyebrow = 'DISTRIBUSI GAS & ORF',
   title,
   description,
   action,

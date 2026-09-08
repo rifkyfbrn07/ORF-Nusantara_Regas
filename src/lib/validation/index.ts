@@ -1,7 +1,16 @@
 import { z } from 'zod';
 
+export const usernameSchema = z
+  .string()
+  .min(3, 'Username minimal 3 karakter')
+  .max(30, 'Username maksimal 30 karakter')
+  .regex(/^[a-zA-Z0-9._-]+$/, 'Username hanya boleh huruf, angka, titik, garis bawah, dan strip');
+
 export const loginSchema = z.object({
-  email: z.string().email('Format email tidak valid'),
+  identifier: z
+    .string()
+    .min(3, 'Username atau nama minimal 3 karakter')
+    .max(120, 'Username atau nama maksimal 120 karakter'),
   password: z.string().min(6, 'Kata sandi minimal 6 karakter'),
 });
 
@@ -133,6 +142,7 @@ const adminUserBaseSchema = z.object({
   name: z.string().min(3, 'Nama lengkap minimal 3 karakter'),
   email: z.string().email('Format email tidak valid'),
   employeeId: z.string().min(3, 'Employee ID minimal 3 karakter'),
+  username: usernameSchema.optional(),
   password: z.string().min(8, 'Kata sandi minimal 8 karakter'),
   confirmPassword: z.string(),
   role: z.enum(['ADMIN', 'MANAGER', 'OPERATOR'] as const).default('OPERATOR'),
@@ -193,3 +203,42 @@ export const manualAttendanceCorrectionSchema = z.object({
 });
 
 export type ManualAttendanceCorrectionInput = z.infer<typeof manualAttendanceCorrectionSchema>;
+
+// ============================================================================
+// PROGRAM KERJA (P = Plan, R = Realisasi) — Departemen Distribusi Gas & ORF
+// ============================================================================
+
+export const programKerjaCategoryEnum = z.enum([
+  'PENGADAAN',
+  'RAPAT_KOORDINASI',
+  'OPERASIONAL_RUTIN',
+  'AUDIT',
+] as const);
+
+export const programKerjaStatusEnum = z.enum([
+  'PLAN',
+  'REALISASI',
+  'ON_PROGRESS',
+  'BELUM_TEREALISASI',
+] as const);
+
+export const programKerjaCreateSchema = z.object({
+  year: z.number().int().min(2020, 'Tahun minimal 2020').max(2100, 'Tahun maksimal 2100'),
+  category: programKerjaCategoryEnum,
+  sequence: z.number().int().min(1, 'Nomor urut minimal 1').max(999, 'Nomor urut maksimal 999'),
+  name: z.string().min(3, 'Nama program minimal 3 karakter').max(250, 'Nama program maksimal 250 karakter'),
+  plan: z.string().max(500, 'Deskripsi Plan maksimal 500 karakter').optional(),
+  realization: z.string().max(500, 'Deskripsi Realisasi maksimal 500 karakter').optional(),
+  planTarget: z.number().int().min(0).max(100).default(100),
+  progress: z.number().int().min(0, 'Realisasi minimal 0%').max(100, 'Realisasi maksimal 100%').default(0),
+  status: programKerjaStatusEnum.default('PLAN'),
+  notes: z.string().max(1000, 'Keterangan maksimal 1000 karakter').optional(),
+});
+
+export type ProgramKerjaCreateInput = z.infer<typeof programKerjaCreateSchema>;
+
+export const programKerjaUpdateSchema = programKerjaCreateSchema
+  .partial()
+  .extend({ id: z.string().min(1, 'ID Program Kerja wajib disertakan') });
+
+export type ProgramKerjaUpdateInput = z.infer<typeof programKerjaUpdateSchema>;

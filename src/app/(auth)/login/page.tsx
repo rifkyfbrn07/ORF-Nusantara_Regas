@@ -1,16 +1,15 @@
 'use client';
 
 import React, { useState } from 'react';
-import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { Lock, Mail, ArrowRight, AlertCircle, Loader2, Eye, EyeOff, ShieldCheck, UserCheck } from 'lucide-react';
+import { Lock, User as UserIcon, ArrowRight, AlertCircle, Loader2, Eye, EyeOff, ShieldCheck, UserCheck } from 'lucide-react';
 import { loginAction } from '@/server/actions/authActions';
+import { FsuVesselIllustration } from '@/components/branding/FsuVesselIllustration';
 
 export default function LoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState('');
+  const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
-  const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
@@ -21,9 +20,9 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const res = await loginAction({ email, password });
+      const res = await loginAction({ identifier, password });
       if (!res.success) {
-        setError(res.error || 'Login gagal. Periksa email dan kata sandi Anda.');
+        setError(res.error || 'Login gagal. Periksa username/nama dan kata sandi Anda.');
         setLoading(false);
       } else {
         router.push(res.redirectTo || '/');
@@ -40,55 +39,49 @@ export default function LoginPage() {
     }
   };
 
-  const handleQuickFill = (demoEmail: string, demoPass: string) => {
-    setEmail(demoEmail);
+  const handleQuickFill = (demoIdentifier: string, demoPass: string) => {
+    setIdentifier(demoIdentifier);
     setPassword(demoPass);
     setError(null);
   };
 
   return (
-    <div className="relative min-h-screen w-full flex items-center justify-center lg:justify-end overflow-hidden bg-[#0B3568]">
-      {/* Full-screen Industrial Facility Background with Pertamina Field Operators */}
+    <div className="relative min-h-screen w-full flex items-center justify-center overflow-hidden bg-[#08243F]">
+      {/* Background full area: /images/bg.svg + overlay + visual FSRU */}
       <div className="absolute inset-0 z-0">
-        <Image
-          src="/images/regas-fieldops-hero.png"
-          alt="Pertamina Nusantara Regas — Industrial Facility & Field Operators"
-          fill
-          priority
-          sizes="100vw"
-          className="object-cover object-center lg:object-left"
-          quality={95}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/images/bg.svg"
+          alt="Terminal LNG — Distribusi Gas & ORF"
+          className="h-full w-full object-cover object-center"
         />
-        {/* Cinematic gradient overlay */}
-        <div className="absolute inset-0 bg-gradient-to-r from-black/20 via-transparent to-[#0B3568]/40 hidden lg:block" />
-        <div className="absolute inset-0 bg-[#0B3568]/60 backdrop-blur-[2px] lg:hidden" />
+        <div className="absolute inset-0 bg-gradient-to-b from-[#08243F]/75 via-[#0B3568]/55 to-[#08243F]/85" />
+        <div className="absolute bottom-0 left-0 right-0 z-[1] pointer-events-none">
+          <FsuVesselIllustration className="mx-auto w-full min-w-[720px] max-w-[1400px] h-auto opacity-90" />
+        </div>
       </div>
 
-      {/* Floating White Login Card Container (Matching Mockup 1:1) */}
-      <div className="relative z-10 w-full max-w-[460px] px-4 py-8 sm:px-6 lg:mr-16 xl:mr-24 anim-fade-up">
-        <div className="bg-white rounded-3xl p-7 sm:p-9 shadow-2xl border border-white/80 text-[#1E293B]">
-          {/* Pertamina Flame Logo Header */}
+      {/* Floating Login Card */}
+      <div className="relative z-10 w-full max-w-[440px] px-4 py-8 sm:px-6 anim-fade-up">
+        <div className="bg-white rounded-2xl p-7 sm:p-8 shadow-2xl border border-white/90 text-[#1E293B]">
+          {/* Brand Header — Distribusi Gas & ORF */}
           <div className="flex flex-col items-center text-center">
-            <div className="relative w-32 h-10 mb-1 flex items-center justify-center">
-              <Image
-                src="/images/regas-.png"
-                alt="Pertamina Nusantara Regas"
-                width={120}
-                height={36}
-                className="max-h-9 w-auto object-contain"
-                priority
-              />
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#0B3568] mb-2.5 shadow-md shadow-[#0B3568]/25">
+              <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" aria-hidden="true">
+                <path d="M12 2L4 6v6c0 5 3.4 8.6 8 10 4.6-1.4 8-5 8-10V6l-8-4z" fill="#E1251B" opacity="0.9" />
+                <path d="M12 6.5l-4 2v3.6c0 2.9 1.9 5 4 5.9 2.1-.9 4-3 4-5.9V8.5l-4-2z" fill="#ffffff" opacity="0.95" />
+              </svg>
             </div>
 
-            <span className="text-[10px] font-black text-[#1769AA] tracking-widest uppercase mb-3">
-              REGAS FIELDOPS
-            </span>
-
-            <h1 className="text-xl sm:text-2xl font-black tracking-tight text-[#0B3568]">
-              Masuk ke FIELDOPS
+            <h1 className="text-lg sm:text-xl font-black tracking-tight text-[#0B3568] leading-tight">
+              Distribusi Gas &amp; ORF
             </h1>
-            <p className="text-[11px] text-[#64748B] mt-1 leading-relaxed max-w-xs font-medium">
-              Pertamina Nusantara Regas • Operator Workforce &amp; Shift Management Platform
+            <p className="text-[10px] font-black text-[#1769AA] tracking-widest uppercase mt-1">
+              Operational Workforce &amp; Shift Management
+            </p>
+            <div className="h-px w-16 bg-[#DCE5EF] my-3.5" />
+            <p className="text-xs text-[#64748B] mt-0 leading-relaxed font-medium">
+              Masuk untuk mengakses panel operasional Anda
             </p>
           </div>
 
@@ -104,25 +97,25 @@ export default function LoginPage() {
           )}
 
           {/* Login Form */}
-          <form onSubmit={handleSubmit} className="mt-5 space-y-4">
-            {/* Email Field */}
+          <form onSubmit={handleSubmit} className="mt-4 space-y-3.5">
+            {/* Username / Nama */}
             <div className="anim-fade-up stagger-1">
               <label
-                htmlFor="login-email"
+                htmlFor="login-identifier"
                 className="text-xs font-bold text-[#1E293B] block mb-1"
               >
-                Email
+                Username / Nama
               </label>
               <div className="relative">
-                <Mail className="h-4 w-4 absolute left-3.5 top-3.5 text-slate-400 pointer-events-none" />
+                <UserIcon className="h-4 w-4 absolute left-3.5 top-3.5 text-slate-400 pointer-events-none" />
                 <input
-                  id="login-email"
-                  type="email"
+                  id="login-identifier"
+                  type="text"
                   required
-                  autoComplete="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="nama@fieldops.local"
+                  autoComplete="username"
+                  value={identifier}
+                  onChange={(e) => setIdentifier(e.target.value)}
+                  placeholder="Masukkan username atau nama"
                   className="w-full pl-10 pr-4 py-2.5 text-sm bg-white border border-[#CBD7E6] rounded-xl text-[#1E293B] placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#1769AA]/20 focus:border-[#1769AA] transition"
                 />
               </div>
@@ -159,22 +152,7 @@ export default function LoginPage() {
               </div>
             </div>
 
-            {/* Remember Me & Forgot Password */}
-            <div className="anim-fade-up stagger-3 flex items-center justify-between text-xs pt-0.5">
-              <label className="flex items-center gap-2 cursor-pointer select-none text-[#64748B] hover:text-[#1E293B] font-medium">
-                <input
-                  type="checkbox"
-                  checked={rememberMe}
-                  onChange={(e) => setRememberMe(e.target.checked)}
-                  className="h-4 w-4 rounded border-[#CBD7E6] text-[#0B3568] focus:ring-[#0B3568]/30 transition"
-                />
-                <span>Ingat saya</span>
-              </label>
-
-              <span className="text-[#1769AA] font-semibold text-xs cursor-pointer hover:underline">
-                Lupa password?
-              </span>
-            </div>
+            {/* Remember Me & Forgot Password removed — login kini berbasis username */}
 
             {/* Big Blue MASUK Button */}
             <button
@@ -207,21 +185,21 @@ export default function LoginPage() {
             <div className="grid grid-cols-3 gap-1.5">
               <button
                 type="button"
-                onClick={() => handleQuickFill('admin@fieldops.local', 'Admin123!')}
+                onClick={() => handleQuickFill('admin', 'Admin123!')}
                 className="py-1.5 px-2 bg-purple-50/60 hover:bg-purple-100/70 border border-purple-200/80 rounded-lg text-[11px] font-bold text-purple-800 transition text-center cursor-pointer"
               >
                 Admin
               </button>
               <button
                 type="button"
-                onClick={() => handleQuickFill('manager@fieldops.local', 'Manager123!')}
+                onClick={() => handleQuickFill('manager', 'Manager123!')}
                 className="py-1.5 px-2 bg-blue-50/60 hover:bg-blue-100/70 border border-blue-200/80 rounded-lg text-[11px] font-bold text-[#0B3568] transition text-center cursor-pointer"
               >
                 Manager
               </button>
               <button
                 type="button"
-                onClick={() => handleQuickFill('operator1@fieldops.local', 'Operator123!')}
+                onClick={() => handleQuickFill('operator1', 'Operator123!')}
                 className="py-1.5 px-2 bg-emerald-50/60 hover:bg-emerald-100/70 border border-emerald-200/80 rounded-lg text-[11px] font-bold text-emerald-800 transition text-center cursor-pointer"
               >
                 Operator

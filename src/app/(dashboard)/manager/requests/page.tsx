@@ -10,7 +10,7 @@ export default async function ManagerRequestsPage({
 }: {
   searchParams: Promise<{ tab?: string }>;
 }) {
-  await requireRole(['MANAGER']);
+  await requireRole(['MANAGER', 'ADMIN']);
   const resolvedParams = await searchParams;
   const activeTab = resolvedParams.tab || 'leave';
 

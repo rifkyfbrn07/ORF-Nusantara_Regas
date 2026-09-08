@@ -19,7 +19,7 @@ export default function DashboardError({
 
   useEffect(() => {
     // Log for developers only — user-facing message stays generic
-    console.error('[FIELDOPS] Dashboard error:', error.message);
+    console.error('[DistribusiGasORF] Dashboard error:', error.message);
   }, [error]);
 
   const isAuthError = error.message === 'UNAUTHORIZED' || error.message === 'FORBIDDEN';

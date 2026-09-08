@@ -75,6 +75,8 @@ interface KpiCardProps {
     | 'orange'
     | 'red'
     | 'blue'
+    | 'navy'
+    | 'slate'
     | 'gray';
   miniType?: 'cuti' | 'izin' | 'sakit' | 'off';
   isPrimary?: boolean;
@@ -246,6 +248,18 @@ export function KpiCard({
       badgeBg: 'bg-blue-50 text-[#1769AA]',
       barColor: 'bg-[#1769AA]',
       defaultPercent: '100%',
+    },
+    navy: {
+      dotColor: 'bg-[#123B6D]',
+      badgeBg: 'bg-blue-50 text-[#123B6D]',
+      barColor: 'bg-[#123B6D]',
+      defaultPercent: '100%',
+    },
+    slate: {
+      dotColor: 'bg-slate-500',
+      badgeBg: 'bg-slate-50 text-slate-600',
+      barColor: 'bg-slate-400',
+      defaultPercent: '50%',
     },
     primary: {
       dotColor: 'bg-[#0B3568]',

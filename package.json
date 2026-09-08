@@ -1,5 +1,5 @@
 {
-  "name": "pertamina-fieldops",
+  "name": "distribusi-gas-orf",
   "version": "1.0.0",
   "private": true,
   "prisma": {
@@ -16,6 +16,7 @@
     "seed": "tsx prisma/adminSeed.ts",
     "seed:admin": "tsx prisma/adminSeed.ts",
     "seed:all": "tsx prisma/seed.ts",
+    "seed:regas": "tsx prisma/regasSeed.ts",
     "db:studio": "prisma studio",
     "db:migrate": "prisma migrate dev"
   },
@@ -36,6 +37,7 @@
     "recharts": "^3.10.1",
     "sonner": "^2.0.8",
     "tailwind-merge": "^3.6.0",
+    "xlsx": "^0.18.5",
     "zod": "^4.5.4"
   },
   "devDependencies": {

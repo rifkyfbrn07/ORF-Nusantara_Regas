@@ -58,7 +58,7 @@ export async function checkOutAction(input: { attendanceId: string; notes?: stri
 
 export async function manualCorrectionAction(input: ManualAttendanceCorrectionInput) {
   try {
-    const manager = await requireRole(['MANAGER']);
+    const manager = await requireRole(['MANAGER', 'ADMIN']);
     const parse = manualAttendanceCorrectionSchema.safeParse(input);
     if (!parse.success) {
       return { success: false, error: parse.error.issues[0]?.message };

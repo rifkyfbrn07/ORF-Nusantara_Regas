@@ -7,7 +7,7 @@ import { revalidatePath } from 'next/cache';
 
 export async function createOperatorAction(input: OperatorCreateInput) {
   try {
-    const manager = await requireRole(['MANAGER']);
+    const manager = await requireRole(['MANAGER', 'ADMIN']);
     const parse = operatorCreateSchema.safeParse(input);
     if (!parse.success) {
       return { success: false, error: parse.error.issues[0]?.message };
@@ -29,7 +29,7 @@ export async function createOperatorAction(input: OperatorCreateInput) {
 
 export async function updateOperatorAction(input: OperatorUpdateInput) {
   try {
-    const manager = await requireRole(['MANAGER']);
+    const manager = await requireRole(['MANAGER', 'ADMIN']);
     const parse = operatorUpdateSchema.safeParse(input);
     if (!parse.success) {
       return { success: false, error: parse.error.issues[0]?.message };
@@ -52,7 +52,7 @@ export async function updateOperatorAction(input: OperatorUpdateInput) {
 
 export async function toggleOperatorStatusAction(operatorId: string) {
   try {
-    const manager = await requireRole(['MANAGER']);
+    const manager = await requireRole(['MANAGER', 'ADMIN']);
     const operator = await toggleOperatorActiveStatus(operatorId, manager.id);
 
     revalidatePath('/manager/operators');

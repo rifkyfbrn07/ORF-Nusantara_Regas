@@ -14,7 +14,7 @@ import { createNotification } from '@/server/services/notificationService';
  */
 export async function createAnnouncementAction(input: AnnouncementInput) {
   try {
-    const manager = await requireRole(['MANAGER']);
+    const manager = await requireRole(['MANAGER', 'ADMIN']);
     const parse = announcementSchema.safeParse(input);
     if (!parse.success) {
       return { success: false, error: parse.error.issues[0]?.message };
@@ -98,7 +98,7 @@ export async function createAnnouncementAction(input: AnnouncementInput) {
 /** Soft-deactivates an announcement (MANAGER only) */
 export async function deactivateAnnouncementAction(announcementId: string) {
   try {
-    const manager = await requireRole(['MANAGER']);
+    const manager = await requireRole(['MANAGER', 'ADMIN']);
     const existing = await prisma.announcement.findUnique({ where: { id: announcementId } });
     if (!existing) return { success: false, error: 'Pengumuman tidak ditemukan.' };
 

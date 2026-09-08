@@ -3,8 +3,8 @@ import './globals.css';
 import { Toaster } from 'sonner';
 
 export const metadata: Metadata = {
-  title: 'REGAS FIELDOPS — Operator Workforce & Shift Management Platform',
-  description: 'Enterprise operational workforce, shift planning, attendance tracking, and manpower monitoring system for energy facilities.',
+  title: 'Distribusi Gas & ORF — Operational Workforce & Shift Management',
+  description: 'Sistem manajemen tenaga kerja operasional, penjadwalan shift, dan monitoring manpower Distribusi Gas & ORF (Onshore Receiving Facility).',
 };
 
 export default function RootLayout({

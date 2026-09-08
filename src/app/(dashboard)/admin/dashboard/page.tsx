@@ -2,368 +2,317 @@ import React from 'react';
 import Link from 'next/link';
 import { requireAdmin } from '@/lib/auth/session';
 import { prisma } from '@/lib/db/prisma';
+import { ScheduleStatus } from '@prisma/client';
 import {
-  UserPlus,
   Users,
-  Settings,
-  Info,
-  Clock,
+  UserPlus,
+  CalendarDays,
+  Target,
+  Bell,
+  ClipboardList,
   ArrowRight,
-  ShieldCheck,
-  Shield,
-  Activity,
-  KeyRound,
-  HardHat,
-  UserCog,
-  UserCheck,
-  UserX,
+  Clock,
+  Info,
+  CalendarClock,
+  BarChart3,
 } from 'lucide-react';
-import { UserAvatar } from '@/components/ui/UserAvatar';
-import { StatusBadge } from '@/components/ui/StatusBadge';
 import { KpiCard } from '@/components/dashboard/KpiCard';
-import { getJakartaNow } from '@/lib/time';
+import { UserAvatar } from '@/components/ui/UserAvatar';
+import { FsuVesselIllustration } from '@/components/branding/FsuVesselIllustration';
+import { getProgramKerjaStats, getProgramKerjaAnnualChart } from '@/server/services/programKerjaService';
+import { getScheduleSummary } from '@/server/services/scheduleSummaryService';
+import { getNotificationStats } from '@/server/services/notificationService';
+import { AdminDashboardCharts } from './AdminDashboardCharts';
 
 function getGreeting(): string {
-  const hour = getJakartaNow().getHours();
-  if (hour >= 4 && hour < 11) return 'Selamat pagi';
-  if (hour >= 11 && hour < 15) return 'Selamat siang';
-  if (hour >= 15 && hour < 19) return 'Selamat sore';
+  const hour = new Date().toLocaleTimeString('en-GB', { timeZone: 'Asia/Jakarta', hour: 'numeric', hour12: false });
+  const h = Number(hour);
+  if (h >= 4 && h < 11) return 'Selamat pagi';
+  if (h >= 11 && h < 15) return 'Selamat siang';
+  if (h >= 15 && h < 19) return 'Selamat sore';
   return 'Selamat malam';
 }
 
 export default async function AdminDashboardPage() {
   const admin = await requireAdmin();
+  const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Jakarta' });
+  const year = Number(today.slice(0, 4));
 
   const [
     totalUsers,
     activeUsers,
-    adminCount,
     managerCount,
     operatorCount,
     inactiveUsers,
-    recentUsers,
+    todaySchedules,
+    programStats,
+    programChart,
+    scheduleSummary,
+    notifStats,
     recentAuditLogs,
+    recentUsers,
   ] = await Promise.all([
     prisma.user.count(),
     prisma.user.count({ where: { isActive: true } }),
-    prisma.user.count({ where: { role: 'ADMIN', isActive: true } }),
     prisma.user.count({ where: { role: 'MANAGER', isActive: true } }),
     prisma.user.count({ where: { role: 'OPERATOR', isActive: true } }),
     prisma.user.count({ where: { isActive: false } }),
+    prisma.schedule.findMany({
+      where: { date: today },
+      select: { status: true, shift: { select: { code: true, name: true } } },
+    }),
+    getProgramKerjaStats(year),
+    getProgramKerjaAnnualChart(year),
+    getScheduleSummary(year),
+    getNotificationStats(),
+    prisma.auditLog.findMany({
+      take: 5,
+      orderBy: { createdAt: 'desc' },
+      include: { user: { select: { name: true, role: true } } },
+    }),
     prisma.user.findMany({
       take: 5,
       orderBy: { createdAt: 'desc' },
       include: { department: true },
     }),
-    prisma.auditLog.findMany({
-      take: 5,
-      orderBy: { createdAt: 'desc' },
-      include: { user: { select: { name: true, employeeId: true, role: true } } },
-    }),
   ]);
 
+  // Jadwal hari ini: dihitung berdasarkan SHIFT (bukan check-in website)
+  const todayCounts = { pagi: 0, malam: 0, off: 0, total: todaySchedules.length };
+  for (const s of todaySchedules) {
+    const code = (s.shift?.code || '').toLowerCase();
+    const name = (s.shift?.name || '').toLowerCase();
+    if (code.includes('pagi') || name.includes('pagi')) todayCounts.pagi += 1;
+    else if (code.includes('malam') || name.includes('malam')) todayCounts.malam += 1;
+    else if (code.includes('off') || name.includes('off') || s.status === ScheduleStatus.OFF) todayCounts.off += 1;
+  }
+
+  const dateLabel = new Date(`${today}T00:00:00+07:00`).toLocaleDateString('id-ID', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    timeZone: 'Asia/Jakarta',
+  });
+
+  const quickLinks = [
+    { label: 'Kelola Pengguna', href: '/admin/users', icon: Users, tone: 'bg-[#EAF4FC] text-[#0066B3]' },
+    { label: 'Tambah Pengguna', href: '/admin/users/create', icon: UserPlus, tone: 'bg-purple-50 text-purple-600' },
+    { label: 'Jadwal Kerja', href: '/manager/schedules', icon: CalendarDays, tone: 'bg-blue-50 text-blue-600' },
+    { label: 'Jadwal Operator', href: '/manager/jadwal-operator', icon: CalendarClock, tone: 'bg-sky-50 text-sky-600' },
+    { label: 'Program Kerja', href: '/manager/program-kerja', icon: Target, tone: 'bg-orange-50 text-[#F58220]' },
+    { label: 'Notifikasi Personal', href: '/manager/notifications', icon: Bell, tone: 'bg-amber-50 text-amber-600' },
+  ];
+
   return (
-    <div className="space-y-4 sm:space-y-5 dashboard-enter max-w-[1400px] mx-auto w-full">
-      {/* 1. Hero Greeting Banner */}
-      <div className="bg-white p-4 sm:p-5 rounded-2xl border border-[#E2E8F0] shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] sm:text-[11px] font-black uppercase tracking-wider text-[#0066B3] bg-[#EAF4FC] px-2.5 py-0.5 rounded-md">
-              ADMINISTRATOR CONTROL CENTER
-            </span>
-            <span className="flex items-center gap-1 text-[11px] font-bold text-emerald-600">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse-subtle" />
-              Sistem Aktif
-            </span>
+    <div className="space-y-6 dashboard-enter">
+      {/* HERO (greeting + FSRU kecil — dashboard tetap dominan putih) */}
+      <div className="relative bg-white rounded-2xl border border-[#DCE5EF] shadow-xs overflow-hidden">
+        <div className="p-5 sm:p-6 relative z-10">
+          <div className="text-[10px] font-black tracking-wider uppercase text-[#1769AA]">
+            Distribusi Gas &amp; ORF · Control Center
           </div>
-          <h1 className="text-2xl sm:text-3xl font-black text-[#0F315A] tracking-tight mt-1">
-            {getGreeting()}, {admin.name} 👋
+          <h1 className="text-2xl sm:text-3xl font-black text-[#092B57] tracking-tight mt-1">
+            {getGreeting()}, {admin.name.split(' ')[0]}!
           </h1>
-          <p className="text-xs sm:text-sm text-[#64748B] font-medium mt-0.5 max-w-2xl">
-            Sistem administrasi, hak akses, dan tata kelola akun platform REGAS FIELDOPS.
+          <p className="text-xs sm:text-sm text-[#5F718A] font-medium mt-1">
+            {dateLabel} — ringkasan menyeluruh sistem operasional.
+          </p>
+        </div>
+        <div className="absolute bottom-0 right-0 left-0 pointer-events-none opacity-[0.15]">
+          <FsuVesselIllustration className="w-full min-w-[700px] h-auto ml-auto" />
+        </div>
+      </div>
+
+      {/* KPI WORKFORCE */}
+      <div>
+        <SectionTitle icon={<Users className="h-3.5 w-3.5" />} label="Workforce" />
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mt-2.5">
+          <KpiCard label="Total User" value={String(totalUsers)} variant="blue" />
+          <KpiCard label="Operator" value={String(operatorCount)} variant="navy" />
+          <KpiCard label="Manager" value={String(managerCount)} variant="blue" />
+          <KpiCard label="User Aktif" value={String(activeUsers)} variant="green" />
+          <KpiCard label="User Inactive" value={String(inactiveUsers)} variant="red" />
+        </div>
+      </div>
+
+      {/* JADWAL HARI INI + NOTIFIKASI */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+        <div className="lg:col-span-2 bg-white rounded-2xl border border-[#DCE5EF] shadow-xs p-5">
+          <SectionTitle icon={<CalendarDays className="h-3.5 w-3.5" />} label={`Jadwal Hari Ini — ${dateLabel}`} />
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-3">
+            <MiniStat label="Total Jadwal" value={todayCounts.total} color="text-[#0B3568]" />
+            <MiniStat label="Shift Pagi" value={todayCounts.pagi} color="text-[#0066B3]" />
+            <MiniStat label="Shift Malam" value={todayCounts.malam} color="text-[#123B6D]" />
+            <MiniStat label="Off" value={todayCounts.off} color="text-slate-500" />
+          </div>
+          <div className="mt-4 flex flex-wrap gap-x-4 gap-y-1">
+            <Link href="/manager/schedules" className="inline-flex items-center gap-1.5 text-[11px] font-bold text-[#0066B3] hover:underline">
+              Kelola Jadwal <ArrowRight className="h-3 w-3" />
+            </Link>
+            <Link href="/manager/jadwal-operator" className="inline-flex items-center gap-1.5 text-[11px] font-bold text-[#0066B3] hover:underline">
+              Roster Jadwal Operator <ArrowRight className="h-3 w-3" />
+            </Link>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-2xl border border-[#DCE5EF] shadow-xs p-5">
+          <SectionTitle icon={<Bell className="h-3.5 w-3.5" />} label="Notification" />
+          <div className="space-y-2 mt-3">
+            <MiniRow label="Unread Notification" value={notifStats.unread} dotClass="bg-[#E1251B]" />
+            <MiniRow label="Total Notification" value={notifStats.total} dotClass="bg-[#0066B3]" />
+            <MiniRow label="Announcement Aktif" value={notifStats.announcements} dotClass="bg-emerald-500" />
+          </div>
+          <Link href="/manager/notifications" className="mt-4 inline-flex items-center gap-1.5 text-[11px] font-bold text-[#0066B3] hover:underline">
+            Kirim Notifikasi Personal <ArrowRight className="h-3 w-3" />
+          </Link>
+        </div>
+      </div>
+
+      {/* PROGRAM KERJA — TARGET TAHUNAN */}
+      <div>
+        <SectionTitle icon={<Target className="h-3.5 w-3.5" />} label={`Program Kerja ${year} — Target Tahunan`} />
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mt-2.5">
+          <KpiCard label="Total Program" value={String(programStats.total)} variant="blue" />
+          <KpiCard label="Plan" value={String(programStats.plan)} variant="slate" />
+          <KpiCard label="Realisasi" value={String(programStats.realisasi)} variant="green" />
+          <KpiCard label="Tidak Terealisasi" value={String(programStats.belumTerealisasi)} variant="red" />
+          <KpiCard label="Progress" value={`${programStats.avgProgress}%`} variant="orange" />
+        </div>
+        <div className="mt-4">
+          <AdminDashboardCharts
+            programBar={programChart.bar}
+            programDonut={programChart.donut}
+            scheduleSummary={scheduleSummary.perMonth.map((m) => ({ month: m.monthLabel, pagi: m.pagi, malam: m.malam, off: m.off }))}
+          />
+        </div>
+        <p className="mt-2.5 text-[10px] font-semibold text-slate-400 flex items-center gap-1">
+          <Info className="h-3 w-3" /> Grafik kehadiran dihitung dari jadwal kerja (bukan check-in website). P = Plan, R = Realisasi.
+        </p>
+        <Link href="/manager/program-kerja" className="mt-1 inline-flex items-center gap-1.5 text-[11px] font-bold text-[#0066B3] hover:underline">
+          Kelola Program Kerja <ArrowRight className="h-3 w-3" />
+        </Link>
+      </div>
+
+      {/* ATTENDANCE SCHEDULE SUMMARY + AUDIT */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+        <div className="bg-white rounded-2xl border border-[#DCE5EF] shadow-xs p-5">
+          <SectionTitle icon={<BarChart3 className="h-3.5 w-3.5" />} label="Attendance Schedule Summary" />
+          <div className="grid grid-cols-2 gap-2 mt-3">
+            <MiniStat label="Hari Kerja Terjadwal" value={scheduleSummary.totals.totalScheduled} color="text-[#0B3568]" />
+            <MiniStat label="Jadwal Pagi" value={scheduleSummary.totals.pagi} color="text-[#0066B3]" />
+            <MiniStat label="Jadwal Malam" value={scheduleSummary.totals.malam} color="text-[#123B6D]" />
+            <MiniStat label="Hari Off" value={scheduleSummary.totals.off} color="text-slate-500" />
+          </div>
+          <p className="text-[10px] font-semibold text-slate-400 mt-3 leading-relaxed">
+            Ringkasan Kehadiran Berdasarkan Jadwal tahun {year} — check-in aktual belum dijadikan dasar perhitungan.
           </p>
         </div>
 
-        {/* Action Header */}
-        <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
-          <Link
-            href="/admin/about"
-            className="px-3.5 py-2 rounded-xl bg-[#F8FAFC] hover:bg-[#F1F5F9] border border-slate-200 text-[#0F315A] text-xs font-bold flex items-center gap-1.5 transition cursor-pointer"
-          >
-            <Info className="w-3.5 h-3.5 text-[#0066B3]" />
-            <span>Tentang FIELDOPS</span>
-          </Link>
-
-          <Link
-            href="/admin/users/create"
-            className="px-4 py-2 rounded-xl bg-[#0066B3] hover:bg-[#005596] text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition cursor-pointer"
-          >
-            <UserPlus className="w-3.5 h-3.5" />
-            <span>+ Tambah Pengguna</span>
-          </Link>
-        </div>
-      </div>
-
-      {/* 2. KPI Section: System & Account Metrics (6 Compact Cards ~96px) */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 sm:gap-3">
-        <KpiCard
-          label="TOTAL USERS"
-          value={totalUsers}
-          iconName="users"
-          variant="total"
-          subtext="Semua Akun"
-          index={0}
-        />
-        <KpiCard
-          label="ACTIVE USERS"
-          value={activeUsers}
-          iconName="userCheck"
-          variant="hadir"
-          percent={`${totalUsers > 0 ? Math.round((activeUsers / totalUsers) * 100) : 0}%`}
-          subtext="Akun Aktif"
-          index={1}
-        />
-        <KpiCard
-          label="ADMIN"
-          value={adminCount}
-          iconName="shield"
-          variant="blue"
-          subtext="Administrator"
-          index={2}
-        />
-        <KpiCard
-          label="MANAGER"
-          value={managerCount}
-          iconName="userCog"
-          variant="terlambat"
-          subtext="Pengawas Shift"
-          index={3}
-        />
-        <KpiCard
-          label="OPERATOR"
-          value={operatorCount}
-          iconName="hardHat"
-          variant="hadir"
-          subtext="Personil Lapangan"
-          index={4}
-        />
-        <KpiCard
-          label="INACTIVE USERS"
-          value={inactiveUsers}
-          iconName="userX"
-          variant={inactiveUsers > 0 ? 'belumAbsen' : 'gray'}
-          subtext="Akun Nonaktif"
-          index={5}
-        />
-      </div>
-
-      {/* 3. Quick Action Cards (4 Action Tiles) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-        <Link
-          href="/admin/users/create"
-          className="p-4 rounded-2xl bg-white border border-[#E2E8F0] shadow-xs hover:border-[#0066B3] hover:shadow-md transition flex items-center gap-3.5 group"
-        >
-          <div className="p-3 rounded-xl bg-[#EAF4FC] text-[#0066B3] group-hover:bg-[#0066B3] group-hover:text-white transition">
-            <UserPlus className="w-5 h-5" />
-          </div>
-          <div>
-            <h4 className="text-xs font-bold text-[#0F315A] group-hover:text-[#0066B3] transition">
-              Tambah Pengguna
-            </h4>
-            <p className="text-[11px] text-[#64748B]">Registrasi akun Manager atau Operator</p>
-          </div>
-        </Link>
-
-        <Link
-          href="/admin/users"
-          className="p-4 rounded-2xl bg-white border border-[#E2E8F0] shadow-xs hover:border-[#0066B3] hover:shadow-md transition flex items-center gap-3.5 group"
-        >
-          <div className="p-3 rounded-xl bg-[#EAF4FC] text-[#0066B3] group-hover:bg-[#0066B3] group-hover:text-white transition">
-            <Users className="w-5 h-5" />
-          </div>
-          <div>
-            <h4 className="text-xs font-bold text-[#0F315A] group-hover:text-[#0066B3] transition">
-              Kelola Pengguna
-            </h4>
-            <p className="text-[11px] text-[#64748B]">Edit data, role, & status akun</p>
-          </div>
-        </Link>
-
-        <Link
-          href="/admin/settings"
-          className="p-4 rounded-2xl bg-white border border-[#E2E8F0] shadow-xs hover:border-[#0066B3] hover:shadow-md transition flex items-center gap-3.5 group"
-        >
-          <div className="p-3 rounded-xl bg-[#EAF4FC] text-[#0066B3] group-hover:bg-[#0066B3] group-hover:text-white transition">
-            <Settings className="w-5 h-5" />
-          </div>
-          <div>
-            <h4 className="text-xs font-bold text-[#0F315A] group-hover:text-[#0066B3] transition">
-              Pengaturan Sistem
-            </h4>
-            <p className="text-[11px] text-[#64748B]">Konfigurasi & keamanan platform</p>
-          </div>
-        </Link>
-
-        <Link
-          href="/admin/about"
-          className="p-4 rounded-2xl bg-white border border-[#E2E8F0] shadow-xs hover:border-[#0066B3] hover:shadow-md transition flex items-center gap-3.5 group"
-        >
-          <div className="p-3 rounded-xl bg-[#EAF4FC] text-[#0066B3] group-hover:bg-[#0066B3] group-hover:text-white transition">
-            <Info className="w-5 h-5" />
-          </div>
-          <div>
-            <h4 className="text-xs font-bold text-[#0F315A] group-hover:text-[#0066B3] transition">
-              Tentang FIELDOPS
-            </h4>
-            <p className="text-[11px] text-[#64748B]">Informasi modul & tujuan sistem</p>
-          </div>
-        </Link>
-      </div>
-
-      {/* 4. Main Content: Recent User Accounts Table (8 cols) + System Activity Audit Logs (4 cols) */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-3.5 sm:gap-4">
-        {/* Recent Accounts Table (8 cols) */}
-        <div className="lg:col-span-8 bg-white rounded-2xl p-4 sm:p-5 border border-[#E2E8F0] shadow-xs flex flex-col justify-between">
-          <div className="flex items-center justify-between pb-3 border-b border-slate-100 shrink-0">
+        <div className="lg:col-span-2 bg-white rounded-2xl border border-[#DCE5EF] shadow-xs overflow-hidden">
+          <div className="px-5 py-3.5 border-b border-[#EDF2F7] flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Users className="w-4 h-4 text-[#0066B3]" />
-              <h2 className="text-xs sm:text-sm font-black text-[#0F315A] uppercase tracking-wide">
-                Akun Pengguna Terbaru
-              </h2>
+              <ClipboardList className="h-4 w-4 text-[#0066B3]" />
+              <span className="text-sm font-black text-[#092B57]">Aktivitas Terakhir (Audit Log)</span>
             </div>
-            <Link
-              href="/admin/users"
-              className="text-xs font-bold text-[#0066B3] hover:underline flex items-center gap-1"
-            >
-              Lihat Semua Akun <ArrowRight className="h-3.5 w-3.5" />
+            <Link href="/manager/audit-logs" className="text-[11px] font-bold text-[#0066B3] hover:underline">
+              Lihat semua
             </Link>
           </div>
-
-          {/* Desktop Table */}
-          <div className="hidden sm:block overflow-x-auto my-auto py-1">
-            <table className="w-full text-left text-xs text-[#0F172A]">
-              <thead>
-                <tr className="border-b border-slate-100 text-[10px] uppercase font-bold text-[#64748B] bg-slate-50/50">
-                  <th className="py-2.5 px-3 font-bold">PENGGUNA</th>
-                  <th className="py-2.5 px-3 font-bold">EMPLOYEE ID</th>
-                  <th className="py-2.5 px-3 font-bold">ROLE</th>
-                  <th className="py-2.5 px-3 font-bold">JABATAN</th>
-                  <th className="py-2.5 px-3 font-bold">STATUS</th>
-                  <th className="py-2.5 px-3 font-bold text-right">DIBUAT</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 font-medium">
-                {recentUsers.map((u) => (
-                  <tr key={u.id} className="hover:bg-[#F8FAFC] transition-colors">
-                    <td className="py-2.5 px-3">
-                      <div className="flex items-center gap-2.5">
-                        <UserAvatar name={u.name} avatarUrl={u.avatarUrl} size={28} />
-                        <div>
-                          <p className="font-bold text-[#0F315A] leading-tight">{u.name}</p>
-                          <p className="text-[10px] text-slate-400">{u.email}</p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="py-2.5 px-3 font-mono font-bold text-slate-600 text-[11px]">
-                      {u.employeeId}
-                    </td>
-                    <td className="py-2.5 px-3">
-                      <span
-                        className={`text-[9.5px] font-black px-2 py-0.5 rounded-full border ${
-                          u.role === 'ADMIN'
-                            ? 'bg-purple-50 text-purple-700 border-purple-200'
-                            : u.role === 'MANAGER'
-                            ? 'bg-amber-50 text-amber-800 border-amber-200'
-                            : 'bg-blue-50 text-[#0066B3] border-blue-200'
-                        }`}
-                      >
-                        {u.role}
-                      </span>
-                    </td>
-                    <td className="py-2.5 px-3 text-slate-600 truncate max-w-[120px]">{u.position}</td>
-                    <td className="py-2.5 px-3">
-                      <StatusBadge
-                        status={u.isActive ? 'APPROVED' : 'REJECTED'}
-                        label={u.isActive ? 'AKTIF' : 'NONAKTIF'}
-                        size="sm"
-                      />
-                    </td>
-                    <td className="py-2.5 px-3 text-slate-400 font-mono text-right text-[11px]">
-                      {new Date(u.createdAt).toLocaleDateString('id-ID', {
-                        day: 'numeric',
-                        month: 'short',
-                      })}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Mobile Card View */}
-          <div className="sm:hidden divide-y divide-slate-100 py-1 space-y-1.5">
-            {recentUsers.map((u) => (
-              <div key={u.id} className="p-2.5 rounded-xl bg-slate-50 flex items-center justify-between text-xs">
-                <div className="flex items-center gap-2">
-                  <UserAvatar name={u.name} avatarUrl={u.avatarUrl} size={28} />
-                  <div>
-                    <p className="font-bold text-[#0F315A]">{u.name}</p>
-                    <p className="text-[10px] text-slate-400 font-mono">{u.employeeId} · {u.role}</p>
-                  </div>
+          <div className="divide-y divide-[#F1F5F9]">
+            {recentAuditLogs.map((log) => (
+              <div key={log.id} className="px-5 py-2.5 flex items-center gap-3">
+                <Clock className="h-3.5 w-3.5 text-slate-300 shrink-0" />
+                <div className="min-w-0 flex-1">
+                  <div className="text-[11px] font-bold text-[#0B3568]">{log.action.replaceAll('_', ' ')}</div>
+                  <div className="text-[10px] text-slate-400">{log.user?.name || 'System'} · {log.entity}</div>
                 </div>
-                <StatusBadge
-                  status={u.isActive ? 'APPROVED' : 'REJECTED'}
-                  label={u.isActive ? 'AKTIF' : 'NONAKTIF'}
-                  size="sm"
-                />
+                <span className="text-[9.5px] text-slate-400 shrink-0">
+                  {new Date(log.createdAt).toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                </span>
               </div>
             ))}
           </div>
         </div>
+      </div>
 
-        {/* System Activity Audit Logs (4 cols) */}
-        <div className="lg:col-span-4 bg-white rounded-2xl p-4 sm:p-5 border border-[#E2E8F0] shadow-xs flex flex-col justify-between">
-          <div className="flex items-center justify-between pb-3 border-b border-slate-100 shrink-0">
+      {/* QUICK LINKS + USER BARU */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+        <div className="bg-white rounded-2xl border border-[#DCE5EF] shadow-xs p-5">
+          <SectionTitle icon={<Info className="h-3.5 w-3.5" />} label="Akses Cepat" />
+          <div className="grid grid-cols-2 gap-2 mt-3">
+            {quickLinks.map((q) => (
+              <Link
+                key={q.href}
+                href={q.href}
+                className="flex items-center gap-2 px-3 py-2.5 rounded-xl border border-[#E2E8F0] hover:border-[#0066B3]/40 hover:bg-[#F8FBFE] transition"
+              >
+                <span className={`h-7 w-7 rounded-lg flex items-center justify-center shrink-0 ${q.tone}`}>
+                  <q.icon className="h-3.5 w-3.5" />
+                </span>
+                <span className="text-[11px] font-bold text-[#0B3568] leading-tight">{q.label}</span>
+              </Link>
+            ))}
+          </div>
+        </div>
+
+        <div className="lg:col-span-2 bg-white rounded-2xl border border-[#DCE5EF] shadow-xs overflow-hidden">
+          <div className="px-5 py-3.5 border-b border-[#EDF2F7] flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Activity className="w-4 h-4 text-[#0066B3]" />
-              <h2 className="text-xs sm:text-sm font-black text-[#0F315A] uppercase tracking-wide">
-                Aktivitas Audit Sistem
-              </h2>
+              <UserPlus className="h-4 w-4 text-[#0066B3]" />
+              <span className="text-sm font-black text-[#092B57]">Pengguna Terbaru</span>
             </div>
+            <Link href="/admin/users" className="text-[11px] font-bold text-[#0066B3] hover:underline">
+              Kelola pengguna
+            </Link>
           </div>
-
-          <div className="divide-y divide-slate-100 my-auto py-1">
-            {recentAuditLogs.length === 0 ? (
-              <p className="text-xs text-slate-400 py-6 text-center">Belum ada catatan aktivitas.</p>
-            ) : (
-              recentAuditLogs.map((log) => (
-                <div key={log.id} className="py-2.5 flex items-start gap-2.5 text-xs">
-                  <div className="p-1 rounded-md bg-[#EAF4FC] text-[#0066B3] shrink-0 mt-0.5">
-                    <Clock className="w-3.5 h-3.5" />
+          <div className="divide-y divide-[#F1F5F9]">
+            {recentUsers.map((u) => (
+              <div key={u.id} className="px-5 py-2.5 flex items-center gap-3">
+                <UserAvatar name={u.name} avatarUrl={u.avatarUrl} size={32} />
+                <div className="min-w-0 flex-1">
+                  <div className="text-[11.5px] font-bold text-[#0B3568] truncate">
+                    {u.name} <span className="text-slate-400 font-semibold">@{u.username || '-'}</span>
                   </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="font-bold text-[#0F315A] truncate">
-                      {log.action.replace(/_/g, ' ')}
-                    </p>
-                    <p className="text-[10px] text-slate-400 truncate">
-                      {log.user ? `${log.user.name} (${log.user.role})` : 'System'} · {log.entity}
-                    </p>
-                  </div>
-                  <span className="text-[9.5px] text-slate-400 font-mono shrink-0">
-                    {new Date(log.createdAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
-                  </span>
+                  <div className="text-[10px] text-slate-400">{u.position} · {u.department?.name || '—'}</div>
                 </div>
-              ))
-            )}
-          </div>
-
-          <div className="pt-2 border-t border-slate-100 text-center shrink-0">
-            <span className="text-[10.5px] text-slate-400">
-              Audit trail aktif & terlindungi integritasnya.
-            </span>
+                <span className={`text-[9px] font-black px-1.5 py-0.5 rounded border ${u.role === 'ADMIN' ? 'bg-purple-50 text-purple-700 border-purple-200' : u.role === 'MANAGER' ? 'bg-blue-50 text-[#0066B3] border-blue-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'}`}>
+                  {u.role}
+                </span>
+              </div>
+            ))}
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+function SectionTitle({ icon, label }: { icon: React.ReactNode; label: string }) {
+  return (
+    <div className="flex items-center gap-1.5">
+      <span className="text-[#1769AA]">{icon}</span>
+      <span className="text-[11px] font-black uppercase tracking-wider text-slate-500">{label}</span>
+    </div>
+  );
+}
+
+function MiniStat({ label, value, color }: { label: string; value: number; color: string }) {
+  return (
+    <div className="rounded-xl border border-[#EDF2F7] bg-[#FBFDFE] px-3 py-2.5">
+      <div className="text-[9.5px] font-black uppercase tracking-wide text-slate-400 leading-tight">{label}</div>
+      <div className={`text-xl font-black tabular-nums mt-0.5 ${color}`}>{value}</div>
+    </div>
+  );
+}
+
+function MiniRow({ label, value, dotClass }: { label: string; value: number; dotClass: string }) {
+  return (
+    <div className="flex items-center justify-between rounded-lg border border-[#EDF2F7] bg-[#FBFDFE] px-3 py-2">
+      <span className="flex items-center gap-1.5 text-[11px] font-bold text-slate-600">
+        <span className={`h-1.5 w-1.5 rounded-full ${dotClass}`} /> {label}
+      </span>
+      <span className="text-sm font-black text-[#092B57] tabular-nums">{value}</span>
     </div>
   );
 }

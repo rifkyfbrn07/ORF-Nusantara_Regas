@@ -20,8 +20,8 @@ import {
 } from 'lucide-react';
 
 export const metadata = {
-  title: 'Tentang REGAS FIELDOPS | Sistem & Modul Operasional',
-  description: 'Penjelasan platform, modul operasional, arsitektur sistem, dan disclaimer REGAS FIELDOPS',
+  title: 'Tentang Distribusi Gas & ORF | Sistem & Modul Operasional',
+  description: 'Penjelasan platform, modul operasional, arsitektur sistem, dan disclaimer Distribusi Gas & ORF',
 };
 
 export default async function AdminAboutPage() {
@@ -95,7 +95,7 @@ export default async function AdminAboutPage() {
           </div>
           <h1 className="text-xl sm:text-2xl font-black text-[#0F315A] tracking-tight flex items-center gap-2">
             <Info className="h-6 w-6 text-[#0066B3]" />
-            Tentang REGAS FIELDOPS
+            Tentang Distribusi Gas & ORF
           </h1>
           <p className="text-xs text-slate-500 mt-0.5">
             Informasi platform, deskripsi modul fungsional, arsitektur teknis, dan ketentuan penggunaan
@@ -126,7 +126,7 @@ export default async function AdminAboutPage() {
               </span>
             </div>
             <p className="text-xs text-amber-900/90 leading-relaxed">
-              Platform <strong>REGAS FIELDOPS</strong> dikembangkan sebagai sistem prototype dan dashboard internal manajemen operasi shift tenaga kerja lapangan yang terinspirasi oleh operasional <strong>Pertamina Nusantara Regas</strong>.
+              Platform <strong>Distribusi Gas & ORF</strong> dikembangkan sebagai sistem prototype dan dashboard internal manajemen operasi shift tenaga kerja lapangan yang terinspirasi oleh operasional <strong>Pertamina Nusantara Regas</strong>.
             </p>
             <p className="text-xs text-amber-900/80 leading-relaxed">
               Aplikasi ini <strong>BUKAN merupakan aplikasi resmi atau representasi legal dari PT Pertamina (Persero)</strong> maupun entitas afiliasinya. Seluruh data, alur kerja, dan penamaan unit digunakan semata-mata untuk tujuan perancangan dan operasional internal sistem manajemen shift terpadu.
@@ -146,7 +146,7 @@ export default async function AdminAboutPage() {
             Pusat Kendali Operasi Lapangan Berkelanjutan & Presisi Tinggi
           </h2>
           <p className="text-xs sm:text-sm text-blue-100/90 leading-relaxed">
-            REGAS FIELDOPS menjembatani koordinasi antara jajaran <strong>Operations Manager</strong>, <strong>Shift Supervisors</strong>, dan <strong>Field Operators</strong> dalam menjaga keandalan fasilitas gasifikasi, kelancaran rotasi kerja 24/7, keselamatan kerja HSSE, serta serah terima shift tanpa celah informasi.
+            Distribusi Gas & ORF menjembatani koordinasi antara jajaran <strong>Operations Manager</strong>, <strong>Shift Supervisors</strong>, dan <strong>Field Operators</strong> dalam menjaga keandalan fasilitas gasifikasi, kelancaran rotasi kerja 24/7, keselamatan kerja HSSE, serta serah terima shift tanpa celah informasi.
           </p>
 
           <div className="pt-2 flex flex-wrap items-center gap-4 text-xs text-blue-200">

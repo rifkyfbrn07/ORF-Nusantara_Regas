@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 
 export default async function ManagerDashboardPage() {
-  const manager = await requireRole(['MANAGER']);
+  const manager = await requireRole(['MANAGER', 'ADMIN']);
   const todayStr = formatJakartaDate();
 
   const [manpowerSummary, currentShiftCoverage] = await Promise.all([

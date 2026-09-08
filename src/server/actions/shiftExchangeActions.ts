@@ -32,7 +32,7 @@ export async function submitShiftExchangeAction(input: ShiftExchangeInput) {
 
 export async function reviewShiftExchangeAction(input: { exchangeId: string; status: 'APPROVED' | 'REJECTED'; reviewerNote?: string }) {
   try {
-    const manager = await requireRole(['MANAGER']);
+    const manager = await requireRole(['MANAGER', 'ADMIN']);
     const parse = reviewShiftExchangeSchema.safeParse(input);
     if (!parse.success) {
       return { success: false, error: parse.error.issues[0]?.message };

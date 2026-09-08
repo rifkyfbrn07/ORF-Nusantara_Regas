@@ -52,7 +52,7 @@ export async function GET(request: NextRequest) {
     status: 200,
     headers: {
       'Content-Type': 'text/csv; charset=utf-8',
-      'Content-Disposition': `attachment; filename="FieldOps_Attendance_${startDate}_to_${endDate}.csv"`,
+      'Content-Disposition': `attachment; filename="DistribusiGasORF_Attendance_${startDate}_to_${endDate}.csv"`,
     },
   });
 }

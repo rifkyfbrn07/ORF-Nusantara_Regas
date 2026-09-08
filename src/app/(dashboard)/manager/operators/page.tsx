@@ -6,7 +6,7 @@ import { OperatorsManagerClient } from './OperatorsManagerClient';
 import { PageHeader } from '@/components/ui/PageHeader';
 
 export default async function ManagerOperatorsPage() {
-  await requireRole(['MANAGER']);
+  await requireRole(['MANAGER', 'ADMIN']);
 
   const [operators, departments] = await Promise.all([
     getAllOperators(),

@@ -7,7 +7,7 @@ import { AttendanceManagerClient } from './AttendanceManagerClient';
 import { PageHeader } from '@/components/ui/PageHeader';
 
 export default async function ManagerAttendancePage() {
-  await requireRole(['MANAGER']);
+  await requireRole(['MANAGER', 'ADMIN']);
   const today = formatJakartaDate();
 
   const [attendanceData, shifts, operators] = await Promise.all([

@@ -57,6 +57,7 @@ export async function updateProfileAction(input: ProfileUpdateInput) {
     await setSessionCookie({
       id: updated.id,
       name: updated.name,
+      username: updated.username,
       email: updated.email,
       employeeId: updated.employeeId,
       role: updated.role,

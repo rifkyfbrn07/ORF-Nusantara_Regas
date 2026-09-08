@@ -8,7 +8,7 @@ import { KpiCard } from '@/components/dashboard/KpiCard';
 import { PageHeader } from '@/components/ui/PageHeader';
 
 export default async function ManagerHSSEPage() {
-  await requireRole(['MANAGER']);
+  await requireRole(['MANAGER', 'ADMIN']);
 
   const [checklists, stats] = await Promise.all([
     getAllHSSEChecklists(),

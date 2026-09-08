@@ -34,7 +34,7 @@ export async function submitLeaveAction(input: LeaveRequestInput) {
 
 export async function reviewLeaveAction(input: { requestId: string; status: 'APPROVED' | 'REJECTED'; reviewerNote?: string }) {
   try {
-    const manager = await requireRole(['MANAGER']);
+    const manager = await requireRole(['MANAGER', 'ADMIN']);
     const parse = reviewLeaveSchema.safeParse(input);
     if (!parse.success) {
       return { success: false, error: parse.error.issues[0]?.message };

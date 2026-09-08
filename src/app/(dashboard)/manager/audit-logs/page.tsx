@@ -4,7 +4,7 @@ import { getAuditLogs } from '@/server/services/auditService';
 import { PageHeader } from '@/components/ui/PageHeader';
 
 export default async function ManagerAuditLogsPage() {
-  await requireRole(['MANAGER']);
+  await requireRole(['MANAGER', 'ADMIN']);
   const { logs, total } = await getAuditLogs(100);
 
   return (

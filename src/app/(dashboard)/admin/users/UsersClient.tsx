@@ -222,7 +222,7 @@ export default function UsersClient({
             Manajemen Pengguna
           </h1>
           <p className="text-xs sm:text-sm text-[#64748B] font-medium mt-0.5 max-w-2xl">
-            Kelola akun, hak akses, dan status pengguna platform REGAS FIELDOPS.
+            Kelola akun, hak akses, dan status pengguna platform Distribusi Gas & ORF.
           </p>
         </div>
 

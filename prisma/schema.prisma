@@ -80,6 +80,20 @@ enum AnnouncementTargetType {
   OPERATOR
 }
 
+enum ProgramCategory {
+  PENGADAAN
+  RAPAT_KOORDINASI
+  OPERASIONAL_RUTIN
+  AUDIT
+}
+
+enum ProgramStatus {
+  PLAN
+  REALISASI
+  ON_PROGRESS
+  BELUM_TEREALISASI
+}
+
 model Department {
   id          String   @id @default(cuid())
   name        String   @unique
@@ -121,6 +135,7 @@ model Shift {
 model User {
   id                     String          @id @default(cuid())
   employeeId             String          @unique // e.g. "OP-001"
+  username               String?         @unique // identifier login utama (selain nama); email hanya data profil
   name                   String
   email                  String          @unique
   passwordHash           String
@@ -350,4 +365,48 @@ model AuditLog {
   @@index([userId])
   @@index([action])
   @@index([createdAt])
+}
+
+// ============================================================================
+// PROGRAM KERJA — Departemen Distribusi Gas & Manajemen ORF
+// Source of truth: "PROGRAM KERJA DEPARTEMEN DISTRIBUSI GAS DAN MANAJEMEN ORF
+// TAHUN 2026" (P = Plan, R = Realisasi)
+// ============================================================================
+
+model ProgramKerja {
+  id          String          @id @default(cuid())
+  year        Int             // Tahun program (e.g. 2026)
+  category    ProgramCategory // A. PENGADAAN / B. RAPAT KOORDINASI / C. OPERASIONAL RUTIN / D. AUDIT
+  sequence    Int             // Nomor baris pada dokumen sumber
+  name        String          // Nama program kerja sesuai dokumen
+  plan        String?         // Deskripsi Plan (P) dari dokumen, jika ada
+  realization String?         // Deskripsi Realisasi (R) dari dokumen, jika ada
+  planTarget  Int             @default(100) // Target Plan (P) dalam %
+  progress    Int             @default(0)   // Realisasi (R) keseluruhan dalam %
+  status      ProgramStatus   @default(PLAN)
+  notes       String?         // Keterangan dari dokumen
+  months      ProgramKerjaMonth[]
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  @@unique([year, category, name])
+  @@index([year])
+  @@index([category])
+  @@index([status])
+}
+
+model ProgramKerjaMonth {
+  id          String      @id @default(cuid())
+  programId   String
+  program     ProgramKerja @relation(fields: [programId], references: [id], onDelete: Cascade)
+  month       Int         // 1 = Jan ... 12 = Des
+  week        Int         // 1 = I, 2 = II, 3 = III, 4 = IV (minggu pada dokumen)
+  target      Int         @default(100) // Target Plan (P) bulan ini (%)
+  realization Int         @default(0)   // Realisasi (R) minggu ini (%)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@unique([programId, month, week])
+  @@index([programId, month])
+  @@index([month])
 }
