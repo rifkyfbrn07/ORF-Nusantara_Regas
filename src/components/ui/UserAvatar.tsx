@@ -14,7 +14,7 @@ const STATUS_DOT_COLORS: Record<string, string> = {
   CUTI: 'bg-[#1D5FA7]',
   IZIN: 'bg-[#F58220]',
   SAKIT: 'bg-amber-500',
-  OFF: 'bg-slate-400',
+  OFF: 'bg-[#DC2626]',
   ABSENT: 'bg-[#DC2626]',
   ONLINE: 'bg-emerald-500',
   PENDING: 'bg-[#F58220]',

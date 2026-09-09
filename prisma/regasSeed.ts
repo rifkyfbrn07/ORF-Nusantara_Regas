@@ -277,6 +277,24 @@ async function seedProgramKerja(): Promise<void> {
       });
     }
   }
+
+  // Tugasan PIC demo: assign program operasional kepada operator roster (idempotent).
+  const demoOp = await prisma.user.findFirst({
+    where: { role: 'OPERATOR', employeeId: 'ORF-OP-02' },
+    select: { id: true },
+  });
+  if (demoOp) {
+    const demoProgram = await prisma.programKerja.findFirst({
+      where: { year, category: 'OPERASIONAL_RUTIN', name: 'Monitoring Peralatan Operasi (Harian)' },
+      select: { id: true },
+    });
+    if (demoProgram) {
+      await prisma.programKerja.update({
+        where: { id: demoProgram.id },
+        data: { picId: demoOp.id },
+      });
+    }
+  }
   console.log(
     `✓ Program Kerja ${year} upserted (${PROGRAM_KERJA_2026.length} program + realisasi mingguan Jan-Des)`
   );

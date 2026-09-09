@@ -10,8 +10,8 @@ const prisma = new PrismaClient();
 const BASE = process.env.BASE_URL || 'http://localhost:3100';
 const AUTH_SECRET = process.env.AUTH_SECRET!;
 
-async function makeToken(u: { id: string; name: string; email: string; employeeId: string; role: string; position: string }) {
-  return new SignJWT({ ...u, departmentId: null, avatarUrl: null, isActive: true })
+async function makeToken(u: { id: string; name: string; email: string | null; employeeId: string; role: string; position: string }) {
+  return new SignJWT({ ...u, email: u.email || '', departmentId: null, avatarUrl: null, isActive: true })
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
     .setExpirationTime('7d')

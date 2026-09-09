@@ -8,7 +8,8 @@ import { UserAvatar } from '@/components/ui/UserAvatar';
 
 interface ProfileUser {
   name: string;
-  email: string;
+  username?: string | null;
+  email: string | null;
   role: string;
   employeeId: string;
   phone?: string | null;
@@ -277,11 +278,12 @@ export function ProfileClient({ user }: ProfileClientProps) {
           </div>
 
           <div>
-            <label className="text-xs font-bold text-slate-700 block mb-1">Email Resmi (Terkunci)</label>
+            <label className="text-xs font-bold text-slate-700 block mb-1">Email (opsional — bukan untuk login)</label>
             <input
               type="email"
               disabled
-              value={user.email}
+              value={user.email || ''}
+              placeholder="Belum ada email"
               className="w-full px-3 py-2 text-xs bg-slate-100 border border-slate-200 rounded-xl text-slate-500 cursor-not-allowed"
             />
           </div>

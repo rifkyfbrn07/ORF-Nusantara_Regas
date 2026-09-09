@@ -58,7 +58,7 @@ export async function updateProfileAction(input: ProfileUpdateInput) {
       id: updated.id,
       name: updated.name,
       username: updated.username,
-      email: updated.email,
+      email: updated.email || null,
       employeeId: updated.employeeId,
       role: updated.role,
       position: updated.position,

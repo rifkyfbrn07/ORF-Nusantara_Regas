@@ -6,7 +6,7 @@ import { getOperatorWorkStatus } from './workStatusService';
 
 export interface CreateOperatorParams {
   name: string;
-  email: string;
+  email?: string;
   employeeId: string;
   password?: string;
   position: string;
@@ -28,7 +28,9 @@ export interface UpdateOperatorParams {
 }
 
 export async function createOperator(params: CreateOperatorParams) {
-  const existingEmail = await prisma.user.findUnique({ where: { email: params.email } });
+  const existingEmail = params.email
+    ? await prisma.user.findUnique({ where: { email: params.email } })
+    : null;
   if (existingEmail) throw new Error('Email sudah terdaftar dalam sistem.');
 
   const existingEmp = await prisma.user.findUnique({ where: { employeeId: params.employeeId } });
@@ -39,7 +41,7 @@ export async function createOperator(params: CreateOperatorParams) {
   const user = await prisma.user.create({
     data: {
       name: params.name,
-      email: params.email,
+      email: params.email || null,
       employeeId: params.employeeId,
       passwordHash,
       position: params.position,

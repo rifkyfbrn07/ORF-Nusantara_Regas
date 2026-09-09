@@ -78,7 +78,7 @@ export function JadwalSayaClient({ data, operatorName, operatorPosition }: Jadwa
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <KpiCard label="Shift Pagi (Pg)" value={String(me.counts.pagi)} accent="border-l-[#0066B3]" sub="07.00 - 19.00" />
           <KpiCard label="Shift Malam (Mlm)" value={String(me.counts.malam)} accent="border-l-[#0F315A]" sub="19.00 - 07.00" />
-          <KpiCard label="Off (Libur)" value={String(me.counts.off)} accent="border-l-slate-400" sub="Hari libur" />
+          <KpiCard label="Off (Libur)" value={String(me.counts.off)} accent="border-l-[#DC2626]" sub="Hari libur" />
           <KpiCard
             label="Status Hari Ini"
             value={me.todayStatus ? me.todayStatus.statusLabel : '—'}
@@ -141,7 +141,7 @@ export function JadwalSayaClient({ data, operatorName, operatorPosition }: Jadwa
           Malam = 19.00 - 07.00
         </span>
         <span className="flex items-center gap-1 text-[9.5px] font-semibold text-slate-500">
-          <span className="inline-flex items-center justify-center w-7 h-5 rounded-md border bg-white border-[#E2E8F0] text-slate-400 text-[8.5px] font-black">Off</span>
+          <span className="inline-flex items-center justify-center w-7 h-5 rounded-md border bg-red-50 border-red-200 text-[#DC2626] text-[8.5px] font-black">Off</span>
           Libur
         </span>
         {me?.hsseMarshall && (

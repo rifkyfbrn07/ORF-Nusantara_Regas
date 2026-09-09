@@ -9,8 +9,8 @@ const prisma = new PrismaClient();
 const BASE = process.env.BASE_URL || 'http://localhost:3100';
 const AUTH_SECRET = process.env.AUTH_SECRET!;
 
-async function makeToken(u: { id: string; name: string; email: string; employeeId: string; role: string; position: string }) {
-  return new SignJWT({ ...u, departmentId: null, avatarUrl: null, isActive: true })
+async function makeToken(u: { id: string; name: string; email: string | null; employeeId: string; role: string; position: string }) {
+  return new SignJWT({ ...u, email: u.email || '', departmentId: null, avatarUrl: null, isActive: true })
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
     .setExpirationTime('7d')
@@ -65,6 +65,13 @@ async function main() {
   const s13 = await check('anonymous(dilarang)', '/operator/jadwal-saya');
   if (s10 !== 200 || s11 !== 200 || s12 !== 200) throw new Error('operator harus 200');
   if (s13 === 200) throw new Error('anon tidak boleh 200');
+
+  console.log('--- OPERATOR PROGRAM KERJA (ditugaskan) ---');
+  const s14 = await check('roster operator (assigned)', '/operator/program-kerja', rosterToken);
+  const s15 = await check('operator lama', '/operator/program-kerja', operatorToken);
+  const s16 = await check('anonymous(dilarang)', '/operator/program-kerja');
+  if (s14 !== 200 || s15 !== 200) throw new Error('operator harus 200');
+  if (s16 === 200) throw new Error('anon tidak boleh 200');
 
   console.log('--- ADMIN FULL ACCESS ---');
   await check('admin manager/dashboard', '/manager/dashboard', adminToken);

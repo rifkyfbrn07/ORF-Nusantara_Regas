@@ -55,8 +55,8 @@ export default async function ManagerDashboardPage() {
         <div className="relative overflow-hidden bg-[#F8FAFC] border border-slate-200/80 rounded-lg p-2 px-3 shrink-0">
           <div className="absolute right-0 top-0 bottom-0 w-1/3 opacity-10 pointer-events-none">
             <Image
-              src="/images/regas-fieldops-hero.png"
-              alt="Industrial Plant"
+              src="/images/bg.svg"
+              alt="Terminal LNG Distribusi Gas & ORF"
               fill
               className="object-cover object-right"
             />

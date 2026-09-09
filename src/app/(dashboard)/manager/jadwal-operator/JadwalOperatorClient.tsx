@@ -21,7 +21,7 @@ const STATUS_CHIP_STYLES: Record<string, string> = {
   CUTI: 'bg-violet-50 text-violet-700 border-violet-200',
   SAKIT: 'bg-rose-50 text-rose-700 border-rose-200',
   IZIN: 'bg-orange-50 text-orange-700 border-orange-200',
-  OFF: 'bg-slate-50 text-slate-500 border-slate-200',
+  OFF: 'bg-red-50 text-[#DC2626] border-red-200',
 };
 
 function prevMonth(year: number, month: number) {
@@ -236,7 +236,7 @@ export function JadwalOperatorClient({ data, monthNames, showContacts }: JadwalO
                 <div className="mt-1 space-y-0.5">
                   <MiniBar value={c.pagi} max={coverageMax} color="bg-[#0066B3]" />
                   <MiniBar value={c.malam} max={coverageMax} color="bg-[#0F315A]" />
-                  <MiniBar value={c.off} max={coverageMax} color="bg-slate-300" />
+                  <MiniBar value={c.off} max={coverageMax} color="bg-[#DC2626]" />
                 </div>
               </div>
             ))}
@@ -265,7 +265,7 @@ export function JadwalOperatorClient({ data, monthNames, showContacts }: JadwalO
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 px-1">
         <LegendItem boxClass="bg-[#EAF4FC] border-[#BBDFF5] text-[#0066B3]" label="Pg = 07.00 - 19.00" />
         <LegendItem boxClass="bg-[#0F315A] border-[#0F315A] text-white" label="Mlm = 19.00 - 07.00" />
-        <LegendItem boxClass="bg-white border-[#E2E8F0] text-slate-400" label="Off = Libur" />
+        <LegendItem boxClass="bg-red-50 text-[#DC2626] border-red-200" label="Off = Libur" />
         <span className="flex items-center gap-1 text-[9.5px] font-semibold text-slate-500">
           <ShieldCheck className="h-3 w-3 text-[#F58220]" /> * = HSSE Marshall
         </span>

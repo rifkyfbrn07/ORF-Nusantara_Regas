@@ -46,7 +46,7 @@ export async function loginAction(formData: LoginInput) {
     id: user.id,
     name: user.name,
     username: user.username,
-    email: user.email,
+    email: user.email || null,
     employeeId: user.employeeId,
     role: user.role,
     position: user.position,

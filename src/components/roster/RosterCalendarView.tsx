@@ -15,7 +15,7 @@ const WEEK_HEADER = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'];
 const SHIFT_CHIP: Record<string, string> = {
   PAGI: 'bg-[#EAF4FC] text-[#0066B3] border-[#BBDFF5]',
   MALAM: 'bg-[#0F315A] text-white border-[#0F315A]',
-  OFF: 'bg-slate-100 text-slate-500 border-slate-200',
+  OFF: 'bg-red-50 text-[#DC2626] border-red-200',
 };
 
 const SHIFT_LABEL: Record<string, string> = { PAGI: 'P', MALAM: 'M', OFF: 'O' };

@@ -11,7 +11,7 @@ import { useRouter } from 'next/navigation';
 export interface OperatorManagerRecord {
   id: string;
   name: string;
-  email: string;
+  email: string | null;
   employeeId: string;
   position?: string | null;
   departmentId?: string | null;
@@ -97,7 +97,7 @@ export function OperatorsManagerClient({
     setFormData({
       id: op.id,
       name: op.name,
-      email: op.email,
+      email: op.email || '',
       employeeId: op.employeeId,
       password: '',
       position: op.position || '',
@@ -267,7 +267,7 @@ export function OperatorsManagerClient({
                     <td className="px-5 py-3.5 text-[11px]">
                       <div className="flex items-center gap-1.5 text-[#132238]">
                         <Mail className="h-3.5 w-3.5 text-slate-400" />
-                        <span>{op.email}</span>
+                        <span>{op.email || '—'}</span>
                       </div>
                       {op.phone && (
                         <div className="flex items-center gap-1.5 text-[#5F718A] mt-0.5 font-mono">

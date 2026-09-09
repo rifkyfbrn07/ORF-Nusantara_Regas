@@ -1,10 +1,28 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+<<<<<<< HEAD
 import { requireRole, requireAuth } from '@/lib/auth/session';
 import { prisma } from '@/lib/db/prisma';
 import { createProgramKerja, updateProgramKerja, deleteProgramKerja } from '../services/programKerjaService';
 import { programKerjaCreateSchema, programKerjaUpdateSchema, ProgramKerjaCreateInput, ProgramKerjaUpdateInput } from '@/lib/validation';
+=======
+import { requireRole } from '@/lib/auth/session';
+import {
+  createProgramKerja,
+  updateProgramKerja,
+  deleteProgramKerja,
+  upsertProgramKerjaTask,
+  setTaskDone,
+  updatePicProgress,
+} from '../services/programKerjaService';
+import {
+  programKerjaCreateSchema,
+  programKerjaUpdateSchema,
+  ProgramKerjaCreateInput,
+  ProgramKerjaUpdateInput,
+} from '@/lib/validation';
+>>>>>>> f728c28 (coba)
 
 const ALLOWED_ROLES = ['MANAGER', 'ADMIN'] as const;
 
@@ -53,6 +71,7 @@ export async function deleteProgramKerjaAction(id: string) {
   }
 }
 
+<<<<<<< HEAD
 export async function updateProgramTaskAction(input: { taskId: string; isDone: boolean }) {
   try {
     const user = await requireAuth();
@@ -93,5 +112,50 @@ export async function updateProgramTaskAction(input: { taskId: string; isDone: b
     return { success: true as const, task: updated, picProgress };
   } catch (error: unknown) {
     return { success: false as const, error: error instanceof Error ? error.message : 'Gagal memperbarui checklist' };
+=======
+// ============================================================================
+// CHECKLIST & PROGRESS (PIC/operator — otorisasi di service layer)
+// ============================================================================
+
+export async function upsertTaskAction(input: { programId: string; label: string; isDone: boolean }) {
+  try {
+    const user = await requireRole(['ADMIN', 'MANAGER', 'OPERATOR']);
+    const task = await upsertProgramKerjaTask({
+      programId: input.programId,
+      label: input.label,
+      isDone: input.isDone,
+      actorId: user.id,
+      actorRole: user.role,
+    });
+    revalidateProgramKerja();
+    revalidatePath('/operator/program-kerja');
+    return { success: true as const, task };
+  } catch (error: unknown) {
+    return { success: false as const, error: error instanceof Error ? error.message : 'Gagal simpan task.' };
+  }
+}
+
+export async function setTaskDoneAction(input: { taskId: string; isDone: boolean }) {
+  try {
+    const user = await requireRole(['ADMIN', 'MANAGER', 'OPERATOR']);
+    await setTaskDone({ taskId: input.taskId, isDone: input.isDone, actorId: user.id, actorRole: user.role });
+    revalidateProgramKerja();
+    revalidatePath('/operator/program-kerja');
+    return { success: true as const };
+  } catch (error: unknown) {
+    return { success: false as const, error: error instanceof Error ? error.message : 'Gagal memperbarui task.' };
+  }
+}
+
+export async function updatePicProgressAction(input: { programId: string; progress: number }) {
+  try {
+    const user = await requireRole(['ADMIN', 'MANAGER', 'OPERATOR']);
+    const result = await updatePicProgress(input.programId, input.progress, user.id, user.role);
+    revalidateProgramKerja();
+    revalidatePath('/operator/program-kerja');
+    return { success: true as const, progress: result.progress };
+  } catch (error: unknown) {
+    return { success: false as const, error: error instanceof Error ? error.message : 'Gagal memperbarui progress.' };
+>>>>>>> f728c28 (coba)
   }
 }

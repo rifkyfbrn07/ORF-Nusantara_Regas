@@ -16,7 +16,11 @@ function getAuthSecretKey(): Uint8Array {
 export interface SessionUser {
   id: string;
   name: string;
+<<<<<<< HEAD
   username: string;
+=======
+  username?: string | null;
+>>>>>>> f728c28 (coba)
   email: string | null;
   employeeId: string;
   role: Role;
@@ -113,6 +117,31 @@ export async function requireAuth(): Promise<SessionUser> {
   });
   if (!user || !user.isActive) throw new Error('UNAUTHORIZED');
 
+<<<<<<< HEAD
+=======
+  return {
+    id: user.id,
+    name: user.name,
+    username: user.username,
+    email: user.email || null,
+    employeeId: user.employeeId,
+    role: user.role,
+    position: user.position,
+    departmentId: user.departmentId,
+    avatarUrl: user.avatarUrl,
+    isActive: user.isActive,
+  };
+}
+
+/**
+ * Strictly ensures the user has one of the allowed roles
+ */
+export async function requireRole(allowedRoles: Role[]): Promise<SessionUser> {
+  const user = await requireAuth();
+  if (!allowedRoles.includes(user.role)) {
+    throw new Error('FORBIDDEN');
+  }
+>>>>>>> f728c28 (coba)
   return user;
 }
 

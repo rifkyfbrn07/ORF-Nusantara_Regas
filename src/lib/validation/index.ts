@@ -237,6 +237,8 @@ export const programKerjaCreateSchema = z.object({
   progress: z.number().int().min(0, 'Realisasi minimal 0%').max(100, 'Realisasi maksimal 100%').default(0),
   status: programKerjaStatusEnum.default('PLAN'),
   notes: z.string().max(1000, 'Keterangan maksimal 1000 karakter').optional(),
+  deadline: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Format deadline YYYY-MM-DD').nullable().optional(),
+  picId: z.string().nullable().optional(),
 });
 
 export type ProgramKerjaCreateInput = z.infer<typeof programKerjaCreateSchema>;

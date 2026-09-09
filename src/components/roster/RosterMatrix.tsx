@@ -12,7 +12,7 @@ import type { RosterOperatorRow, RosterDayCell } from '@/server/services/rosterS
 function shiftCellClass(cell: RosterDayCell): string {
   if (cell.shiftKey === 'PAGI') return 'bg-[#EAF4FC] text-[#0066B3] border-[#BBDFF5]';
   if (cell.shiftKey === 'MALAM') return 'bg-[#0F315A] text-white border-[#0F315A]';
-  if (cell.shiftKey === 'OFF') return 'bg-white text-slate-400 border-[#E2E8F0]';
+  if (cell.shiftKey === 'OFF') return 'bg-red-50 text-[#DC2626] border-red-200';
   return 'bg-slate-50 text-slate-300 border-slate-100';
 }
 

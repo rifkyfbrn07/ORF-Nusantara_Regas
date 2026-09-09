@@ -145,9 +145,15 @@ export function Sidebar({
       ],
     },
     {
+      title: 'Planning',
+      items: [
+        { label: 'Program Kerja', href: '/operator/program-kerja', icon: Target, tone: 'orange' },
+      ],
+    },
+    {
       title: 'Request',
       items: [
-        { label: 'Cuti & Izin', href: '/operator/requests', icon: UserCheck },
+        { label: 'Cuti & Izin', href: '/operator/requests', icon: UserCheck, tone: 'amber' },
       ],
     },
     {
