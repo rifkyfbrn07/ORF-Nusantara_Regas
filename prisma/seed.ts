@@ -1,7 +1,19 @@
 import { PrismaClient, Role, ScheduleStatus, AttendanceStatus, LeaveType, RequestStatus, HandoverStatus, ChecklistStatus, ChecklistItemStatus, NotificationType, AnnouncementPriority, AnnouncementTargetType } from '@prisma/client';
 import bcrypt from 'bcryptjs';
+import { slugifyUsername } from '../src/lib/auth/username';
 
 const prisma = new PrismaClient();
+
+const usedUsernames = new Set<string>(['admin', 'manager']);
+
+function uniqueUsername(name: string): string {
+  const base = slugifyUsername(name);
+  let candidate = base;
+  let suffix = 2;
+  while (usedUsernames.has(candidate)) candidate = `${base}${suffix++}`.slice(0, 30);
+  usedUsernames.add(candidate);
+  return candidate;
+}
 
 async function main() {
   console.log('--- Starting PERTAMINA FIELDOPS Database Seed ---');
@@ -116,8 +128,8 @@ async function main() {
 
   await prisma.user.upsert({
     where: { email: 'admin@fieldops.local' },
-    update: { employeeId: 'FO-ADM-001', name: 'System Administrator', passwordHash: adminPasswordHash, role: Role.ADMIN, position: 'System Administrator', isActive: true, departmentId: deptOps.id },
-    create: { employeeId: 'FO-ADM-001', name: 'System Administrator', email: 'admin@fieldops.local', passwordHash: adminPasswordHash, role: Role.ADMIN, position: 'System Administrator', isActive: true, departmentId: deptOps.id },
+    update: { employeeId: 'FO-ADM-001', name: 'System Administrator', username: 'admin', passwordHash: adminPasswordHash, role: Role.ADMIN, position: 'System Administrator', isActive: true, departmentId: deptOps.id },
+    create: { employeeId: 'FO-ADM-001', name: 'System Administrator', username: 'admin', email: 'admin@fieldops.local', passwordHash: adminPasswordHash, role: Role.ADMIN, position: 'System Administrator', isActive: true, departmentId: deptOps.id },
   });
 
   // 6. Create Manager
@@ -125,6 +137,7 @@ async function main() {
     data: {
       employeeId: 'FO-MGR-001',
       name: 'Rifky Febrian',
+      username: 'manager',
       email: 'manager@fieldops.local',
       passwordHash: managerPasswordHash,
       role: Role.MANAGER,
@@ -253,6 +266,7 @@ async function main() {
       data: {
         employeeId: op.employeeId,
         name: op.name,
+        username: uniqueUsername(op.name),
         email: op.email,
         passwordHash: operatorPasswordHash,
         role: Role.OPERATOR,

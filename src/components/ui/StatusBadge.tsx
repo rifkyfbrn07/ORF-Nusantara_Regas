@@ -67,15 +67,6 @@ export function StatusBadge({ status, label, className, size = 'md' }: StatusBad
       colorClasses = 'bg-blue-50 text-[#123E7A] border-blue-200 ring-1 ring-blue-500/20';
       dotColor = 'bg-[#123E7A]';
       break;
-<<<<<<< HEAD
-=======
-
-    case 'OFF':
-    default:
-      colorClasses = 'bg-red-50 text-[#DC2626] border-red-200';
-      dotColor = 'bg-[#DC2626]';
-      break;
->>>>>>> f728c28 (coba)
   }
 
   const sizeClasses = {

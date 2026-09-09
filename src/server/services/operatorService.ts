@@ -3,10 +3,12 @@ import bcrypt from 'bcryptjs';
 import { Role, Prisma } from '@prisma/client';
 import { recordAuditLog } from './auditService';
 import { getOperatorWorkStatus } from './workStatusService';
+import { slugifyUsername } from '@/lib/auth/username';
 
 export interface CreateOperatorParams {
   name: string;
   email?: string;
+  username?: string;
   employeeId: string;
   password?: string;
   position: string;
@@ -38,9 +40,23 @@ export async function createOperator(params: CreateOperatorParams) {
 
   const passwordHash = await bcrypt.hash(params.password || 'Operator123!', 10);
 
+  // Username login wajib & unique: gebruik opgegeven username of sla van naam.
+  const baseUsername = (params.username || slugifyUsername(params.name)).toLowerCase();
+  let username = baseUsername;
+  let usernameSuffix = 2;
+  while (
+    await prisma.user.findFirst({
+      where: { username },
+      select: { id: true },
+    })
+  ) {
+    username = `${baseUsername}${usernameSuffix++}`.slice(0, 30);
+  }
+
   const user = await prisma.user.create({
     data: {
       name: params.name,
+      username,
       email: params.email || null,
       employeeId: params.employeeId,
       passwordHash,

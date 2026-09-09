@@ -98,14 +98,6 @@ export function TopHeader({ user, notifications = [], unreadCount = 0, onOpenMob
             <ChevronDown className="hidden h-3.5 w-3.5 text-slate-400 sm:block" />
           </button>
 
-<<<<<<< HEAD
-          {showUserMenu && <div className="anim-dropdown absolute right-0 z-50 mt-2 w-60 rounded-xl border border-slate-200 bg-white py-1.5 shadow-lg">
-            <div className="border-b border-slate-100 px-3.5 py-2.5"><div className="mb-0.5 flex items-center justify-between gap-2"><p className="truncate text-xs font-bold text-[#0F315A]">{user.name}</p><span className={`rounded border px-1.5 py-0.2 text-[9px] font-mono font-bold ${roleInfo.badgeClass}`}>{user.role}</span></div><p className="truncate font-mono text-[11px] font-semibold text-[#1769AA]">@{user.username}</p><p className="truncate text-[11px] text-slate-500">{user.email || 'Email belum diisi'}</p><p className="mt-0.5 font-mono text-[10px] font-semibold text-slate-400">NIP: {user.employeeId}</p></div>
-            <Link href="/profile" onClick={() => setShowUserMenu(false)} className="flex items-center gap-2 px-3.5 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 hover:text-[#0066B3]"><User className="h-3.5 w-3.5 text-slate-400" />Profil Akun</Link>
-            <Link href={user.role === 'ADMIN' ? '/admin/settings' : '/profile#keamanan'} onClick={() => setShowUserMenu(false)} className="flex items-center gap-2 px-3.5 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 hover:text-[#0066B3]"><Settings className="h-3.5 w-3.5 text-slate-400" />Pengaturan</Link>
-            <button onClick={handleLogout} className="mt-1 flex w-full cursor-pointer items-center gap-2 border-t border-slate-100 px-3.5 py-2 text-xs font-bold text-red-600 transition hover:bg-red-50"><LogOut className="h-3.5 w-3.5 text-red-500" />Keluar (Logout)</button>
-          </div>}
-=======
           {showUserMenu && (
             <div className="anim-dropdown absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-lg border border-slate-200 py-1.5 z-50">
               <div className="px-3.5 py-2.5 border-b border-slate-100">
@@ -148,7 +140,6 @@ export function TopHeader({ user, notifications = [], unreadCount = 0, onOpenMob
               </button>
             </div>
           )}
->>>>>>> f728c28 (coba)
         </div>
       </div>
     </header>

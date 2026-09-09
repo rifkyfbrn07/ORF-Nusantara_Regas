@@ -5,26 +5,20 @@ const prisma = new PrismaClient();
 
 const check = (label: string, condition: boolean) => console.log(`${condition ? 'OK ' : 'FAIL'} ${label}`);
 
-<<<<<<< HEAD
-=======
 /** Replika logika lookup loginAction — HANYA username (email/nama bukan credential). */
->>>>>>> f728c28 (coba)
 async function findLoginUser(identifier: string) {
   const normalized = identifier.trim().toLowerCase();
-  return prisma.user.findFirst({
+  const user = await prisma.user.findFirst({
     where: { username: normalized, isActive: true },
   });
-<<<<<<< HEAD
-=======
   if (!user) {
     const candidates = await prisma.user.findMany({
       where: { username: { equals: identifier.trim(), mode: 'insensitive' } },
       take: 2,
     });
-    user = candidates.find((c) => c.isActive) || candidates[0] || null;
+    return candidates.find((c) => c.isActive) || candidates[0] || null;
   }
   return user;
->>>>>>> f728c28 (coba)
 }
 
 async function main() {
@@ -32,7 +26,7 @@ async function main() {
   const emptyUsernames = await prisma.$queryRaw<Array<{ count: bigint }>>`
     SELECT COUNT(*)::bigint AS count FROM "User" WHERE btrim("username") = ''
   `;
-  const emptyCount = Number(emptyUsernames[0]?.count ?? 0n);
+  const emptyCount = Number(emptyUsernames[0]?.count ?? BigInt(0));
   check('Semua user memiliki username', emptyCount === 0);
 
   const duplicateRows = await prisma.$queryRaw<Array<{ username: string; count: bigint }>>`
@@ -49,12 +43,9 @@ async function main() {
     check(`login via username "${username}"`, Boolean(user));
   }
 
-<<<<<<< HEAD
-=======
   const byName = await findLoginUser('Itqi Arradi');
   check('Login via Nama harus GAGAL (nama bukan credential)', byName === null);
 
->>>>>>> f728c28 (coba)
   const wrong = await findLoginUser('nosuchuser');
   check('username tidak dikenal -> null', wrong === null);
 
