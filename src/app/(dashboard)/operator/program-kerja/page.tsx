@@ -5,19 +5,16 @@ import { ProgramKerjaOperatorClient } from './ProgramKerjaOperatorClient';
 import { PageHeader } from '@/components/ui/PageHeader';
 
 export default async function OperatorProgramKerjaPage() {
-  // Session server-side: operator hanya lihat program yang ditugaskan (PIC).
   const user = await requireAuth();
-
   const programs = await listAssignedProgramKerja(user.id);
 
   return (
     <div className="space-y-6 dashboard-enter">
       <PageHeader
-        eyebrow="PROGRAM KERJA"
-        title="Program Kerja"
-        description="Program yang ditugaskan kepada Anda — target, plan, progres, deadline, dan checklist kerja. Target utama dikontrol oleh Admin/Manager."
+        eyebrow="PROGRAM KERJA SAYA"
+        title="Program Kerja Saya"
+        description="Program yang ditugaskan kepada Anda — kategori, target, progress, deadline, PIC, status, checklist, catatan, dan waktu pembaruan."
       />
-
       <ProgramKerjaOperatorClient programs={programs} viewerId={user.id} />
     </div>
   );
