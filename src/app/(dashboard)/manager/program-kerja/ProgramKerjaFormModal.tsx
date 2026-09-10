@@ -1,15 +1,19 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Loader2 } from 'lucide-react';
+import { CheckSquare, Loader2 } from 'lucide-react';
 import { ProgramCategory as ProgramKerjaCategory, ProgramStatus } from '@prisma/client';
-import {
-  createProgramKerjaAction,
-  updateProgramKerjaAction,
-} from '@/server/actions/programKerjaActions';
+import { createProgramKerjaAction, updateProgramKerjaAction } from '@/server/actions/programKerjaActions';
 import type { ProgramKerjaDTO } from '@/server/services/programKerjaService';
 import { Modal } from '@/components/ui/Modal';
 import { CATEGORY_LABELS, STATUS_LABELS } from './shared';
+
+interface PicUserOption {
+  id: string;
+  name: string;
+  username: string;
+  role: 'ADMIN' | 'MANAGER' | 'OPERATOR';
+}
 
 interface FormState {
   year: number;
@@ -22,6 +26,8 @@ interface FormState {
   progress: number;
   status: ProgramStatus;
   notes: string;
+  deadline: string;
+  picId: string;
 }
 
 const EMPTY_FORM: FormState = {
@@ -35,15 +41,18 @@ const EMPTY_FORM: FormState = {
   progress: 0,
   status: 'PLAN',
   notes: '',
+  deadline: '',
+  picId: '',
 };
 
 interface ProgramKerjaFormModalProps {
-  program: ProgramKerjaDTO | null; // null = create
+  program: ProgramKerjaDTO | null;
+  picUsers: PicUserOption[];
   onClose: () => void;
   onSaved: () => void;
 }
 
-export function ProgramKerjaFormModal({ program, onClose, onSaved }: ProgramKerjaFormModalProps) {
+export function ProgramKerjaFormModal({ program, picUsers, onClose, onSaved }: ProgramKerjaFormModalProps) {
   const [form, setForm] = useState<FormState>(
     program
       ? {
@@ -57,22 +66,32 @@ export function ProgramKerjaFormModal({ program, onClose, onSaved }: ProgramKerj
           progress: program.progress,
           status: program.status,
           notes: program.notes ?? '',
+          deadline: program.deadline?.slice(0, 10) ?? '',
+          picId: program.picId ?? '',
         }
       : EMPTY_FORM
   );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const set = <K extends keyof FormState>(key: K, value: FormState[K]) =>
-    setForm((f) => ({ ...f, [key]: value }));
+  const set = <K extends keyof FormState>(key: K, value: FormState[K]) => setForm((current) => ({ ...current, [key]: value }));
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  async function handleSubmit(event: React.FormEvent) {
+    event.preventDefault();
     setError(null);
     if (form.status === 'BELUM_TEREALISASI' && !form.notes.trim()) {
       setError('Program tidak terealisasi wajib disertai catatan alasan.');
       return;
     }
+    if (!Number.isInteger(form.progress) || form.progress < 0 || form.progress > 100) {
+      setError('Progress harus berupa angka bulat 0–100%.');
+      return;
+    }
+    if (!Number.isInteger(form.planTarget) || form.planTarget < 0 || form.planTarget > 100) {
+      setError('Target Plan harus berupa angka bulat 0–100%.');
+      return;
+    }
+
     setSaving(true);
     try {
       const payload = {
@@ -80,6 +99,8 @@ export function ProgramKerjaFormModal({ program, onClose, onSaved }: ProgramKerj
         plan: form.plan.trim() || undefined,
         realization: form.realization.trim() || undefined,
         notes: form.notes.trim() || undefined,
+        deadline: form.deadline || null,
+        picId: form.picId || null,
       };
       const result = program
         ? await updateProgramKerjaAction({ id: program.id, ...payload })
@@ -103,166 +124,114 @@ export function ProgramKerjaFormModal({ program, onClose, onSaved }: ProgramKerj
       title={program ? program.name : 'Tambah Program Kerja'}
       footer={
         <div className="flex items-center justify-end gap-2">
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-4 py-2 text-xs font-bold rounded-lg border border-[#CBD7E6] text-slate-600 hover:bg-slate-50 cursor-pointer"
-          >
-            Batal
-          </button>
-          <button
-            type="submit"
-            form="program-kerja-form"
-            disabled={saving}
-            className="px-4 py-2 text-xs font-bold rounded-lg bg-[#123B6D] text-white hover:bg-[#0F315A] disabled:opacity-60 flex items-center gap-1.5 cursor-pointer"
-          >
+          <button type="button" onClick={onClose} className="cursor-pointer rounded-lg border border-[#CBD7E6] px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-50">Batal</button>
+          <button type="submit" form="program-kerja-form" disabled={saving} className="flex cursor-pointer items-center gap-1.5 rounded-lg bg-[#123B6D] px-4 py-2 text-xs font-bold text-white hover:bg-[#0F315A] disabled:opacity-60">
             {saving && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
             {program ? 'Simpan Perubahan' : 'Tambah Program'}
           </button>
         </div>
       }
     >
-      <form id="program-kerja-form" onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <div>
-              <label className="block text-[10px] font-bold uppercase tracking-wide text-slate-500 mb-1">Tahun</label>
-              <input
-                type="number"
-                className="field w-full"
-                value={form.year}
-                min={2020}
-                max={2100}
-                onChange={(e) => set('year', Number(e.target.value))}
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-[10px] font-bold uppercase tracking-wide text-slate-500 mb-1">No. Urut</label>
-              <input
-                type="number"
-                className="field w-full"
-                value={form.sequence}
-                min={1}
-                max={999}
-                onChange={(e) => set('sequence', Number(e.target.value))}
-                required
-              />
-            </div>
-            <div className="col-span-2">
-              <label className="block text-[10px] font-bold uppercase tracking-wide text-slate-500 mb-1">Kategori</label>
-              <select
-                className="field w-full"
-                value={form.category}
-                onChange={(e) => set('category', e.target.value as ProgramKerjaCategory)}
-              >
-                {Object.entries(CATEGORY_LABELS).map(([value, label]) => (
-                  <option key={value} value={value}>{label}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-
+      <form id="program-kerja-form" onSubmit={handleSubmit} className="max-h-[65vh] space-y-4 overflow-y-auto pr-1">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <div>
-            <label className="block text-[10px] font-bold uppercase tracking-wide text-slate-500 mb-1">
-              Nama Program
-            </label>
+            <label className="mb-1 block text-[10px] font-bold uppercase tracking-wide text-slate-500">Tahun</label>
+            <input type="number" className="field w-full" value={form.year} min={2020} max={2100} onChange={(e) => set('year', Number(e.target.value))} required />
+          </div>
+          <div>
+            <label className="mb-1 block text-[10px] font-bold uppercase tracking-wide text-slate-500">No. Urut</label>
+            <input type="number" className="field w-full" value={form.sequence} min={1} max={999} onChange={(e) => set('sequence', Number(e.target.value))} required />
+          </div>
+          <div className="col-span-2">
+            <label className="mb-1 block text-[10px] font-bold uppercase tracking-wide text-slate-500">Kategori</label>
+            <select className="field w-full" value={form.category} onChange={(e) => set('category', e.target.value as ProgramKerjaCategory)}>
+              {Object.entries(CATEGORY_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label className="mb-1 block text-[10px] font-bold uppercase tracking-wide text-slate-500">Nama Program</label>
+          <input type="text" className="field w-full" value={form.name} onChange={(e) => set('name', e.target.value)} placeholder="Nama Program Kerja" required minLength={3} />
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <label className="mb-1 block text-[10px] font-bold uppercase tracking-wide text-slate-500">PIC / Penanggung Jawab</label>
+            <select className="field w-full" value={form.picId} onChange={(e) => set('picId', e.target.value)}>
+              <option value="">Belum ditugaskan</option>
+              {picUsers.map((user) => <option key={user.id} value={user.id}>{user.name} · @{user.username} ({user.role})</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="mb-1 block text-[10px] font-bold uppercase tracking-wide text-slate-500">Deadline</label>
+            <input type="date" className="field w-full" value={form.deadline} onChange={(e) => set('deadline', e.target.value)} />
+          </div>
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <label className="mb-1 block text-[10px] font-bold uppercase tracking-wide text-slate-500">Plan (P)</label>
+            <input type="text" className="field w-full" value={form.plan} onChange={(e) => set('plan', e.target.value)} placeholder="Deskripsi rencana (opsional)" />
+          </div>
+          <div>
+            <label className="mb-1 block text-[10px] font-bold uppercase tracking-wide text-slate-500">Realisasi (R)</label>
+            <input type="text" className="field w-full" value={form.realization} onChange={(e) => set('realization', e.target.value)} placeholder="Deskripsi realisasi (opsional)" />
+          </div>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-[1fr_2fr]">
+          <div>
+            <label className="mb-1 block text-[10px] font-bold uppercase tracking-wide text-slate-500">Target P (%)</label>
+            <input type="number" className="field w-full" value={form.planTarget} min={0} max={100} onChange={(e) => set('planTarget', Number(e.target.value))} />
+          </div>
+          <div>
+            <div className="mb-2 flex items-center justify-between">
+              <label htmlFor="program-progress" className="text-[10px] font-bold uppercase tracking-wide text-slate-500">Progress Program Kerja</label>
+              <span className="text-lg font-black tabular-nums text-[#0066B3]" aria-live="polite">{form.progress}%</span>
+            </div>
             <input
-              type="text"
-              className="field w-full"
-              value={form.name}
-              onChange={(e) => set('name', e.target.value)}
-              placeholder="cth. Pengadaan Barton Chart"
-              required
-              minLength={3}
+              id="program-progress"
+              type="range"
+              value={form.progress}
+              min={0}
+              max={100}
+              step={1}
+              aria-label="Progress Program Kerja"
+              onChange={(event) => set('progress', Number(event.target.value))}
+              className="h-5 w-full cursor-pointer accent-[#0066B3] touch-none"
             />
+            <div className="flex justify-between text-[9px] font-bold text-slate-400"><span>0%</span><span>100%</span></div>
           </div>
+        </div>
 
-          <div className="grid sm:grid-cols-2 gap-3">
-            <div>
-              <label className="block text-[10px] font-bold uppercase tracking-wide text-slate-500 mb-1">
-                Plan (P)
-              </label>
-              <input
-                type="text"
-                className="field w-full"
-                value={form.plan}
-                onChange={(e) => set('plan', e.target.value)}
-                placeholder="Deskripsi rencana (opsional)"
-              />
-            </div>
-            <div>
-              <label className="block text-[10px] font-bold uppercase tracking-wide text-slate-500 mb-1">
-                Realisasi (R)
-              </label>
-              <input
-                type="text"
-                className="field w-full"
-                value={form.realization}
-                onChange={(e) => set('realization', e.target.value)}
-                placeholder="Deskripsi realisasi (opsional)"
-              />
-            </div>
-          </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            <div>
-              <label className="block text-[10px] font-bold uppercase tracking-wide text-slate-500 mb-1">
-                Target P (%)
-              </label>
-              <input
-                type="number"
-                className="field w-full"
-                value={form.planTarget}
-                min={0}
-                max={100}
-                onChange={(e) => set('planTarget', Number(e.target.value))}
-              />
-            </div>
-            <div>
-              <label className="block text-[10px] font-bold uppercase tracking-wide text-slate-500 mb-1">
-                Realisasi (R) %
-              </label>
-              <input
-                type="number"
-                className="field w-full"
-                value={form.progress}
-                min={0}
-                max={100}
-                onChange={(e) => set('progress', Number(e.target.value))}
-              />
-            </div>
-            <div className="col-span-2 sm:col-span-1">
-              <label className="block text-[10px] font-bold uppercase tracking-wide text-slate-500 mb-1">Status</label>
-              <select
-                className="field w-full"
-                value={form.status}
-                onChange={(e) => set('status', e.target.value as ProgramStatus)}
-              >
-                {Object.entries(STATUS_LABELS).map(([value, label]) => (
-                  <option key={value} value={value}>{label}</option>
-                ))}
-              </select>
-            </div>
-          </div>
+        <div>
+          <label className="mb-1 block text-[10px] font-bold uppercase tracking-wide text-slate-500">Status</label>
+          <select className="field w-full" value={form.status} onChange={(e) => set('status', e.target.value as ProgramStatus)}>
+            {Object.entries(STATUS_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+          </select>
+        </div>
 
-          <div>
-            <label className="block text-[10px] font-bold uppercase tracking-wide text-slate-500 mb-1">
-              Keterangan {form.status === 'BELUM_TEREALISASI' && <span className="text-[#DC2626]">(wajib — alasan tidak terealisasi)</span>}
-            </label>
-            <textarea
-              className="field w-full"
-              rows={2}
-              value={form.notes}
-              onChange={(e) => set('notes', e.target.value)}
-              placeholder="cth. Kegiatan belum dapat dilaksanakan karena perubahan jadwal operasional."
-            />
-          </div>
-
-          {error && (
-            <div className="text-xs font-semibold text-[#DC2626] bg-red-50 border border-red-200 rounded-lg px-3 py-2">
-              {error}
+        {program && program.tasks.length > 0 && (
+          <div className="rounded-xl border border-[#DCE5EF] bg-slate-50/70 p-3">
+            <div className="mb-2 flex items-center gap-2 text-[10px] font-black uppercase tracking-wide text-slate-500">
+              <CheckSquare className="h-3.5 w-3.5 text-[#0066B3]" /> Checklist tersedia
             </div>
-          )}
-        </form>
+            <div className="space-y-1.5">
+              {program.tasks.map((task) => <div key={task.id} className="flex items-center gap-2 text-[11px] text-slate-600"><span className={`h-1.5 w-1.5 rounded-full ${task.isDone ? 'bg-emerald-500' : 'bg-slate-300'}`} />{task.label}</div>)}
+            </div>
+          </div>
+        )}
+
+        <div>
+          <label className="mb-1 block text-[10px] font-bold uppercase tracking-wide text-slate-500">Keterangan {form.status === 'BELUM_TEREALISASI' && <span className="text-[#DC2626]">(wajib — alasan tidak terealisasi)</span>}</label>
+          <textarea className="field w-full" rows={3} value={form.notes} onChange={(e) => set('notes', e.target.value)} placeholder="Catatan Program Kerja" />
+        </div>
+
+        {program && <p className="text-[10px] text-slate-400">Terakhir diperbarui: {new Date(program.updatedAt).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })}</p>}
+
+        {error && <div role="alert" className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-[#DC2626]">{error}</div>}
+      </form>
     </Modal>
   );
 }
