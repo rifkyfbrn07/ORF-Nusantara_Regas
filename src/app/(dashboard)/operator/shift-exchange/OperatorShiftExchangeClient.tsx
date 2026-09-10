@@ -485,65 +485,72 @@ const handleSubmit = async (e: React.FormEvent) => {
               </div>
             )}
           </div>
-{/* STEP 2 — Cari Operator */}
-          <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-3.5">
-            <p className="text-xs font-black uppercase tracking-wider text-[#0F2F63] flex items-center gap-1.5">
-              <Search className="h-3.5 w-3.5" /> 2 · Cari Operator untuk Tukar OFF
-            </p>
+{/* STEP 2 — Karyawan yang Bisa Diajak Tukar (berbasis tanggal OFF yang dipilih) */}
+          {selectedMyOff && (
+            <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-3.5">
+              <p className="text-xs font-black uppercase tracking-wider text-[#0F2F63] flex items-center gap-1.5">
+                <Search className="h-3.5 w-3.5" /> 2 · Karyawan yang Bisa Diajak Tukar
+              </p>
+              <p className="mt-1 text-[10.5px] text-slate-500">
+                Karyawan yang dapat bertukar dengan OFF Anda pada <strong className="text-[#0B3568]">{selectedMyOff.date}</strong>
+              </p>
 
-            <div className="mt-2 flex flex-wrap items-center gap-2">
-              <input
-                type="text"
-                value={empQuery}
-                onChange={(e) => setEmpQuery(e.target.value)}
-                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); searchPartners(); } }}
-                placeholder="Cari nama, username, atau ID karyawan..."
-                className="flex-1 min-w-0 px-3 py-2 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:border-[#0B3568]"
-              />
-              <button
-                type="button"
-                onClick={searchPartners}
-                disabled={empLoading}
-                className="px-3 py-2 text-xs font-bold bg-[#0B3568] hover:bg-[#092B57] text-white rounded-lg transition disabled:opacity-50 cursor-pointer"
-              >
-                {empLoading ? 'Mencari...' : 'Cari'}
-              </button>
-            </div>
-
-            {empLoading && <p className="mt-1.5 text-[11px] text-[#1769AA] font-medium">Mencari operator...</p>}
-
-            {empSearched && !empLoading && candidates.length === 0 && (
-              <p className="mt-1.5 text-[11px] text-slate-400">Belum ada operator dengan hari OFF eligible ditemukan.</p>
-            )}
-
-            {candidates.length > 0 && (
-              <div className="mt-2 space-y-1.5 max-h-52 overflow-y-auto">
-                {candidates.map((c) => (
-                  <div key={c.operator.id} className={`rounded-lg border p-2.5 ${selectedPartner?.operator.id === c.operator.id ? 'border-[#1769AA] bg-[#1769AA]/5' : 'border-slate-200 bg-white'}`}>
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <div className="min-w-0">
-                        <p className="text-[11px] font-bold text-[#0F2F63]">
-                          {c.operator.name}
-                          <span className="text-[10px] text-slate-400"> @{c.operator.username} · {c.operator.employeeId}</span>
-                        </p>
-                        <p className="text-[10px] text-slate-500">
-                          {c.offCount} hari OFF eligible {c.offCount ? '(pilih OFF di step 3)' : ''}
-                        </p>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => selectPartner(c)}
-                        className="px-2.5 py-1.5 text-[10.5px] font-bold bg-[#0B3568] hover:bg-[#092B57] text-white rounded-lg transition cursor-pointer"
-                      >
-                        {selectedPartner?.operator.id === c.operator.id ? 'Dipilih ✓' : 'Pilih'}
-                      </button>
-                    </div>
-                  </div>
-                ))}
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <input
+                  type="text"
+                  value={empQuery}
+                  onChange={(e) => setEmpQuery(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); searchPartners(selectedMyOff.date); } }}
+                  placeholder="Cari nama, username, atau ID pegawai..."
+                  className="flex-1 min-w-0 px-3 py-2 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:border-[#0B3568]"
+                />
+                <button
+                  type="button"
+                  onClick={() => searchPartners(selectedMyOff.date)}
+                  disabled={empLoading}
+                  className="px-3 py-2 text-xs font-bold bg-[#0B3568] hover:bg-[#092B57] text-white rounded-lg transition disabled:opacity-50 cursor-pointer"
+                >
+                  {empLoading ? 'Mencari...' : 'Cari'}
+                </button>
               </div>
-            )}
-          </div>
 
+              {empLoading && <p className="mt-1.5 text-[11px] text-[#1769AA] font-medium"><Loader2 className="h-3 w-3 animate-spin inline-block" /> Mencari karyawan eligible...</p>}
+
+              {empSearched && !empLoading && candidates.length === 0 && (
+                <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50/60 p-3 text-[11px] text-amber-800">
+                  Tidak ada karyawan yang tersedia untuk pertukaran OFF pada tanggal ini.
+                  <span className="block mt-0.5 text-[10px] text-amber-700">Coba pilih tanggal OFF lainnya.</span>
+                </div>
+              )}
+
+              {candidates.length > 0 && (
+                <div className="mt-2 space-y-1.5 max-h-56 overflow-y-auto">
+                  {candidates.map((c) => (
+                    <div key={c.operator.id} className={`rounded-lg border p-2.5 ${selectedPartner?.operator.id === c.operator.id ? 'border-[#1769AA] bg-[#1769AA]/5' : 'border-slate-200 bg-white'}`}>
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="text-[11px] font-bold text-[#0F2F63]">
+                            {c.operator.name}
+                            <span className="text-[10px] text-slate-400"> @{c.operator.username} · {c.operator.employeeId}</span>
+                          </p>
+                          <p className="text-[10px] text-slate-500">
+                            {c.offCount} OFF tersedia: {c.offDays.map((d) => d.date.slice(5)).join(', ')}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => selectPartner(c)}
+                          className="px-2.5 py-1.5 text-[10.5px] font-bold bg-[#0B3568] hover:bg-[#092B57] text-white rounded-lg transition cursor-pointer"
+                        >
+                          {selectedPartner?.operator.id === c.operator.id ? 'Dipilih ✓' : 'Pilih'}
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
           {/* STEP 3 — Pilih OFF Operator Tujuan */}
           {selectedPartner && (
             <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-3.5">

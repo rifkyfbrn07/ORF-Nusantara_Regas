@@ -15,12 +15,7 @@ export default async function OperatorProgramKerjaPage() {
         title="Program Kerja Saya"
         description="Program yang ditugaskan kepada Anda — kategori, target, progress, deadline, PIC, status, checklist, catatan, dan waktu pembaruan."
       />
-<<<<<<< HEAD
-      <ProgramKerjaOperatorClient programs={programs} viewerId={user.id} />
-=======
-
-      <ProgramKerjaOperatorClient programs={programs} />
->>>>>>> ea15c98 (ini ketinggalan)
+<ProgramKerjaOperatorClient programs={programs} />
     </div>
   );
 }

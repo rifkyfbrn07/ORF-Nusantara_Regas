@@ -16,11 +16,15 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setThemeState] = useState<Theme>('light');
 
   useEffect(() => {
-    const stored = window.localStorage.getItem('orf-theme');
-    const preferred: Theme = stored === 'dark' || stored === 'light'
-      ? stored
-      : window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-    setThemeState(preferred);
+    // Deferred so no state is set synchronously in the effect body (react-hooks rule)
+    const timer = setTimeout(() => {
+      const stored = window.localStorage.getItem('orf-theme');
+      const preferred: Theme = stored === 'dark' || stored === 'light'
+        ? stored
+        : window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      setThemeState(preferred);
+    }, 0);
+    return () => clearTimeout(timer);
   }, []);
 
   useEffect(() => {

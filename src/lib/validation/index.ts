@@ -269,13 +269,9 @@ export const programKerjaStatusEnum = z.enum([
   'BELUM_TEREALISASI',
 ] as const);
 
-<<<<<<< HEAD
 export const programKerjaProgressSchema = z.number().int().min(0, 'Progress minimal 0%').max(100, 'Progress maksimal 100%');
 
-export const programKerjaCreateSchema = z.object({
-=======
 export const programKerjaBaseSchema = z.object({
->>>>>>> ea15c98 (ini ketinggalan)
   year: z.number().int().min(2020, 'Tahun minimal 2020').max(2100, 'Tahun maksimal 2100'),
   category: programKerjaCategoryEnum,
   sequence: z.number().int().min(1, 'Nomor urut minimal 1').max(999, 'Nomor urut maksimal 999'),

@@ -27,17 +27,14 @@ interface FormState {
   progress: number;
   status: ProgramStatus;
   notes: string;
-<<<<<<< HEAD
   deadline: string;
   picId: string;
-=======
   evidenceUrl: string;
   evidenceName: string;
   evidenceMime: string;
   evidenceSize?: number;
   driveFileId: string;
   driveWebViewLink: string;
->>>>>>> ea15c98 (ini ketinggalan)
 }
 
 const EMPTY_FORM: FormState = {
@@ -51,17 +48,14 @@ const EMPTY_FORM: FormState = {
   progress: 0,
   status: 'PLAN',
   notes: '',
-<<<<<<< HEAD
   deadline: '',
   picId: '',
-=======
   evidenceUrl: '',
   evidenceName: '',
   evidenceMime: '',
   evidenceSize: undefined,
   driveFileId: '',
   driveWebViewLink: '',
->>>>>>> ea15c98 (ini ketinggalan)
 };
 
 interface ProgramKerjaFormModalProps {
@@ -85,17 +79,14 @@ export function ProgramKerjaFormModal({ program, picUsers, onClose, onSaved }: P
           progress: program.progress,
           status: program.status,
           notes: program.notes ?? '',
-<<<<<<< HEAD
           deadline: program.deadline?.slice(0, 10) ?? '',
           picId: program.picId ?? '',
-=======
           evidenceUrl: program.evidenceUrl ?? '',
           evidenceName: program.evidenceName ?? '',
           evidenceMime: program.evidenceMime ?? '',
           evidenceSize: program.evidenceSize ?? undefined,
           driveFileId: program.driveFileId ?? '',
           driveWebViewLink: program.driveWebViewLink ?? '',
->>>>>>> ea15c98 (ini ketinggalan)
         }
       : EMPTY_FORM
   );
@@ -111,7 +102,6 @@ export function ProgramKerjaFormModal({ program, picUsers, onClose, onSaved }: P
       setError('Program tidak terealisasi wajib disertai catatan alasan.');
       return;
     }
-<<<<<<< HEAD
     if (!Number.isInteger(form.progress) || form.progress < 0 || form.progress > 100) {
       setError('Progress harus berupa angka bulat 0–100%.');
       return;
@@ -120,33 +110,27 @@ export function ProgramKerjaFormModal({ program, picUsers, onClose, onSaved }: P
       setError('Target Plan harus berupa angka bulat 0–100%.');
       return;
     }
-
-=======
     // Bukti/evidence wajib saat progress > 0 atau status realisasi/on-progress
     const needsEvidence = form.progress > 0 || form.status === 'REALISASI' || form.status === 'ON_PROGRESS';
     if (needsEvidence && !form.driveFileId && !form.driveWebViewLink && !form.evidenceUrl) {
       setError('Bukti/evidence wajib dilampirkan untuk program dengan progress atau realisasi.');
       return;
     }
->>>>>>> ea15c98 (ini ketinggalan)
     setSaving(true);
     try {
       const payload = {
         ...form,
         plan: form.plan.trim() || undefined,
         realization: form.realization.trim() || undefined,
-        notes: form.notes.trim() || undefined,
-<<<<<<< HEAD
+                notes: form.notes.trim() || undefined,
         deadline: form.deadline || null,
         picId: form.picId || null,
-=======
         evidenceUrl: form.evidenceUrl || undefined,
         evidenceName: form.evidenceName || undefined,
         evidenceMime: form.evidenceMime || undefined,
         evidenceSize: form.evidenceSize || undefined,
         driveFileId: form.driveFileId || undefined,
         driveWebViewLink: form.driveWebViewLink || undefined,
->>>>>>> ea15c98 (ini ketinggalan)
       };
       const result = program
         ? await updateProgramKerjaAction({ id: program.id, ...payload })
@@ -258,75 +242,69 @@ export function ProgramKerjaFormModal({ program, picUsers, onClose, onSaved }: P
           </select>
         </div>
 
-<<<<<<< HEAD
-        {program && program.tasks.length > 0 && (
+{program && program.tasks.length > 0 && (
           <div className="rounded-xl border border-[#DCE5EF] bg-slate-50/70 p-3">
             <div className="mb-2 flex items-center gap-2 text-[10px] font-black uppercase tracking-wide text-slate-500">
               <CheckSquare className="h-3.5 w-3.5 text-[#0066B3]" /> Checklist tersedia
-=======
-          <div>
-            <label className="block text-[10px] font-bold uppercase tracking-wide text-slate-500 mb-1">
-              Keterangan {form.status === 'BELUM_TEREALISASI' && <span className="text-[#DC2626]">(wajib — alasan tidak terealisasi)</span>}
-            </label>
-            <textarea
-              className="field w-full"
-              rows={2}
-              value={form.notes}
-              onChange={(e) => set('notes', e.target.value)}
-              placeholder="cth. Kegiatan belum dapat dilaksanakan karena perubahan jadwal operasional."
-            />
-          </div>
-
-          <FileUploadProof
-            label="Bukti / Evidence (wajib saat progress>0 atau status REALISASI/ON_PROGRESS)"
-            folderCategory="PROGRAM_KERJA"
-            subCategory={form.category}
-            required={form.progress > 0 || form.status === 'REALISASI' || form.status === 'ON_PROGRESS'}
-            initialValue={
-              form.driveFileId || form.driveWebViewLink
-                ? {
-                    attachmentUrl: form.driveWebViewLink || undefined,
-                    attachmentName: form.evidenceName || 'Berkas Bukti',
-                    driveFileId: form.driveFileId || undefined,
-                    driveWebViewLink: form.driveWebViewLink || undefined,
-                  }
-                : undefined
-            }
-            onFileUploaded={(meta) => {
-              if (meta) {
-                setForm((f) => ({
-                  ...f,
-                  evidenceUrl: meta.attachmentUrl,
-                  evidenceName: meta.attachmentName,
-                  evidenceMime: meta.attachmentMime || '',
-                  evidenceSize: meta.attachmentSize,
-                  driveFileId: meta.driveFileId || '',
-                  driveWebViewLink: meta.driveWebViewLink || '',
-                }));
-              } else {
-                setForm((f) => ({
-                  ...f,
-                  evidenceUrl: '',
-                  evidenceName: '',
-                  evidenceMime: '',
-                  evidenceSize: undefined,
-                  driveFileId: '',
-                  driveWebViewLink: '',
-                }));
-              }
-            }}
-          />
-
-          {error && (
-            <div className="text-xs font-semibold text-[#DC2626] bg-red-50 border border-red-200 rounded-lg px-3 py-2">
-              {error}
->>>>>>> ea15c98 (ini ketinggalan)
             </div>
             <div className="space-y-1.5">
               {program.tasks.map((task) => <div key={task.id} className="flex items-center gap-2 text-[11px] text-slate-600"><span className={`h-1.5 w-1.5 rounded-full ${task.isDone ? 'bg-emerald-500' : 'bg-slate-300'}`} />{task.label}</div>)}
             </div>
           </div>
         )}
+
+        <div>
+          <label className="block text-[10px] font-bold uppercase tracking-wide text-slate-500 mb-1">
+            Keterangan {form.status === 'BELUM_TEREALISASI' && <span className="text-[#DC2626]">(wajib — alasan tidak terealisasi)</span>}
+          </label>
+          <textarea
+            className="field w-full"
+            rows={2}
+            value={form.notes}
+            onChange={(e) => set('notes', e.target.value)}
+            placeholder="cth. Kegiatan belum dapat dilaksanakan karena perubahan jadwal operasional."
+          />
+        </div>
+
+        <FileUploadProof
+          label="Bukti / Evidence (wajib saat progress>0 atau status REALISASI/ON_PROGRESS)"
+          folderCategory="PROGRAM_KERJA"
+          subCategory={form.category}
+          required={form.progress > 0 || form.status === 'REALISASI' || form.status === 'ON_PROGRESS'}
+          initialValue={
+            form.driveFileId || form.driveWebViewLink
+              ? {
+                  attachmentUrl: form.driveWebViewLink || undefined,
+                  attachmentName: form.evidenceName || 'Berkas Bukti',
+                  driveFileId: form.driveFileId || undefined,
+                  driveWebViewLink: form.driveWebViewLink || undefined,
+                }
+              : undefined
+          }
+          onFileUploaded={(meta) => {
+            if (meta) {
+              setForm((f) => ({
+                ...f,
+                evidenceUrl: meta.attachmentUrl,
+                evidenceName: meta.attachmentName,
+                evidenceMime: meta.attachmentMime || '',
+                evidenceSize: meta.attachmentSize,
+                driveFileId: meta.driveFileId || '',
+                driveWebViewLink: meta.driveWebViewLink || '',
+              }));
+            } else {
+              setForm((f) => ({
+                ...f,
+                evidenceUrl: '',
+                evidenceName: '',
+                evidenceMime: '',
+                evidenceSize: undefined,
+                driveFileId: '',
+                driveWebViewLink: '',
+              }));
+            }
+          }}
+        />
 
         <div>
           <label className="mb-1 block text-[10px] font-bold uppercase tracking-wide text-slate-500">Keterangan {form.status === 'BELUM_TEREALISASI' && <span className="text-[#DC2626]">(wajib — alasan tidak terealisasi)</span>}</label>
