@@ -13,6 +13,7 @@ import {
 import {
   programKerjaCreateSchema,
   programKerjaUpdateSchema,
+  programKerjaProgressSchema,
   ProgramKerjaCreateInput,
   ProgramKerjaUpdateInput,
 } from '@/lib/validation';
@@ -64,22 +65,18 @@ export async function deleteProgramKerjaAction(id: string) {
   }
 }
 
-// ============================================================================
-// CHECKLIST & PROGRESS (PIC/operator — otorisasi di service layer)
-// ============================================================================
-
 export async function upsertTaskAction(input: { programId: string; label: string; isDone: boolean }) {
   try {
     const user = await requireRole(['ADMIN', 'MANAGER', 'OPERATOR']);
+    if (!input.programId || input.label.trim().length < 3) return { success: false as const, error: 'Program dan nama task wajib diisi.' };
     const task = await upsertProgramKerjaTask({
       programId: input.programId,
-      label: input.label,
+      label: input.label.trim(),
       isDone: input.isDone,
       actorId: user.id,
       actorRole: user.role,
     });
     revalidateProgramKerja();
-    revalidatePath('/operator/program-kerja');
     return { success: true as const, task };
   } catch (error: unknown) {
     return { success: false as const, error: error instanceof Error ? error.message : 'Gagal simpan task.' };
@@ -91,7 +88,6 @@ export async function setTaskDoneAction(input: { taskId: string; isDone: boolean
     const user = await requireRole(['ADMIN', 'MANAGER', 'OPERATOR']);
     await setTaskDone({ taskId: input.taskId, isDone: input.isDone, actorId: user.id, actorRole: user.role });
     revalidateProgramKerja();
-    revalidatePath('/operator/program-kerja');
     return { success: true as const };
   } catch (error: unknown) {
     return { success: false as const, error: error instanceof Error ? error.message : 'Gagal memperbarui task.' };
@@ -101,9 +97,10 @@ export async function setTaskDoneAction(input: { taskId: string; isDone: boolean
 export async function updatePicProgressAction(input: { programId: string; progress: number }) {
   try {
     const user = await requireRole(['ADMIN', 'MANAGER', 'OPERATOR']);
-    const result = await updatePicProgress(input.programId, input.progress, user.id, user.role);
+    const parsedProgress = programKerjaProgressSchema.safeParse(input.progress);
+    if (!parsedProgress.success) return { success: false as const, error: parsedProgress.error.issues[0]?.message || 'Progress harus 0–100%.' };
+    const result = await updatePicProgress(input.programId, parsedProgress.data, user.id, user.role);
     revalidateProgramKerja();
-    revalidatePath('/operator/program-kerja');
     return { success: true as const, progress: result.progress };
   } catch (error: unknown) {
     return { success: false as const, error: error instanceof Error ? error.message : 'Gagal memperbarui progress.' };
