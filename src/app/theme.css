@@ -1,0 +1,81 @@
+html.dark body {
+  background-color: #0b1220 !important;
+  color: #e5edf7 !important;
+  background-image: radial-gradient(circle at 95% 0%, rgba(30, 136, 229, 0.08), transparent 28rem), radial-gradient(circle at 0% 100%, rgba(245, 130, 32, 0.05), transparent 24rem) !important;
+}
+
+html.dark .bg-white,
+html.dark .login-floating-card,
+html.dark .panel,
+html.dark .page-heading {
+  background-color: #111c2e !important;
+  color: #e5edf7 !important;
+  border-color: #263a55 !important;
+}
+
+html.dark .bg-slate-50,
+html.dark .bg-slate-50\/60,
+html.dark .bg-slate-50\/70 {
+  background-color: #162337 !important;
+}
+
+html.dark .field {
+  background-color: #0f1a2b !important;
+  color: #e5edf7 !important;
+  border-color: #304765 !important;
+}
+
+html.dark .text-slate-900,
+html.dark .text-slate-800,
+html.dark .text-slate-700,
+html.dark .text-slate-600,
+html.dark .text-slate-500,
+html.dark .text-slate-400 {
+  color: #c4d0df !important;
+}
+
+html.dark .text-\[\#092B57\],
+html.dark .text-\[\#0B3568\],
+html.dark .text-\[\#0F315A\],
+html.dark .text-\[\#132238\] {
+  color: #e5edf7 !important;
+}
+
+html.dark .border-slate-200,
+html.dark .border-slate-100,
+html.dark .border-\[\#DCE5EF\],
+html.dark .border-\[\#CBD7E6\],
+html.dark .border-\[\#EDF2F7\] {
+  border-color: #263a55 !important;
+}
+
+html.dark .hover\:bg-slate-50:hover,
+html.dark .hover\:bg-slate-100:hover,
+html.dark .hover\:bg-\[\#F8FBFE\]:hover {
+  background-color: #192a42 !important;
+}
+
+html.dark .divide-slate-100 > :not([hidden]) ~ :not([hidden]),
+html.dark .divide-\[\#F1F5F9\] > :not([hidden]) ~ :not([hidden]) {
+  border-color: #263a55 !important;
+}
+
+html.dark .fieldops-shell table thead {
+  background: #162337 !important;
+  color: #b8c7d9 !important;
+}
+
+html.dark .fieldops-shell table tbody tr:hover {
+  background: #192a42 !important;
+}
+
+html.dark .bg-\[\#F8FAFC\],
+html.dark .bg-\[\#EDF4FB\] {
+  background-color: #162337 !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html.dark *, html.dark *::before, html.dark *::after {
+    scroll-behavior: auto !important;
+  }
+}
