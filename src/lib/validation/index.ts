@@ -161,8 +161,6 @@ export const adminUserUpdateSchema = adminUserBaseSchema
   .omit({ password: true, confirmPassword: true })
   .extend({
     id: z.string().min(1),
-    // Saat update, role existing (termasuk ADMIN utama) boleh dipertahankan;
-    // eskalasi ke ADMIN diblokir di server action.
     role: z.enum(['ADMIN', 'MANAGER', 'OPERATOR'] as const).optional(),
   });
 export const adminPasswordResetSchema = z.object({ id: z.string().min(1), password: z.string().min(8, 'Kata sandi minimal 8 karakter') });
@@ -200,17 +198,13 @@ export const manualAttendanceCorrectionSchema = z.object({
   attendanceId: z.string().optional(),
   userId: z.string().min(1, 'Operator wajib dipilih'),
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Format tanggal YYYY-MM-DD'),
-  checkInTime: z.string().optional(), // "HH:mm"
-  checkOutTime: z.string().optional(), // "HH:mm"
+  checkInTime: z.string().optional(),
+  checkOutTime: z.string().optional(),
   status: z.enum(['HADIR', 'TERLAMBAT', 'BELUM_ABSEN', 'ABSENT', 'IZIN', 'CUTI', 'SAKIT', 'OFF'] as const),
   notes: z.string().min(3, 'Alasan koreksi absensi wajib diisi'),
 });
 
 export type ManualAttendanceCorrectionInput = z.infer<typeof manualAttendanceCorrectionSchema>;
-
-// ============================================================================
-// PROGRAM KERJA (P = Plan, R = Realisasi) — Departemen Distribusi Gas & ORF
-// ============================================================================
 
 export const programKerjaCategoryEnum = z.enum([
   'PENGADAAN',
@@ -226,6 +220,8 @@ export const programKerjaStatusEnum = z.enum([
   'BELUM_TEREALISASI',
 ] as const);
 
+export const programKerjaProgressSchema = z.number().int().min(0, 'Progress minimal 0%').max(100, 'Progress maksimal 100%');
+
 export const programKerjaCreateSchema = z.object({
   year: z.number().int().min(2020, 'Tahun minimal 2020').max(2100, 'Tahun maksimal 2100'),
   category: programKerjaCategoryEnum,
@@ -233,8 +229,8 @@ export const programKerjaCreateSchema = z.object({
   name: z.string().min(3, 'Nama program minimal 3 karakter').max(250, 'Nama program maksimal 250 karakter'),
   plan: z.string().max(500, 'Deskripsi Plan maksimal 500 karakter').optional(),
   realization: z.string().max(500, 'Deskripsi Realisasi maksimal 500 karakter').optional(),
-  planTarget: z.number().int().min(0).max(100).default(100),
-  progress: z.number().int().min(0, 'Realisasi minimal 0%').max(100, 'Realisasi maksimal 100%').default(0),
+  planTarget: programKerjaProgressSchema.default(100),
+  progress: programKerjaProgressSchema.default(0),
   status: programKerjaStatusEnum.default('PLAN'),
   notes: z.string().max(1000, 'Keterangan maksimal 1000 karakter').optional(),
   deadline: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Format deadline YYYY-MM-DD').nullable().optional(),
