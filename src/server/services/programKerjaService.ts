@@ -34,8 +34,24 @@ export interface ProgramKerjaDTO {
   picName: string | null;
   picUsername: string | null;
   picProgress: number;
+  evidenceUrl: string | null;
+  evidenceName: string | null;
+  evidenceMime: string | null;
+  evidenceSize: number | null;
+  driveFileId: string | null;
+  driveWebViewLink: string | null;
   tasks: { id: string; label: string; isDone: boolean; order: number }[];
   months: ProgramKerjaMonthDTO[];
+  progressLogs: {
+    id: string;
+    oldProgress: number;
+    newProgress: number;
+    note: string | null;
+    evidenceName: string | null;
+    driveWebViewLink: string | null;
+    userName: string | null;
+    createdAt: string;
+  }[];
   createdAt: string;
   updatedAt: string;
 }
@@ -63,7 +79,7 @@ export interface ProgramAnnualChartData {
   donut: { name: string; value: number; color: string }[];
 }
 
-function serializeProgram(program: Prisma.ProgramKerjaGetPayload<{ include: { months: true; pic: { select: { id: true; name: true; username: true } }; tasks: true } }>): ProgramKerjaDTO {
+function serializeProgram(program: Prisma.ProgramKerjaGetPayload<{ include: { months: true; pic: { select: { id: true; name: true; username: true } }; tasks: true; progressLogs: { include: { user: { select: { name: true } } }; orderBy: { createdAt: 'desc' } } } }>): ProgramKerjaDTO {
   return {
     id: program.id,
     year: program.year,
@@ -81,10 +97,28 @@ function serializeProgram(program: Prisma.ProgramKerjaGetPayload<{ include: { mo
     picName: program.pic?.name ?? null,
     picUsername: program.pic?.username ?? null,
     picProgress: program.picProgress,
+    evidenceUrl: program.evidenceUrl,
+    evidenceName: program.evidenceName,
+    evidenceMime: program.evidenceMime,
+    evidenceSize: program.evidenceSize,
+    driveFileId: program.driveFileId,
+    driveWebViewLink: program.driveWebViewLink,
     tasks: program.tasks.map((t) => ({ id: t.id, label: t.label, isDone: t.isDone, order: t.order })),
     months: program.months
       .map((m) => ({ month: m.month, week: m.week, target: m.target, realization: m.realization }))
       .sort((a, b) => a.month - b.month || a.week - b.week),
+    progressLogs: program.progressLogs
+      ? program.progressLogs.map((log) => ({
+          id: log.id,
+          oldProgress: log.oldProgress,
+          newProgress: log.newProgress,
+          note: log.note,
+          evidenceName: log.evidenceName,
+          driveWebViewLink: log.driveWebViewLink,
+          userName: log.user?.name ?? null,
+          createdAt: log.createdAt.toISOString(),
+        }))
+      : [],
     createdAt: program.createdAt.toISOString(),
     updatedAt: program.updatedAt.toISOString(),
   };
@@ -110,6 +144,7 @@ export async function listProgramKerja(filters?: {
       months: { orderBy: [{ month: 'asc' }, { week: 'asc' }] },
       pic: { select: { id: true, name: true, username: true } },
       tasks: { orderBy: [{ order: 'asc' }, { createdAt: 'asc' }] },
+      progressLogs: { include: { user: { select: { name: true } } }, orderBy: { createdAt: 'desc' } },
     },
     orderBy: [{ year: 'desc' }, { category: 'asc' }, { sequence: 'asc' }],
   });
@@ -124,6 +159,7 @@ export async function listAssignedProgramKerja(picUserId: string): Promise<Progr
       months: { orderBy: [{ month: 'asc' }, { week: 'asc' }] },
       pic: { select: { id: true, name: true, username: true } },
       tasks: { orderBy: [{ order: 'asc' }, { createdAt: 'asc' }] },
+      progressLogs: { include: { user: { select: { name: true } } }, orderBy: { createdAt: 'desc' } },
     },
     orderBy: [{ year: 'desc' }, { sequence: 'asc' }],
   });
@@ -265,15 +301,40 @@ export async function createProgramKerja(input: ProgramKerjaCreateInput, actorId
       deadline: input.deadline ? new Date(`${input.deadline}T00:00:00+07:00`) : null,
       picId: input.picId || null,
       picProgress: 0,
+      evidenceUrl: input.evidenceUrl ?? null,
+      evidenceName: input.evidenceName ?? null,
+      evidenceMime: input.evidenceMime ?? null,
+      evidenceSize: input.evidenceSize ?? null,
+      driveFileId: input.driveFileId ?? null,
+      driveWebViewLink: input.driveWebViewLink ?? null,
     },
   });
+
+  // If progress/evidence provided on creation, log it for history
+  if (input.progress > 0) {
+    await prisma.programKerjaProgressLog.create({
+      data: {
+        programId: program.id,
+        oldProgress: 0,
+        newProgress: input.progress,
+        note: input.notes,
+        evidenceUrl: input.evidenceUrl ?? null,
+        evidenceName: input.evidenceName ?? null,
+        evidenceMime: input.evidenceMime ?? null,
+        evidenceSize: input.evidenceSize ?? null,
+        driveFileId: input.driveFileId ?? null,
+        driveWebViewLink: input.driveWebViewLink ?? null,
+        userId: actorId,
+      },
+    });
+  }
 
   await recordAuditLog({
     userId: actorId,
     action: 'CREATE_PROGRAM_KERJA',
     entity: 'ProgramKerja',
     entityId: program.id,
-    metadata: { name: program.name, year: program.year, category: program.category },
+    metadata: { name: program.name, year: program.year, category: program.category, progress: program.progress },
   });
 
   return program;
@@ -299,8 +360,35 @@ export async function updateProgramKerja(input: ProgramKerjaUpdateInput, actorId
       ...(data.notes !== undefined ? { notes: data.notes ?? null } : {}),
       ...(data.deadline !== undefined ? { deadline: data.deadline ? new Date(`${data.deadline}T00:00:00+07:00`) : null } : {}),
       ...(data.picId !== undefined ? { picId: data.picId || null } : {}),
+      ...(data.evidenceUrl !== undefined ? { evidenceUrl: data.evidenceUrl ?? null } : {}),
+      ...(data.evidenceName !== undefined ? { evidenceName: data.evidenceName ?? null } : {}),
+      ...(data.evidenceMime !== undefined ? { evidenceMime: data.evidenceMime ?? null } : {}),
+      ...(data.evidenceSize !== undefined ? { evidenceSize: data.evidenceSize ?? null } : {}),
+      ...(data.driveFileId !== undefined ? { driveFileId: data.driveFileId ?? null } : {}),
+      ...(data.driveWebViewLink !== undefined ? { driveWebViewLink: data.driveWebViewLink ?? null } : {}),
     },
   });
+
+  // Log progress change history (without overwriting target values)
+  const hasProgressChange = data.progress !== undefined && data.progress !== existing.progress;
+  const hasNewEvidence = Boolean(data.driveFileId || data.evidenceUrl);
+  if (hasProgressChange || hasNewEvidence) {
+    await prisma.programKerjaProgressLog.create({
+      data: {
+        programId: program.id,
+        oldProgress: existing.progress,
+        newProgress: data.progress !== undefined ? data.progress : existing.progress,
+        note: data.notes,
+        evidenceUrl: data.evidenceUrl ?? null,
+        evidenceName: data.evidenceName ?? null,
+        evidenceMime: data.evidenceMime ?? null,
+        evidenceSize: data.evidenceSize ?? null,
+        driveFileId: data.driveFileId ?? null,
+        driveWebViewLink: data.driveWebViewLink ?? null,
+        userId: actorId,
+      },
+    });
+  }
 
   await recordAuditLog({
     userId: actorId,
@@ -394,12 +482,64 @@ async function recomputeTaskProgress(programId: string) {
 }
 
 /** Operator meng-update progress (0..100) sesuai permission — PIC sendiri/Manager/Admin */
-export async function updatePicProgress(programId: string, progress: number, actorId: string, actorRole: string) {
-  const program = await prisma.programKerja.findUnique({ where: { id: programId }, select: { id: true, picId: true } });
+export async function updatePicProgress(
+  programId: string,
+  progress: number,
+  actorId: string,
+  actorRole: string,
+  evidence?: { evidenceUrl?: string; evidenceName?: string; evidenceMime?: string; evidenceSize?: number; driveFileId?: string; driveWebViewLink?: string; note?: string }
+) {
+  const program = await prisma.programKerja.findUnique({ where: { id: programId }, select: { id: true, picId: true, progress: true, picProgress: true } });
   if (!program) throw new Error('Program Kerja tidak ditemukan.');
   const can = actorRole === 'ADMIN' || actorRole === 'MANAGER' || program.picId === actorId;
   if (!can) throw new Error('Anda tidak berwenang memperbarui progress program ini.');
   const clamped = Math.min(100, Math.max(0, Math.round(progress)));
-  await prisma.programKerja.update({ where: { id: programId }, data: { picProgress: clamped } });
+
+  // Evidence wajib saat progress meningkat (bukti/evidence)
+  if (clamped > program.progress) {
+    const hasEvidence = Boolean(evidence?.evidenceUrl || evidence?.driveWebViewLink || evidence?.driveFileId);
+    if (!hasEvidence) {
+      throw new Error('Bukti/evidence wajib dilampirkan untuk memperbarui progress program.');
+    }
+  }
+
+  await prisma.programKerjaProgressLog.create({
+    data: {
+      programId,
+      oldProgress: program.progress,
+      newProgress: clamped,
+      note: evidence?.note,
+      evidenceUrl: evidence?.evidenceUrl ?? null,
+      evidenceName: evidence?.evidenceName ?? null,
+      evidenceMime: evidence?.evidenceMime ?? null,
+      evidenceSize: evidence?.evidenceSize ?? null,
+      driveFileId: evidence?.driveFileId ?? null,
+      driveWebViewLink: evidence?.driveWebViewLink ?? null,
+      userId: actorId,
+    },
+  });
+
+  await prisma.programKerja.update({
+    where: { id: programId },
+    data: {
+      picProgress: clamped,
+      progress: clamped,
+      ...(evidence?.evidenceUrl ? { evidenceUrl: evidence.evidenceUrl } : {}),
+      ...(evidence?.evidenceName ? { evidenceName: evidence.evidenceName } : {}),
+      ...(evidence?.evidenceMime ? { evidenceMime: evidence.evidenceMime } : {}),
+      ...(evidence?.evidenceSize ? { evidenceSize: evidence.evidenceSize } : {}),
+      ...(evidence?.driveFileId ? { driveFileId: evidence.driveFileId } : {}),
+      ...(evidence?.driveWebViewLink ? { driveWebViewLink: evidence.driveWebViewLink } : {}),
+    },
+  });
+
+  await recordAuditLog({
+    userId: actorId,
+    action: 'UPDATE_PROGRAM_KERJA_PROGRESS',
+    entity: 'ProgramKerja',
+    entityId: programId,
+    metadata: { oldProgress: program.progress, newProgress: clamped, hasEvidence: Boolean(evidence?.driveFileId || evidence?.evidenceUrl) },
+  });
+
   return { success: true, progress: clamped };
 }

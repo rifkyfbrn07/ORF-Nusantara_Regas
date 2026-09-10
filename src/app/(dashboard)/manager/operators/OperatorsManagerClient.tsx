@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Plus, Edit2, Search, Power, Eye, CheckCircle, AlertCircle, X, Phone, Mail } from 'lucide-react';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { UserAvatar } from '@/components/ui/UserAvatar';
+import { Modal } from '@/components/ui/Modal';
 import { createOperatorAction, updateOperatorAction, toggleOperatorStatusAction } from '@/server/actions/operatorActions';
 import { useRouter } from 'next/navigation';
 
@@ -334,138 +335,135 @@ export function OperatorsManagerClient({
       </div>
 
       {/* Add / Edit Operator Modal */}
-      {showAddModal && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="anim-fade-up bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-[#DCE5EF] space-y-4 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between border-b border-[#F1F5F9] pb-3">
-              <h3 className="font-extrabold text-base text-[#092B57]">
-                {editingOperator ? 'Ubah Data Operator' : 'Tambah Operator Baru'}
-              </h3>
-              <button onClick={() => setShowAddModal(false)} className="text-[#5F718A] hover:text-[#092B57]">
-                <X className="h-5 w-5" />
-              </button>
+      <Modal
+        open={showAddModal}
+        onClose={() => setShowAddModal(false)}
+        title={editingOperator ? 'Ubah Data Operator' : 'Tambah Operator Baru'}
+        eyebrow="OPERATOR MANAGEMENT"
+        size="lg"
+        footer={
+          <div className="flex items-center justify-end gap-2 w-full">
+            <button
+              type="button"
+              onClick={() => setShowAddModal(false)}
+              className="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition cursor-pointer"
+            >
+              Batal
+            </button>
+            <button
+              form="operator-form"
+              type="submit"
+              disabled={loading}
+              className="px-5 py-2 text-xs font-bold bg-[#0B3568] hover:bg-[#092B57] text-white rounded-xl shadow-xs transition disabled:opacity-50 cursor-pointer"
+            >
+              {loading ? 'Menyimpan...' : 'Simpan Operator'}
+            </button>
+          </div>
+        }
+      >
+        {error && (
+          <div className="mb-4 p-3 bg-red-50 text-red-700 text-xs font-semibold rounded-xl flex items-center gap-2">
+            <AlertCircle className="h-4 w-4 shrink-0" />
+            <span>{error}</span>
+          </div>
+        )}
+
+        <form id="operator-form" onSubmit={handleSave} className="space-y-3.5">
+          <div>
+            <label className="text-xs font-bold text-slate-700 block mb-1">Nama Lengkap</label>
+            <input
+              type="text"
+              required
+              value={formData.name}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              placeholder="Contoh: Andi Pratama"
+              className="w-full px-3 py-2 text-xs bg-white border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:border-[#0B3568]"
+            />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-bold text-slate-700 block mb-1">Email</label>
+              <input
+                type="email"
+                required
+                disabled={!!editingOperator}
+                value={formData.email}
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                placeholder="operator@regas.pertamina.com"
+                className="w-full px-3 py-2 text-xs bg-white border border-slate-200 rounded-xl text-slate-900 focus:outline-none disabled:bg-slate-50 disabled:text-slate-400"
+              />
             </div>
 
-            {error && (
-              <div className="p-3 bg-red-50 text-red-700 text-xs font-semibold rounded-xl flex items-center gap-2">
-                <AlertCircle className="h-4 w-4 shrink-0" />
-                <span>{error}</span>
-              </div>
-            )}
-
-            <form onSubmit={handleSave} className="space-y-3.5">
-              <div>
-                <label className="text-xs font-bold text-[#132238] block mb-1">Nama Lengkap</label>
-                <input
-                  type="text"
-                  required
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  placeholder="Contoh: Andi Pratama"
-                  className="w-full px-3 py-2 text-xs bg-white border border-[#CBD7E6] rounded-xl text-[#132238] focus:outline-none focus:ring-2 focus:ring-[#1769AA]/20"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs font-bold text-[#132238] block mb-1">Email</label>
-                  <input
-                    type="email"
-                    required
-                    disabled={!!editingOperator}
-                    value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    placeholder="operator@regas.pertamina.com"
-                    className="w-full px-3 py-2 text-xs bg-white border border-[#CBD7E6] rounded-xl text-[#132238] focus:outline-none disabled:bg-slate-50 disabled:text-slate-400"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-xs font-bold text-[#132238] block mb-1">NIP (Employee ID)</label>
-                  <input
-                    type="text"
-                    required
-                    disabled={!!editingOperator}
-                    value={formData.employeeId}
-                    onChange={(e) => setFormData({ ...formData, employeeId: e.target.value })}
-                    placeholder="FO-OPR-101"
-                    className="w-full px-3 py-2 text-xs bg-white border border-[#CBD7E6] rounded-xl text-[#132238] focus:outline-none font-mono disabled:bg-slate-50 disabled:text-slate-400"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs font-bold text-[#132238] block mb-1">Posisi / Jabatan</label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.position}
-                    onChange={(e) => setFormData({ ...formData, position: e.target.value })}
-                    placeholder="Control Room Operator"
-                    className="w-full px-3 py-2 text-xs bg-white border border-[#CBD7E6] rounded-xl text-[#132238] focus:outline-none focus:ring-2 focus:ring-[#1769AA]/20"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-xs font-bold text-[#132238] block mb-1">Departemen</label>
-                  <select
-                    value={formData.departmentId}
-                    onChange={(e) => setFormData({ ...formData, departmentId: e.target.value })}
-                    className="w-full px-3 py-2 text-xs bg-white border border-[#CBD7E6] rounded-xl text-[#132238] focus:outline-none focus:ring-2 focus:ring-[#1769AA]/20"
-                  >
-                    {departments.map((d) => (
-                      <option key={d.id} value={d.id}>{d.name}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div>
-                <label className="text-xs font-bold text-[#132238] block mb-1">Nomor Telepon</label>
-                <input
-                  type="text"
-                  value={formData.phone}
-                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                  placeholder="+62 812-9876-1001"
-                  className="w-full px-3 py-2 text-xs bg-white border border-[#CBD7E6] rounded-xl text-[#132238] focus:outline-none font-mono"
-                />
-              </div>
-
-              <div>
-                <label className="text-xs font-bold text-[#132238] block mb-1">
-                  {editingOperator ? 'Reset Kata Sandi Baru (Opsional)' : 'Kata Sandi Awal'}
-                </label>
-                <input
-                  type="password"
-                  required={!editingOperator}
-                  value={formData.password}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  placeholder={editingOperator ? 'Kosongkan jika tidak diubah' : 'Minimal 6 karakter'}
-                  className="w-full px-3 py-2 text-xs bg-white border border-[#CBD7E6] rounded-xl text-[#132238] focus:outline-none"
-                />
-              </div>
-
-              <div className="flex items-center justify-end gap-2 pt-3 border-t border-[#F1F5F9]">
-                <button
-                  type="button"
-                  onClick={() => setShowAddModal(false)}
-                  className="px-4 py-2 text-xs font-bold text-[#5F718A] hover:bg-slate-100 rounded-xl transition cursor-pointer"
-                >
-                  Batal
-                </button>
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="px-5 py-2 text-xs font-bold bg-[#123E7A] hover:bg-[#092B57] text-white rounded-xl shadow-xs transition cursor-pointer"
-                >
-                  {loading ? 'Menyimpan...' : 'Simpan Operator'}
-                </button>
-              </div>
-            </form>
+            <div>
+              <label className="text-xs font-bold text-slate-700 block mb-1">NIP (Employee ID)</label>
+              <input
+                type="text"
+                required
+                disabled={!!editingOperator}
+                value={formData.employeeId}
+                onChange={(e) => setFormData({ ...formData, employeeId: e.target.value })}
+                placeholder="FO-OPR-101"
+                className="w-full px-3 py-2 text-xs bg-white border border-slate-200 rounded-xl text-slate-900 focus:outline-none font-mono disabled:bg-slate-50 disabled:text-slate-400"
+              />
+            </div>
           </div>
-        </div>
-      )}
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-bold text-slate-700 block mb-1">Posisi / Jabatan</label>
+              <input
+                type="text"
+                required
+                value={formData.position}
+                onChange={(e) => setFormData({ ...formData, position: e.target.value })}
+                placeholder="Control Room Operator"
+                className="w-full px-3 py-2 text-xs bg-white border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:border-[#0B3568]"
+              />
+            </div>
+
+            <div>
+              <label className="text-xs font-bold text-slate-700 block mb-1">Departemen</label>
+              <select
+                value={formData.departmentId}
+                onChange={(e) => setFormData({ ...formData, departmentId: e.target.value })}
+                className="w-full px-3 py-2 text-xs bg-white border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:border-[#0B3568]"
+              >
+                {departments.map((d) => (
+                  <option key={d.id} value={d.id}>
+                    {d.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label className="text-xs font-bold text-slate-700 block mb-1">Nomor Telepon</label>
+            <input
+              type="text"
+              value={formData.phone}
+              onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+              placeholder="+62 812-9876-1001"
+              className="w-full px-3 py-2 text-xs bg-white border border-slate-200 rounded-xl text-slate-900 focus:outline-none font-mono"
+            />
+          </div>
+
+          <div>
+            <label className="text-xs font-bold text-slate-700 block mb-1">
+              {editingOperator ? 'Reset Kata Sandi Baru (Opsional)' : 'Kata Sandi Awal'}
+            </label>
+            <input
+              type="password"
+              required={!editingOperator}
+              value={formData.password}
+              onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+              placeholder={editingOperator ? 'Kosongkan jika tidak diubah' : 'Minimal 6 karakter'}
+              className="w-full px-3 py-2 text-xs bg-white border border-slate-200 rounded-xl text-slate-900 focus:outline-none"
+            />
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }

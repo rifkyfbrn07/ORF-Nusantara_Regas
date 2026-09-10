@@ -581,12 +581,31 @@ async function main() {
     });
   }
 
-  // 11. Create Pending Shift Exchange Request
+  // 11. Create Pending Shift Exchange Request (OFF↔OFF)
+  const requesterOffSched = await prisma.schedule.create({
+    data: {
+      userId: createdOperators[1].id, // Budi Santoso
+      shiftId: shiftPagi.id,
+      locationId: locationOrf.id,
+      date: tomorrow,
+      status: ScheduleStatus.OFF,
+    },
+  });
+  const targetOffSched = await prisma.schedule.create({
+    data: {
+      userId: createdOperators[5].id, // Fajar Nugraha
+      shiftId: shiftPagi.id,
+      locationId: locationOrf.id,
+      date: tomorrow,
+      status: ScheduleStatus.OFF,
+    },
+  });
   await prisma.shiftExchange.create({
     data: {
       requesterId: createdOperators[1].id, // Budi Santoso
-      requesterScheduleId: schedBudi.id,
+      requesterScheduleId: requesterOffSched.id,
       targetUserId: createdOperators[5].id, // Fajar Nugraha
+      targetScheduleId: targetOffSched.id,
       targetDate: tomorrow,
       reason: 'Keperluan mendadak mengantar orang tua kontrol kesehatan di RS',
       status: RequestStatus.PENDING,

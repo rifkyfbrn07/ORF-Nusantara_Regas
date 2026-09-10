@@ -10,6 +10,11 @@ export interface SubmitLeaveParams {
   endDate: string;
   reason: string;
   attachmentUrl?: string;
+  attachmentName?: string;
+  attachmentMime?: string;
+  attachmentSize?: number;
+  driveFileId?: string;
+  driveWebViewLink?: string;
 }
 
 export interface ReviewLeaveParams {
@@ -26,8 +31,12 @@ export async function submitLeaveRequest(params: SubmitLeaveParams) {
 
   const user = await prisma.user.findUnique({
     where: { id: params.userId },
-    select: { name: true },
+    select: { name: true, employeeId: true, position: true, department: { select: { name: true } } },
   });
+
+  if (!user) {
+    throw new Error('Data karyawan/operator tidak ditemukan.');
+  }
 
   const request = await prisma.leaveRequest.create({
     data: {
@@ -36,16 +45,48 @@ export async function submitLeaveRequest(params: SubmitLeaveParams) {
       startDate: params.startDate,
       endDate: params.endDate,
       reason: params.reason,
-      attachmentUrl: params.attachmentUrl,
+      attachmentUrl: params.attachmentUrl || params.driveWebViewLink || null,
+      attachmentName: params.attachmentName || null,
+      attachmentMime: params.attachmentMime || null,
+      attachmentSize: params.attachmentSize || null,
+      driveFileId: params.driveFileId || null,
+      driveWebViewLink: params.driveWebViewLink || params.attachmentUrl || null,
+      uploadedAt: (params.attachmentUrl || params.driveFileId) ? new Date() : null,
       status: RequestStatus.PENDING,
+    },
+    include: {
+      user: {
+        select: {
+          id: true,
+          name: true,
+          employeeId: true,
+          username: true,
+          position: true,
+          department: true,
+        },
+      },
+    },
+  });
+
+  // Audit: pengajuan cuti + bukti upload
+  await recordAuditLog({
+    userId: params.userId,
+    action: 'SUBMIT_LEAVE_REQUEST',
+    entity: 'LeaveRequest',
+    entityId: request.id,
+    metadata: {
+      type: params.type,
+      startDate: params.startDate,
+      endDate: params.endDate,
+      hasProof: Boolean(request.driveFileId || request.attachmentUrl),
     },
   });
 
   // Notify Managers
   await notifyAllManagers(
     'LEAVE_STATUS',
-    `Pengajuan ${params.type}: ${user?.name || 'Operator'}`,
-    `Operator ${user?.name} mengajukan ${params.type} untuk periode ${params.startDate} s/d ${params.endDate}.`,
+    `Pengajuan ${params.type}: ${user.name}`,
+    `Operator ${user.name} (${user.employeeId}) mengajukan ${params.type} untuk periode ${params.startDate} s/d ${params.endDate}.${request.driveFileId ? ' Bukti surat tersedia.' : ''}`,
     '/manager/requests'
   );
 
@@ -110,6 +151,16 @@ export async function getOperatorLeaveRequests(userId: string) {
       reviewedBy: {
         select: { name: true, position: true },
       },
+      user: {
+        select: {
+          id: true,
+          name: true,
+          username: true,
+          employeeId: true,
+          position: true,
+          department: true,
+        },
+      },
     },
   });
 }
@@ -124,6 +175,7 @@ export async function getAllLeaveRequests(status?: RequestStatus) {
         select: {
           id: true,
           name: true,
+          username: true,
           employeeId: true,
           position: true,
           avatarUrl: true,
@@ -132,10 +184,56 @@ export async function getAllLeaveRequests(status?: RequestStatus) {
       },
       reviewedBy: {
         select: {
+          id: true,
           name: true,
           position: true,
         },
       },
     },
+  });
+}
+
+/**
+ * Searches active employees by Name, Username, or Employee ID (NIP)
+ */
+export async function searchEmployeesForLeave(query: string, limit = 10) {
+  const trimmed = query.trim();
+  if (!trimmed) {
+    return prisma.user.findMany({
+      where: { isActive: true },
+      take: limit,
+      select: {
+        id: true,
+        name: true,
+        username: true,
+        employeeId: true,
+        position: true,
+        role: true,
+        department: { select: { id: true, name: true } },
+      },
+      orderBy: { name: 'asc' },
+    });
+  }
+
+  return prisma.user.findMany({
+    where: {
+      isActive: true,
+      OR: [
+        { name: { contains: trimmed, mode: 'insensitive' } },
+        { username: { contains: trimmed, mode: 'insensitive' } },
+        { employeeId: { contains: trimmed, mode: 'insensitive' } },
+      ],
+    },
+    take: limit,
+    select: {
+      id: true,
+      name: true,
+      username: true,
+      employeeId: true,
+      position: true,
+      role: true,
+      department: { select: { id: true, name: true } },
+    },
+    orderBy: { name: 'asc' },
   });
 }

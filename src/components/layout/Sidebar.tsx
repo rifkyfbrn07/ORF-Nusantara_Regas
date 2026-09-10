@@ -276,7 +276,7 @@ export function Sidebar({
         >
           <div className="relative shrink-0 flex items-center">
             <Image
-              src="/images/regas-.png"
+              src="/regas-.png"
               alt="Pertamina Nusantara Regas"
               width={90}
               height={28}

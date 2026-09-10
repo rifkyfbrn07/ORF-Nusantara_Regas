@@ -99,9 +99,10 @@ model Department {
   name        String   @unique
   code        String   @unique
   description String?
-  users       User[]
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  users                  User[]
+  operationalReports     OperationalReport[]
+  createdAt              DateTime            @default(now())
+  updatedAt              DateTime            @updatedAt
 }
 
 model Location {
@@ -133,35 +134,37 @@ model Shift {
 }
 
 model User {
-  id                     String          @id @default(cuid())
-  employeeId             String          @unique
-  username               String          @unique
+  id                     String              @id @default(cuid())
+  employeeId             String              @unique
+  username               String              @unique
   name                   String
-  email                  String?         @unique
+  email                  String?             @unique
   passwordHash           String
-  role                   Role            @default(OPERATOR)
+  role                   Role                @default(OPERATOR)
   position               String
   phone                  String?
   avatarUrl              String?
-  isActive               Boolean         @default(true)
+  isActive               Boolean             @default(true)
   departmentId           String?
-  department             Department?     @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  department             Department?         @relation(fields: [departmentId], references: [id], onDelete: SetNull)
   schedules              Schedule[]
   attendances            Attendance[]
-  leaveRequests          LeaveRequest[]  @relation("OperatorLeaves")
-  reviewedLeaves         LeaveRequest[]  @relation("ManagerReviewedLeaves")
-  requestedExchanges     ShiftExchange[] @relation("RequesterExchanges")
-  targetExchanges        ShiftExchange[] @relation("TargetExchanges")
-  reviewedExchanges      ShiftExchange[] @relation("ManagerReviewedExchanges")
-  outgoingHandovers      Handover[]      @relation("OutgoingHandovers")
-  incomingHandovers      Handover[]      @relation("IncomingHandovers")
+  leaveRequests          LeaveRequest[]      @relation("OperatorLeaves")
+  reviewedLeaves         LeaveRequest[]      @relation("ManagerReviewedLeaves")
+  requestedExchanges     ShiftExchange[]     @relation("RequesterExchanges")
+  targetExchanges        ShiftExchange[]     @relation("TargetExchanges")
+  reviewedExchanges      ShiftExchange[]     @relation("ManagerReviewedExchanges")
+  outgoingHandovers      Handover[]          @relation("OutgoingHandovers")
+  incomingHandovers      Handover[]          @relation("IncomingHandovers")
   hsseChecklists         HSSEChecklist[]
   notifications          Notification[]
   auditLogs              AuditLog[]
-  picPrograms            ProgramKerja[]  @relation("ProgramKerjaPic")
-  createdAnnouncements   Announcement[]  @relation("CreatedAnnouncements")
-  createdAt              DateTime        @default(now())
-  updatedAt              DateTime        @updatedAt
+  picPrograms            ProgramKerja[]      @relation("ProgramKerjaPic")
+  programProgressLogs    ProgramKerjaProgressLog[] @relation("ProgramKerjaProgressActors")
+  createdAnnouncements   Announcement[]      @relation("CreatedAnnouncements")
+  uploadedReports        OperationalReport[] @relation("UploadedReports")
+  createdAt              DateTime            @default(now())
+  updatedAt              DateTime            @updatedAt
 
   @@index([email])
   @@index([employeeId])
@@ -181,6 +184,7 @@ model Schedule {
   notes              String?
   attendances        Attendance[]
   requesterExchanges ShiftExchange[] @relation("RequesterSchedule")
+  targetExchanges    ShiftExchange[] @relation("TargetSchedule")
   createdAt          DateTime        @default(now())
   updatedAt          DateTime        @updatedAt
 
@@ -216,21 +220,27 @@ model Attendance {
 }
 
 model LeaveRequest {
-  id            String        @id @default(cuid())
-  userId        String
-  user          User          @relation("OperatorLeaves", fields: [userId], references: [id], onDelete: Cascade)
-  type          LeaveType     @default(LEAVE)
-  startDate     String
-  endDate       String
-  reason        String
-  attachmentUrl String?
-  status        RequestStatus @default(PENDING)
-  reviewedById  String?
-  reviewedBy    User?         @relation("ManagerReviewedLeaves", fields: [reviewedById], references: [id])
-  reviewedAt    DateTime?
-  reviewerNote  String?
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+  id               String        @id @default(cuid())
+  userId           String
+  user             User          @relation("OperatorLeaves", fields: [userId], references: [id], onDelete: Cascade)
+  type             LeaveType     @default(LEAVE)
+  startDate        String
+  endDate          String
+  reason           String
+  attachmentUrl    String?
+  attachmentName   String?
+  attachmentMime   String?
+  attachmentSize   Int?
+  driveFileId      String?
+  driveWebViewLink String?
+  uploadedAt       DateTime?
+  status           RequestStatus @default(PENDING)
+  reviewedById     String?
+  reviewedBy       User?         @relation("ManagerReviewedLeaves", fields: [reviewedById], references: [id])
+  reviewedAt       DateTime?
+  reviewerNote     String?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
 
   @@index([userId, status])
   @@index([startDate, endDate])
@@ -245,8 +255,18 @@ model ShiftExchange {
   requesterSchedule   Schedule      @relation("RequesterSchedule", fields: [requesterScheduleId], references: [id], onDelete: Cascade)
   targetUserId        String
   targetUser          User          @relation("TargetExchanges", fields: [targetUserId], references: [id], onDelete: Cascade)
+  targetScheduleId    String
+  targetSchedule      Schedule      @relation("TargetSchedule", fields: [targetScheduleId], references: [id], onDelete: Cascade)
   targetDate          String
   reason              String
+  attachmentUrl       String?
+  attachmentName      String?
+  attachmentMime      String?
+  attachmentSize      Int?
+  driveFileId         String?
+  driveWebViewLink    String?
+  uploadedAt          DateTime?
+  targetAcceptedAt    DateTime?
   status              RequestStatus @default(PENDING)
   reviewedById        String?
   reviewedBy          User?         @relation("ManagerReviewedExchanges", fields: [reviewedById], references: [id])
@@ -369,25 +389,32 @@ model AuditLog {
 }
 
 model ProgramKerja {
-  id          String             @id @default(cuid())
-  year        Int
-  category    ProgramCategory
-  sequence    Int
-  name        String
-  plan        String?
-  realization String?
-  planTarget  Int                @default(100)
-  progress    Int                @default(0)
-  status      ProgramStatus      @default(PLAN)
-  notes       String?
-  deadline    DateTime?
-  picId       String?
-  pic         User?              @relation("ProgramKerjaPic", fields: [picId], references: [id], onDelete: SetNull)
-  picProgress Int                @default(0)
-  tasks       ProgramKerjaTask[]
-  months      ProgramKerjaMonth[]
-  createdAt   DateTime           @default(now())
-  updatedAt   DateTime           @updatedAt
+  id              String                  @id @default(cuid())
+  year            Int
+  category        ProgramCategory
+  sequence        Int
+  name            String
+  plan            String?
+  realization     String?
+  planTarget      Int                     @default(100)
+  progress        Int                     @default(0)
+  status          ProgramStatus           @default(PLAN)
+  notes           String?
+  deadline        DateTime?
+  picId           String?
+  pic             User?                   @relation("ProgramKerjaPic", fields: [picId], references: [id], onDelete: SetNull)
+  picProgress     Int                     @default(0)
+  evidenceUrl     String?
+  evidenceName    String?
+  evidenceMime    String?
+  evidenceSize    Int?
+  driveFileId     String?
+  driveWebViewLink String?
+  tasks           ProgramKerjaTask[]
+  months          ProgramKerjaMonth[]
+  progressLogs    ProgramKerjaProgressLog[]
+  createdAt       DateTime                @default(now())
+  updatedAt       DateTime                @updatedAt
 
   @@unique([year, category, name])
   @@index([year])
@@ -411,6 +438,27 @@ model ProgramKerjaTask {
   @@index([programId])
 }
 
+model ProgramKerjaProgressLog {
+  id                String       @id @default(cuid())
+  programId         String
+  program           ProgramKerja @relation(fields: [programId], references: [id], onDelete: Cascade)
+  oldProgress       Int          @default(0)
+  newProgress       Int          @default(0)
+  note              String?
+  evidenceUrl       String?
+  evidenceName      String?
+  evidenceMime      String?
+  evidenceSize      Int?
+  driveFileId       String?
+  driveWebViewLink  String?
+  userId            String
+  user              User         @relation("ProgramKerjaProgressActors", fields: [userId], references: [id], onDelete: Cascade)
+  createdAt         DateTime     @default(now())
+
+  @@index([programId])
+  @@index([userId])
+}
+
 model ProgramKerjaMonth {
   id          String      @id @default(cuid())
   programId   String
@@ -425,4 +473,28 @@ model ProgramKerjaMonth {
   @@unique([programId, month, week])
   @@index([programId, month])
   @@index([month])
+}
+
+model OperationalReport {
+  id               String      @id @default(cuid())
+  title            String
+  reportType       String      // e.g. 'HARIAN', 'DISTRIBUSI_GAS', 'HSSE', 'MAINTENANCE', 'BULANAN'
+  periodDate       String      // YYYY-MM-DD
+  departmentId     String?
+  department       Department? @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  description      String?
+  attachmentUrl    String?
+  attachmentName   String?
+  attachmentMime   String?
+  attachmentSize   Int?
+  driveFileId      String?
+  driveWebViewLink String?
+  uploadedById     String
+  uploadedBy       User        @relation("UploadedReports", fields: [uploadedById], references: [id], onDelete: Cascade)
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+
+  @@index([reportType])
+  @@index([periodDate])
+  @@index([uploadedById])
 }

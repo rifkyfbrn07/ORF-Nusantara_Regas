@@ -41,11 +41,11 @@ export default function LoginPage() {
 
   return (
     <div className="relative min-h-screen w-full flex items-center justify-center overflow-hidden bg-[#08243F]">
-      {/* Background full area: /images/bg.svg + overlay + visual FSRU */}
+      {/* Background full area: /Background.svg + overlay + visual FSRU */}
       <div className="absolute inset-0 z-0">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src="/images/bg.svg"
+          src="/Background.svg"
           alt="Terminal LNG — Distribusi Gas & ORF"
           className="h-full w-full object-cover object-center"
         />
@@ -60,11 +60,13 @@ export default function LoginPage() {
         <div className="bg-white rounded-2xl p-7 sm:p-8 shadow-2xl border border-white/90 text-[#1E293B]">
           {/* Brand Header — Distribusi Gas & ORF */}
           <div className="flex flex-col items-center text-center">
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#0B3568] mb-2.5 shadow-md shadow-[#0B3568]/25">
-              <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" aria-hidden="true">
-                <path d="M12 2L4 6v6c0 5 3.4 8.6 8 10 4.6-1.4 8-5 8-10V6l-8-4z" fill="#E1251B" opacity="0.9" />
-                <path d="M12 6.5l-4 2v3.6c0 2.9 1.9 5 4 5.9 2.1-.9 4-3 4-5.9V8.5l-4-2z" fill="#ffffff" opacity="0.95" />
-              </svg>
+            <div className="mb-2.5">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/regas-.png"
+                alt="Pertamina Nusantara Regas"
+                className="h-12 w-auto object-contain"
+              />
             </div>
 
             <h1 className="text-lg sm:text-xl font-black tracking-tight text-[#0B3568] leading-tight">

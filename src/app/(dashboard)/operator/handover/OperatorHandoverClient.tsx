@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { Plus, CheckCircle2, AlertCircle, Send, Check, X, ArrowRight } from 'lucide-react';
 import { StatusBadge } from '@/components/ui/StatusBadge';
+import { Modal } from '@/components/ui/Modal';
 import { saveHandoverAction, acknowledgeHandoverAction } from '@/server/actions/handoverActions';
 import { useRouter } from 'next/navigation';
 
@@ -184,139 +185,151 @@ export function OperatorHandoverClient({
         )}
       </div>
 
-      {showModal && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4 backdrop-blur-xs">
-          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-[#DCE6F2] space-y-4 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between border-b border-[#F1F5F9] pb-3">
-              <h3 className="font-black text-base text-[#0F2F63]">
-                Formulir Serah Terima Shift (Handover)
-              </h3>
-              <button onClick={() => setShowModal(false)} className="text-[#64748B] hover:text-[#172033]">
-                <X className="h-5 w-5" />
-              </button>
+      {/* Handover Modal */}
+      <Modal
+        open={showModal}
+        onClose={() => setShowModal(false)}
+        title="Formulir Serah Terima Shift (Handover)"
+        eyebrow="SHIFT LOG & CONTINUITY"
+        size="lg"
+        footer={
+          <div className="flex items-center justify-end gap-2 w-full">
+            <button
+              type="button"
+              onClick={() => setShowModal(false)}
+              className="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition cursor-pointer"
+            >
+              Batal
+            </button>
+            <button
+              form="handover-form"
+              type="submit"
+              disabled={loading}
+              className="px-5 py-2 text-xs font-bold bg-[#0B3568] hover:bg-[#092B57] text-white rounded-xl shadow-xs transition flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
+            >
+              <Send className="h-3.5 w-3.5" />
+              <span>{loading ? 'Menyerahkan...' : 'Serahkan Handover'}</span>
+            </button>
+          </div>
+        }
+      >
+        {error && (
+          <div className="mb-4 p-3 bg-red-50 text-red-700 text-xs font-semibold rounded-xl flex items-center gap-2">
+            <AlertCircle className="h-4 w-4 shrink-0" />
+            <span>{error}</span>
+          </div>
+        )}
+
+        <form id="handover-form" onSubmit={handleSubmit} className="space-y-3.5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-bold text-slate-700 block mb-1">Tanggal</label>
+              <input
+                type="date"
+                required
+                value={formData.date}
+                onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                className="w-full px-3 py-2 text-xs bg-white border border-slate-200 rounded-xl focus:outline-none focus:border-[#0B3568] font-mono"
+              />
             </div>
 
-            {error && (
-              <div className="p-3 bg-red-50 text-red-700 text-xs font-semibold rounded-xl flex items-center gap-2">
-                <AlertCircle className="h-4 w-4 shrink-0" />
-                <span>{error}</span>
-              </div>
-            )}
-
-            <form onSubmit={handleSubmit} className="space-y-3.5">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs font-bold text-[#172033] block mb-1">Tanggal</label>
-                  <input
-                    type="date"
-                    required
-                    value={formData.date}
-                    onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                    className="field w-full text-xs"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-xs font-bold text-[#172033] block mb-1">Shift</label>
-                  <select
-                    value={formData.shiftId}
-                    onChange={(e) => setFormData({ ...formData, shiftId: e.target.value })}
-                    className="field w-full text-xs"
-                  >
-                    {shifts.map((s) => (
-                      <option key={s.id} value={s.id}>{s.name}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div>
-                <label className="text-xs font-bold text-[#172033] block mb-1">
-                  Operator Penerima Handover (Incoming)
-                </label>
-                <select
-                  value={formData.incomingOperatorId}
-                  onChange={(e) => setFormData({ ...formData, incomingOperatorId: e.target.value })}
-                  className="field w-full text-xs"
-                >
-                  {peerOperators.map((op) => (
-                    <option key={op.id} value={op.id}>{op.name} ({op.employeeId})</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="text-xs font-bold text-[#172033] block mb-1">
-                  Catatan Operasional Lapangan / Control Room
-                </label>
-                <textarea
-                  required
-                  rows={3}
-                  value={formData.operationalNotes}
-                  onChange={(e) => setFormData({ ...formData, operationalNotes: e.target.value })}
-                  placeholder="Flow rate gas, tekanan inlet/outlet, scrubber, slug catcher..."
-                  className="field w-full text-xs"
-                />
-              </div>
-
-              <div>
-                <label className="text-xs font-bold text-[#172033] block mb-1">
-                  Status Peralatan & Mesin Kompresor
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={formData.equipmentStatus}
-                  onChange={(e) => setFormData({ ...formData, equipmentStatus: e.target.value })}
-                  className="field w-full text-xs"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs font-bold text-[#172033] block mb-1">Isu / Anomali (Opsional)</label>
-                  <input
-                    type="text"
-                    value={formData.issues}
-                    onChange={(e) => setFormData({ ...formData, issues: e.target.value })}
-                    placeholder="Misal: Kalibrasi transmitter..."
-                    className="field w-full text-xs"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-xs font-bold text-[#172033] block mb-1">Tugas Tertunda (Opsional)</label>
-                  <input
-                    type="text"
-                    value={formData.pendingTasks}
-                    onChange={(e) => setFormData({ ...formData, pendingTasks: e.target.value })}
-                    placeholder="Misal: Cek filter F-102..."
-                    className="field w-full text-xs"
-                  />
-                </div>
-              </div>
-
-              <div className="flex items-center justify-end gap-2 pt-3 border-t border-[#F1F5F9]">
-                <button
-                  type="button"
-                  onClick={() => setShowModal(false)}
-                  className="button-secondary text-xs"
-                >
-                  Batal
-                </button>
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="button-primary text-xs flex items-center gap-1.5 cursor-pointer"
-                >
-                  <Send className="h-3.5 w-3.5" />
-                  <span>{loading ? 'Menyerahkan...' : 'Serahkan Handover'}</span>
-                </button>
-              </div>
-            </form>
+            <div>
+              <label className="text-xs font-bold text-slate-700 block mb-1">Shift</label>
+              <select
+                value={formData.shiftId}
+                onChange={(e) => setFormData({ ...formData, shiftId: e.target.value })}
+                className="w-full px-3 py-2 text-xs bg-white border border-slate-200 rounded-xl focus:outline-none focus:border-[#0B3568]"
+              >
+                {shifts.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
-        </div>
-      )}
+
+          <div>
+            <label className="text-xs font-bold text-slate-700 block mb-1">
+              Operator Penerima Handover (Incoming)
+            </label>
+            <select
+              value={formData.incomingOperatorId}
+              onChange={(e) =>
+                setFormData({ ...formData, incomingOperatorId: e.target.value })
+              }
+              className="w-full px-3 py-2 text-xs bg-white border border-slate-200 rounded-xl focus:outline-none focus:border-[#0B3568]"
+            >
+              {peerOperators.map((op) => (
+                <option key={op.id} value={op.id}>
+                  {op.name} ({op.employeeId})
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="text-xs font-bold text-slate-700 block mb-1">
+              Catatan Operasional Lapangan / Control Room
+            </label>
+            <textarea
+              required
+              rows={3}
+              value={formData.operationalNotes}
+              onChange={(e) =>
+                setFormData({ ...formData, operationalNotes: e.target.value })
+              }
+              placeholder="Flow rate gas, tekanan inlet/outlet, scrubber, slug catcher..."
+              className="w-full px-3 py-2 text-xs bg-white border border-slate-200 rounded-xl focus:outline-none focus:border-[#0B3568]"
+            />
+          </div>
+
+          <div>
+            <label className="text-xs font-bold text-slate-700 block mb-1">
+              Status Peralatan &amp; Mesin Kompresor
+            </label>
+            <input
+              type="text"
+              required
+              value={formData.equipmentStatus}
+              onChange={(e) =>
+                setFormData({ ...formData, equipmentStatus: e.target.value })
+              }
+              className="w-full px-3 py-2 text-xs bg-white border border-slate-200 rounded-xl focus:outline-none focus:border-[#0B3568]"
+            />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-bold text-slate-700 block mb-1">
+                Isu / Anomali (Opsional)
+              </label>
+              <input
+                type="text"
+                value={formData.issues}
+                onChange={(e) => setFormData({ ...formData, issues: e.target.value })}
+                placeholder="Misal: Kalibrasi transmitter..."
+                className="w-full px-3 py-2 text-xs bg-white border border-slate-200 rounded-xl focus:outline-none focus:border-[#0B3568]"
+              />
+            </div>
+
+            <div>
+              <label className="text-xs font-bold text-slate-700 block mb-1">
+                Tugas Tertunda (Opsional)
+              </label>
+              <input
+                type="text"
+                value={formData.pendingTasks}
+                onChange={(e) =>
+                  setFormData({ ...formData, pendingTasks: e.target.value })
+                }
+                placeholder="Misal: Cek filter F-102..."
+                className="w-full px-3 py-2 text-xs bg-white border border-slate-200 rounded-xl focus:outline-none focus:border-[#0B3568]"
+              />
+            </div>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }

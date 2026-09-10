@@ -39,3 +39,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# runtime file uploads (local fallback storage for Google Drive)
+/public/uploads/

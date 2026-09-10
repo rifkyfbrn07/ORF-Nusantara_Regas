@@ -1,25 +1,40 @@
 'use server';
 
 import { requireAuth, requireRole } from '@/lib/auth/session';
-import { submitLeaveRequest, reviewLeaveRequest } from '../services/leaveService';
+import { submitLeaveRequest, reviewLeaveRequest, searchEmployeesForLeave } from '../services/leaveService';
 import { leaveRequestSchema, reviewLeaveSchema, LeaveRequestInput } from '@/lib/validation';
 import { revalidatePath } from 'next/cache';
 
 export async function submitLeaveAction(input: LeaveRequestInput) {
   try {
-    const user = await requireAuth();
+    const currentUser = await requireAuth();
     const parse = leaveRequestSchema.safeParse(input);
     if (!parse.success) {
       return { success: false, error: parse.error.issues[0]?.message };
     }
 
+    let finalUserId = currentUser.id;
+
+    // If submitting on behalf of another employee
+    if (parse.data.targetUserId && parse.data.targetUserId !== currentUser.id) {
+      if (currentUser.role !== 'ADMIN' && currentUser.role !== 'MANAGER') {
+        return { success: false, error: 'Anda tidak memiliki izin untuk mengajukan cuti atas nama operator lain.' };
+      }
+      finalUserId = parse.data.targetUserId;
+    }
+
     const request = await submitLeaveRequest({
-      userId: user.id,
+      userId: finalUserId,
       type: parse.data.type,
       startDate: parse.data.startDate,
       endDate: parse.data.endDate,
       reason: parse.data.reason,
       attachmentUrl: parse.data.attachmentUrl,
+      attachmentName: parse.data.attachmentName,
+      attachmentMime: parse.data.attachmentMime,
+      attachmentSize: parse.data.attachmentSize,
+      driveFileId: parse.data.driveFileId,
+      driveWebViewLink: parse.data.driveWebViewLink,
     });
 
     revalidatePath('/operator/requests');
@@ -29,6 +44,16 @@ export async function submitLeaveAction(input: LeaveRequestInput) {
     return { success: true, request };
   } catch (error: unknown) {
     return { success: false, error: error instanceof Error ? error.message : 'Gagal mengajukan permohonan cuti/izin.' };
+  }
+}
+
+export async function searchEmployeesAction(query: string) {
+  try {
+    await requireRole(['MANAGER', 'ADMIN']);
+    const results = await searchEmployeesForLeave(query, 12);
+    return { success: true, data: results };
+  } catch (error: unknown) {
+    return { success: false, error: error instanceof Error ? error.message : 'Gagal mencari data karyawan.', data: [] };
   }
 }
 

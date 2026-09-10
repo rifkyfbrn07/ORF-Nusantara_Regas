@@ -94,12 +94,34 @@ export async function setTaskDoneAction(input: { taskId: string; isDone: boolean
   }
 }
 
-export async function updatePicProgressAction(input: { programId: string; progress: number }) {
+export async function updatePicProgressAction(input: {
+  programId: string;
+  progress: number;
+  note?: string;
+  evidenceUrl?: string;
+  evidenceName?: string;
+  evidenceMime?: string;
+  evidenceSize?: number;
+  driveFileId?: string;
+  driveWebViewLink?: string;
+}) {
   try {
     const user = await requireRole(['ADMIN', 'MANAGER', 'OPERATOR']);
+<<<<<<< HEAD
     const parsedProgress = programKerjaProgressSchema.safeParse(input.progress);
     if (!parsedProgress.success) return { success: false as const, error: parsedProgress.error.issues[0]?.message || 'Progress harus 0–100%.' };
     const result = await updatePicProgress(input.programId, parsedProgress.data, user.id, user.role);
+=======
+    const result = await updatePicProgress(input.programId, input.progress, user.id, user.role, {
+      note: input.note,
+      evidenceUrl: input.evidenceUrl,
+      evidenceName: input.evidenceName,
+      evidenceMime: input.evidenceMime,
+      evidenceSize: input.evidenceSize,
+      driveFileId: input.driveFileId,
+      driveWebViewLink: input.driveWebViewLink,
+    });
+>>>>>>> ea15c98 (ini ketinggalan)
     revalidateProgramKerja();
     return { success: true as const, progress: result.progress };
   } catch (error: unknown) {

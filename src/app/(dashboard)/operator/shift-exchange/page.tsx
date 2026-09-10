@@ -1,48 +1,39 @@
 import React from 'react';
 import { requireAuth } from '@/lib/auth/session';
-import { prisma } from '@/lib/db/prisma';
-import { getOperatorShiftExchanges } from '@/server/services/shiftExchangeService';
-import { getOperatorSchedules } from '@/server/services/scheduleService';
-import { formatJakartaDate } from '@/lib/time';
+import { getOperatorShiftExchanges, getMyOffCalendar } from '@/server/services/shiftExchangeService';
 import { OperatorShiftExchangeClient } from './OperatorShiftExchangeClient';
 
 export default async function OperatorShiftExchangePage() {
   const user = await requireAuth();
-  const today = formatJakartaDate();
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth() + 1;
 
-  const [exchanges, mySchedules, peerOperators] = await Promise.all([
+  const [exchanges, myCalendar] = await Promise.all([
     getOperatorShiftExchanges(user.id),
-    getOperatorSchedules(user.id, today, 14),
-    prisma.user.findMany({
-      where: {
-        role: 'OPERATOR',
-        isActive: true,
-        id: { not: user.id },
-      },
-      select: { id: true, name: true, employeeId: true, position: true },
-      orderBy: { name: 'asc' },
-    }),
+    getMyOffCalendar(user.id, year, month),
   ]);
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
       <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
         <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-          Peer Shift Swap Request
+          Tukar Hari OFF — Antar Operator
         </span>
         <h1 className="text-2xl font-black text-slate-900 tracking-tight mt-1">
-          Permohonan Pergantian Shift
+          Tukar Hari OFF
         </h1>
         <p className="text-xs text-slate-500 mt-0.5">
-          Ajukan permohonan pertukaran giliran shift kerja dengan rekan sesama operator lapangan
+          Pertukaran hari OFF dengan rekan operator: OFF ditukar dengan OFF — setiap operator tetap mendapat jatah OFF.
         </p>
       </div>
 
       <OperatorShiftExchangeClient
         initialExchanges={exchanges}
-        mySchedules={mySchedules}
-        peerOperators={peerOperators}
-        today={today}
+        initialCalendar={myCalendar}
+        currentUserId={user.id}
+        initialYear={year}
+        initialMonth={month}
       />
     </div>
   );

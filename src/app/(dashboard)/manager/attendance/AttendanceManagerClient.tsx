@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { UserAvatar } from '@/components/ui/UserAvatar';
+import { Modal } from '@/components/ui/Modal';
 import { formatJakartaTime } from '@/lib/time';
 import { manualCorrectionAction } from '@/server/actions/attendanceActions';
 
@@ -459,152 +460,137 @@ export function AttendanceManagerClient({
         </div>
       </div>
 
-      {/* 4. Standardized Correction Modal (Sticky Header, Scrollable Body, Sticky Footer) */}
-      {showCorrectionModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-3 sm:p-4 anim-fade">
-          <div className="bg-white rounded-2xl max-w-lg w-full shadow-2xl border border-slate-200 flex flex-col max-h-[calc(100vh-32px)] overflow-hidden">
-            {/* Modal Header */}
-            <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-white shrink-0">
-              <div className="flex items-center gap-2">
-                <Edit3 className="h-4.5 w-4.5 text-[#0066B3]" />
-                <h3 className="font-extrabold text-sm sm:text-base text-[#0F315A]">
-                  {selectedRecord ? 'Koreksi Data Absensi Operator' : 'Input Absensi Manual'}
-                </h3>
-              </div>
-              <button
-                onClick={() => setShowCorrectionModal(false)}
-                className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition cursor-pointer"
-              >
-                <X className="h-5 w-5" />
-              </button>
+      {/* 4. Standardized Correction Modal using Modal.tsx */}
+      <Modal
+        open={showCorrectionModal}
+        onClose={() => setShowCorrectionModal(false)}
+        title={selectedRecord ? 'Koreksi Data Absensi Operator' : 'Input Absensi Manual'}
+        eyebrow="ATTENDANCE SUPERVISION"
+        size="lg"
+        footer={
+          <div className="flex items-center justify-end gap-2 w-full">
+            <button
+              type="button"
+              onClick={() => setShowCorrectionModal(false)}
+              className="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition cursor-pointer"
+            >
+              Batal
+            </button>
+            <button
+              type="submit"
+              form="correction-form"
+              disabled={loading}
+              className="px-5 py-2 text-xs font-bold bg-[#0B3568] hover:bg-[#092B57] text-white rounded-xl shadow-xs transition disabled:opacity-50 cursor-pointer"
+            >
+              {loading ? 'Menyimpan...' : 'Simpan Koreksi'}
+            </button>
+          </div>
+        }
+      >
+        {error && (
+          <div className="mb-4 p-3 bg-red-50 text-red-700 text-xs font-semibold rounded-xl flex items-center gap-2 border border-red-200">
+            <AlertCircle className="h-4 w-4 shrink-0" />
+            <span>{error}</span>
+          </div>
+        )}
+
+        <form id="correction-form" onSubmit={handleSubmitCorrection} className="space-y-4">
+          <div>
+            <label className="text-xs font-bold text-slate-700 block mb-1">Operator</label>
+            <select
+              disabled={!!selectedRecord}
+              value={formData.userId}
+              onChange={(e) => setFormData({ ...formData, userId: e.target.value })}
+              className="w-full px-3 py-2 text-xs bg-white border border-slate-200 rounded-xl focus:outline-none focus:border-[#0B3568] font-medium disabled:bg-slate-50 disabled:text-slate-500"
+            >
+              {operators.map((op) => (
+                <option key={op.id} value={op.id}>
+                  {op.name} ({op.employeeId})
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-bold text-slate-700 block mb-1">Tanggal</label>
+              <input
+                type="date"
+                required
+                disabled={!!selectedRecord}
+                value={formData.date}
+                onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                className="w-full px-3 py-2 text-xs bg-white border border-slate-200 rounded-xl focus:outline-none focus:border-[#0B3568] font-bold font-mono disabled:bg-slate-50 disabled:text-slate-500"
+              />
             </div>
 
-            {/* Modal Body */}
-            <form id="correction-form" onSubmit={handleSubmitCorrection} className="p-5 space-y-4 overflow-y-auto flex-1">
-              {error && (
-                <div className="p-3 bg-red-50 text-red-700 text-xs font-semibold rounded-xl flex items-center gap-2 border border-red-200">
-                  <AlertCircle className="h-4 w-4 shrink-0" />
-                  <span>{error}</span>
-                </div>
-              )}
-
-              <div>
-                <label className="text-xs font-bold text-[#0F172A] block mb-1">Operator</label>
-                <select
-                  disabled={!!selectedRecord}
-                  value={formData.userId}
-                  onChange={(e) => setFormData({ ...formData, userId: e.target.value })}
-                  className="w-full px-3 py-2 text-xs bg-[#F8FAFC] border border-slate-200 rounded-xl focus:outline-none font-medium"
-                >
-                  {operators.map((op) => (
-                    <option key={op.id} value={op.id}>
-                      {op.name} ({op.employeeId})
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs font-bold text-[#0F172A] block mb-1">Tanggal</label>
-                  <input
-                    type="date"
-                    required
-                    disabled={!!selectedRecord}
-                    value={formData.date}
-                    onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                    className="w-full px-3 py-2 text-xs bg-[#F8FAFC] border border-slate-200 rounded-xl focus:outline-none font-bold font-mono"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-xs font-bold text-[#0F172A] block mb-1">Status Kehadiran</label>
-                  <select
-                    value={formData.status}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        status: e.target.value as
-                          | 'HADIR'
-                          | 'TERLAMBAT'
-                          | 'BELUM_ABSEN'
-                          | 'ABSENT'
-                          | 'IZIN'
-                          | 'CUTI'
-                          | 'SAKIT',
-                      })
-                    }
-                    className="w-full px-3 py-2 text-xs bg-[#F8FAFC] border border-slate-200 rounded-xl focus:outline-none font-bold text-[#0F172A]"
-                  >
-                    <option value="HADIR">HADIR</option>
-                    <option value="TERLAMBAT">TERLAMBAT</option>
-                    <option value="BELUM_ABSEN">BELUM ABSEN</option>
-                    <option value="ABSENT">ABSENT / MANGKIR</option>
-                    <option value="IZIN">IZIN</option>
-                    <option value="CUTI">CUTI</option>
-                    <option value="SAKIT">SAKIT</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs font-bold text-[#0F172A] block mb-1">Jam Masuk (WIB)</label>
-                  <input
-                    type="time"
-                    value={formData.checkInTime}
-                    onChange={(e) => setFormData({ ...formData, checkInTime: e.target.value })}
-                    className="w-full px-3 py-2 text-xs bg-[#F8FAFC] border border-slate-200 rounded-xl focus:outline-none font-mono font-bold"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-xs font-bold text-[#0F172A] block mb-1">Jam Keluar (WIB)</label>
-                  <input
-                    type="time"
-                    value={formData.checkOutTime}
-                    onChange={(e) => setFormData({ ...formData, checkOutTime: e.target.value })}
-                    className="w-full px-3 py-2 text-xs bg-[#F8FAFC] border border-slate-200 rounded-xl focus:outline-none font-mono font-bold"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="text-xs font-bold text-[#0F172A] block mb-1">
-                  Alasan Koreksi Supervisi (Wajib Diisi)
-                </label>
-                <textarea
-                  required
-                  rows={2}
-                  value={formData.notes}
-                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                  placeholder="Contoh: Kendala jaringan koneksi mobile saat check in di ORF..."
-                  className="w-full px-3 py-2 text-xs bg-[#F8FAFC] border border-slate-200 rounded-xl focus:outline-none"
-                />
-              </div>
-            </form>
-
-            {/* Modal Footer */}
-            <div className="px-5 py-3.5 border-t border-slate-100 flex items-center justify-end gap-2 bg-[#F8FAFC] shrink-0">
-              <button
-                type="button"
-                onClick={() => setShowCorrectionModal(false)}
-                className="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-200 rounded-xl transition cursor-pointer"
+            <div>
+              <label className="text-xs font-bold text-slate-700 block mb-1">Status Kehadiran</label>
+              <select
+                value={formData.status}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    status: e.target.value as
+                      | 'HADIR'
+                      | 'TERLAMBAT'
+                      | 'BELUM_ABSEN'
+                      | 'ABSENT'
+                      | 'IZIN'
+                      | 'CUTI'
+                      | 'SAKIT',
+                  })
+                }
+                className="w-full px-3 py-2 text-xs bg-white border border-slate-200 rounded-xl focus:outline-none focus:border-[#0B3568] font-bold text-slate-900"
               >
-                Batal
-              </button>
-              <button
-                type="submit"
-                form="correction-form"
-                disabled={loading}
-                className="px-5 py-2 text-xs font-bold bg-[#0066B3] hover:bg-[#005596] text-white rounded-xl shadow-xs transition cursor-pointer"
-              >
-                {loading ? 'Menyimpan...' : 'Simpan Koreksi'}
-              </button>
+                <option value="HADIR">HADIR</option>
+                <option value="TERLAMBAT">TERLAMBAT</option>
+                <option value="BELUM_ABSEN">BELUM ABSEN</option>
+                <option value="ABSENT">ABSENT / MANGKIR</option>
+                <option value="IZIN">IZIN</option>
+                <option value="CUTI">CUTI</option>
+                <option value="SAKIT">SAKIT</option>
+              </select>
             </div>
           </div>
-        </div>
-      )}
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-bold text-slate-700 block mb-1">Jam Masuk (WIB)</label>
+              <input
+                type="time"
+                value={formData.checkInTime}
+                onChange={(e) => setFormData({ ...formData, checkInTime: e.target.value })}
+                className="w-full px-3 py-2 text-xs bg-white border border-slate-200 rounded-xl focus:outline-none focus:border-[#0B3568] font-mono font-bold"
+              />
+            </div>
+
+            <div>
+              <label className="text-xs font-bold text-slate-700 block mb-1">Jam Keluar (WIB)</label>
+              <input
+                type="time"
+                value={formData.checkOutTime}
+                onChange={(e) => setFormData({ ...formData, checkOutTime: e.target.value })}
+                className="w-full px-3 py-2 text-xs bg-white border border-slate-200 rounded-xl focus:outline-none focus:border-[#0B3568] font-mono font-bold"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="text-xs font-bold text-slate-700 block mb-1">
+              Alasan Koreksi Supervisi (Wajib Diisi)
+            </label>
+            <textarea
+              required
+              rows={2}
+              value={formData.notes}
+              onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+              placeholder="Contoh: Kendala jaringan koneksi mobile saat check in di ORF..."
+              className="w-full px-3 py-2 text-xs bg-white border border-slate-200 rounded-xl focus:outline-none focus:border-[#0B3568]"
+            />
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }
