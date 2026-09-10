@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import './globals.css';
+import './theme.css';
 import { Toaster } from 'sonner';
 import { ThemeProvider } from '@/components/theme/ThemeProvider';
 
