@@ -23,6 +23,38 @@
   --status-success: #16A34A;
   --status-warning: #F59E0B;
   --status-danger: #DC2626;
+
+  /* ============================================================
+     SEMANTIC SURFACE HIERARCHY (LIGHT)
+     level 0 = body · 1 = primary · 2 = secondary · 3 = card
+     ============================================================ */
+  --surface-0: #F4F7FB;
+  --surface-1: #FFFFFF;
+  --surface-2: #FFFFFF;
+  --surface-3: #FFFFFF;
+  --surface-interactive: #EAF4FC;
+  --border-app: #E2E8F0;
+  --text-primary: #0F172A;
+  --text-secondary: #475569;
+  --text-muted: #64748B;
+}
+
+/* ============================================================
+   SEMANTIC SURFACE HIERARCHY (DARK) — Distribusi Gas & ORF
+   BODY  #061426 · PRIMARY #0B1E33 · SECONDARY #0F2740
+   CARD  #102B46 · INTERACTIVE #143553 · BORDER rgba(148,163,184,.16)
+   ============================================================ */
+html.dark {
+  --surface-0: #061426;
+  --surface-1: #0B1E33;
+  --surface-2: #0F2740;
+  --surface-3: #102B46;
+  --surface-interactive: #143553;
+  --border-app: rgba(148, 163, 184, 0.16);
+  --text-primary: #F1F5F9;
+  --text-secondary: #A8BAD0;
+  --text-muted: #71859D;
+  color-scheme: dark;
 }
 
 @theme {
@@ -46,6 +78,19 @@
   --color-border-app: #E2E8F0;
 }
 
+/* Semantic theme tokens → Tailwind utilities (theme-aware, light & dark) */
+@theme inline {
+  --color-surface-0: var(--surface-0);
+  --color-surface-1: var(--surface-1);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-surface-interactive: var(--surface-interactive);
+  --color-surface-border: var(--border-app);
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-muted: var(--text-muted);
+}
+
 html, body {
   max-width: 100vw;
   overflow-x: hidden;
@@ -67,22 +112,22 @@ body {
 
 /* Base Page Headings */
 .page-heading { 
-  background: #FFFFFF;
-  border: 1px solid var(--border); 
+  background: var(--surface-3);
+  border: 1px solid var(--border-app); 
   border-left: 4px solid var(--regas-orange); 
   border-radius: 1rem; /* 16px */
   padding: 1.25rem 1.5rem; 
   box-shadow: 0 2px 10px rgba(9, 43, 87, 0.04);
 }
 .page-heading h1 { 
-  color: var(--regas-navy-primary); 
+  color: var(--text-primary); 
   font-size: 1.5rem; 
   font-weight: 850; 
   letter-spacing: -0.025em; 
   margin-top: 0.2rem; 
 }
 .page-heading p:not(.eyebrow) { 
-  color: var(--muted); 
+  color: var(--text-muted); 
   font-size: 0.875rem; 
   margin-top: 0.3rem; 
 }
@@ -96,22 +141,25 @@ body {
 
 /* Cards & Panels */
 .panel { 
-  background: #FFFFFF; 
-  border: 1px solid var(--border); 
+  background: var(--surface-3); 
+  border: 1px solid var(--border-app); 
   border-radius: 1rem; /* 16px */
   box-shadow: 0 2px 10px rgba(9, 43, 87, 0.03); 
 }
 
 /* Form Fields */
 .field { 
-  border: 1px solid #CBD7E6; 
+  border: 1px solid var(--border-app); 
   border-radius: 0.625rem; 
-  background: #FFFFFF; 
-  color: #132238; 
+  background: var(--surface-3); 
+  color: var(--text-primary); 
   padding: 0.55rem 0.75rem; 
   outline: none; 
   font-size: 0.875rem;
   transition: all 150ms ease; 
+}
+.field::placeholder {
+  color: var(--text-muted);
 }
 .field:focus { 
   border-color: var(--regas-blue-industrial); 
@@ -137,7 +185,7 @@ body {
 }
 
 .button-secondary, .filter-pill { 
-  border: 1px solid #C8D7E8; 
+  border: 1px solid var(--border-app); 
   border-radius: 0.625rem; 
   background: #FFFFFF; 
   padding: 0.45rem 0.85rem; 
@@ -148,7 +196,7 @@ body {
 .button-secondary:hover, .filter-pill:hover { 
   border-color: var(--regas-blue-industrial); 
   color: var(--regas-blue-industrial); 
-  background: #F3F6FA; 
+  background: var(--surface-interactive); 
 }
 .filter-pill-active { 
   background: var(--regas-navy); 
@@ -188,12 +236,12 @@ body {
 }
 
 .sidebar-nav-item {
-  color: #C2D5ED;
+  color: var(--text-secondary);
   transition: all 150ms ease-in-out;
 }
 
 .sidebar-nav-item:hover {
-  background-color: rgba(23, 105, 170, 0.3);
+  background-color: var(--surface-interactive);
   color: #FFFFFF;
 }
 
@@ -218,11 +266,11 @@ body {
 
 /* Shared Table Styles */
 .fieldops-shell table thead { 
-  background: #EDF4FB !important; 
-  color: #3F5570 !important; 
+  background: var(--surface-1) !important; 
+  color: var(--text-secondary) !important; 
 }
 .fieldops-shell table tbody tr:hover { 
-  background: #F8FBFE !important; 
+  background: var(--surface-interactive) !important; 
 }
 
 /* Shimmer Loading Skeleton */
@@ -241,10 +289,10 @@ body {
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: #F3F6FA;
+  background: var(--surface-interactive);
 }
 ::-webkit-scrollbar-thumb {
-  background: #CBD7E6;
+  background: var(--border-app);
   border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
@@ -327,5 +375,15 @@ body {
   } 
   .login-floating-card {
     animation: none !important;
+  }
+}
+
+/* Smooth theme switch (light ↔ dark) without flicker */
+html, body, .page-heading, .panel, .field, aside, header, main {
+  transition: background-color 0.25s ease, color 0.25s ease, border-color 0.25s ease;
+}
+@media (prefers-reduced-motion: reduce) {
+  html, body, .page-heading, .panel, .field, aside, header, main {
+    transition: none !important;
   }
 }

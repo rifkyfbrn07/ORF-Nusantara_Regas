@@ -267,9 +267,9 @@ export function Sidebar({
   };
 
   const sidebarContent = (
-    <div className="flex flex-col h-full bg-white text-slate-800 select-none border-r border-slate-200/80">
+    <div className="flex flex-col h-full bg-surface-1 text-text-primary select-none border-r border-surface-border">
       {/* 1. BRAND / LOGO AREA */}
-      <div className="h-14 px-4 flex items-center justify-between shrink-0 border-b border-slate-100">
+      <div className="h-14 px-4 flex items-center justify-between shrink-0 border-b border-surface-border">
         <Link
           href={isManager ? '/manager/dashboard' : isAdmin ? '/admin/dashboard' : '/operator/dashboard'}
           onClick={onCloseMobile}
@@ -286,7 +286,7 @@ export function Sidebar({
             />
           </div>
           <div className="flex flex-col">
-            <span className="font-extrabold text-[#0B3568] text-xs tracking-tight leading-tight">
+            <span className="font-extrabold text-text-primary text-xs tracking-tight leading-tight">
               Distribusi Gas &amp; ORF
             </span>
             <span className="text-[8.5px] font-black text-[#1769AA] tracking-wider leading-none uppercase">
@@ -298,7 +298,7 @@ export function Sidebar({
         {isMobileDrawer && (
           <button
             onClick={onCloseMobile}
-            className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition cursor-pointer"
+            className="p-1 rounded-lg text-text-muted hover:text-text-primary hover:bg-surface-interactive transition cursor-pointer"
             aria-label="Tutup Menu"
           >
             <X className="w-5 h-5" />
@@ -312,7 +312,7 @@ export function Sidebar({
           <div key={idx}>
             {/* Section Header */}
             {sec.title && (
-              <div className="px-2.5 mb-1 text-[10px] font-bold text-slate-400 tracking-wider uppercase">
+              <div className="px-2.5 mb-1 text-[10px] font-bold text-text-muted tracking-wider uppercase">
                 {sec.title}
               </div>
             )}
@@ -331,7 +331,7 @@ export function Sidebar({
                       'flex items-center justify-between px-2.5 py-2 rounded-lg text-xs font-semibold transition-colors group relative',
                       isActive
                         ? 'bg-[#0066B3] text-white font-bold shadow-xs'
-                        : 'text-slate-600 hover:bg-slate-50 hover:text-[#0B3568]'
+                        : 'text-text-secondary hover:bg-surface-interactive hover:text-text-primary'
                     )}
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
@@ -356,7 +356,7 @@ export function Sidebar({
                       ) : null}
 
                       {'hasSub' in item && item.hasSub && !isActive && (
-                        <ChevronRight className="w-3.5 h-3.5 text-slate-300 group-hover:text-slate-500" />
+                        <ChevronRight className="w-3.5 h-3.5 text-text-muted group-hover:text-text-secondary" />
                       )}
                     </div>
                   </Link>
@@ -368,9 +368,9 @@ export function Sidebar({
       </div>
 
       {/* 3. SUBTLE FOOTER TAG (No duplicate profile, natural whitespace) */}
-      <div className="px-4 py-3 border-t border-slate-100 text-[10px] text-slate-400 flex items-center justify-between shrink-0 bg-[#FBFDFE]">
-        <span className="font-semibold text-slate-500">v2.4.0</span>
-        <span className="font-mono text-[9px] uppercase tracking-wider text-slate-400">Enterprise</span>
+      <div className="px-4 py-3 border-t border-surface-border text-[10px] text-text-muted flex items-center justify-between shrink-0 bg-surface-0">
+        <span className="font-semibold text-text-secondary">v2.4.0</span>
+        <span className="font-mono text-[9px] uppercase tracking-wider text-text-muted">Enterprise</span>
       </div>
     </div>
   );
@@ -402,7 +402,7 @@ export function Sidebar({
 
   // Desktop Fixed Sidebar
   return (
-    <aside className="w-[230px] h-screen fixed left-0 top-0 border-r border-slate-200/80 shadow-xs z-40 bg-white">
+    <aside className="w-[230px] h-screen fixed left-0 top-0 border-r border-surface-border shadow-xs z-40 bg-surface-1">
       {sidebarContent}
     </aside>
   );

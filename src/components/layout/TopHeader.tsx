@@ -54,9 +54,9 @@ export function TopHeader({ user, notifications = [], unreadCount = 0, onOpenMob
   };
 
   return (
-    <header className="sticky top-0 z-30 flex h-14 w-full items-center justify-between gap-4 border-b border-slate-200/80 bg-white px-3 shadow-2xs sm:px-5 lg:px-6">
+    <header className="sticky top-0 z-30 flex h-14 w-full items-center justify-between gap-4 border-b border-surface-border bg-surface-2 px-3 shadow-2xs sm:px-5 lg:px-6">
       <div className="flex min-w-0 max-w-xs flex-1 items-center gap-2.5 sm:max-w-sm lg:max-w-md">
-        <button type="button" onClick={onOpenMobileMenu} className="cursor-pointer rounded-lg p-1.5 text-[#0F315A] transition hover:bg-slate-100 md:hidden" aria-label="Buka Menu Navigasi"><Menu className="h-5 w-5" /></button>
+        <button type="button" onClick={onOpenMobileMenu} className="cursor-pointer rounded-lg p-1.5 text-text-primary transition hover:bg-surface-interactive md:hidden" aria-label="Buka Menu Navigasi"><Menu className="h-5 w-5" /></button>
         <GlobalSearch />
       </div>
 

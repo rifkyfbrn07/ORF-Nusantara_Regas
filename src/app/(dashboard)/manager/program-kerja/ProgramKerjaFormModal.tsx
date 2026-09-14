@@ -150,7 +150,7 @@ export function ProgramKerjaFormModal({ program, onClose, onSaved }: ProgramKerj
         </div>
       }
     >
-      <form id="program-kerja-form" onSubmit={handleSubmit} className="max-h-[65vh] space-y-4 overflow-y-auto pr-1">
+      <form id="program-kerja-form" onSubmit={handleSubmit} className="space-y-4 pr-1">
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <div>
             <label className="mb-1 block text-[10px] font-bold uppercase tracking-wide text-slate-500">Tahun</label>
@@ -284,11 +284,6 @@ export function ProgramKerjaFormModal({ program, onClose, onSaved }: ProgramKerj
             }
           }}
         />
-
-        <div>
-          <label className="mb-1 block text-[10px] font-bold uppercase tracking-wide text-slate-500">Keterangan {form.status === 'BELUM_TEREALISASI' && <span className="text-[#DC2626]">(wajib — alasan tidak terealisasi)</span>}</label>
-          <textarea className="field w-full" rows={3} value={form.notes} onChange={(e) => set('notes', e.target.value)} placeholder="Catatan Program Kerja" />
-        </div>
 
         {program && <p className="text-[10px] text-slate-400">Terakhir diperbarui: {new Date(program.updatedAt).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })}</p>}
 

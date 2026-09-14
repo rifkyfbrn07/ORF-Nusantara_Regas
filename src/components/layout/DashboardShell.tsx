@@ -54,7 +54,7 @@ export function DashboardShell({
 
 
   return (
-    <div className="fieldops-shell min-h-screen flex flex-col bg-[#F3F6FA] text-[#132238] overflow-x-hidden relative">
+    <div className="fieldops-shell min-h-screen flex flex-col bg-surface-0 text-text-primary overflow-x-hidden relative">
       {/* Desktop Sidebar (Fixed Left, 250px) */}
       <div className="hidden md:block">
         <Sidebar user={user} unreadCount={unreadCount} />

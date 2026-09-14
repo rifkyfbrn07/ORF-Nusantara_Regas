@@ -90,7 +90,7 @@ export function Modal({
     >
       <div
         className={clsx(
-          'bg-white w-full rounded-2xl border border-slate-200/90 shadow-2xl flex flex-col max-h-[min(90vh,calc(100dvh-2rem))] overflow-hidden select-text anim-fade-up',
+          'bg-white w-full flex flex-col overflow-hidden select-text anim-fade-up rounded-none border-x-0 border-t-0 border-b-0 sm:rounded-2xl sm:border sm:border-slate-200/90 shadow-2xl max-h-[calc(100dvh-0.75rem)] sm:max-h-[min(92dvh,calc(100dvh-2rem))]',
           SIZE_CLASS[size]
         )}
         onClick={(e) => e.stopPropagation()}

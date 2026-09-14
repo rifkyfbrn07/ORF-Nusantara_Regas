@@ -1,77 +1,127 @@
+/* ============================================================================
+   DISTRIBUSI GAS & ORF — DARK MODE (Semantic Surface Hierarchy)
+   ----------------------------------------------------------------------------
+   BODY         #061426   (Level 0)
+   PRIMARY      #0B1E33   (Level 1) — sidebar, tables header
+   SECONDARY    #0F2740   (Level 2) — header, fields, dropdowns
+   CARD         #102B46   (Level 3) — cards, panels, modals
+   INTERACTIVE  #143553   — hover / selected
+   BORDER       rgba(148,163,184,0.16)
+   TEXT PRIMARY #F1F5F9 · SECONDARY #A8BAD0 · MUTED #71859D
+   ============================================================================ */
+
 html.dark body {
-  background-color: #0b1220 !important;
-  color: #e5edf7 !important;
-  background-image: radial-gradient(circle at 95% 0%, rgba(30, 136, 229, 0.08), transparent 28rem), radial-gradient(circle at 0% 100%, rgba(245, 130, 32, 0.05), transparent 24rem) !important;
+  background-color: var(--surface-0) !important;
+  color: var(--text-primary) !important;
+  background-image: none !important;
 }
 
+/* Cards / panels / generic white surfaces → card surface */
 html.dark .bg-white,
 html.dark .login-floating-card,
-html.dark .panel,
-html.dark .page-heading {
-  background-color: #111c2e !important;
-  color: #e5edf7 !important;
-  border-color: #263a55 !important;
+html.dark .panel {
+  background-color: var(--surface-3) !important;
+  color: var(--text-primary) !important;
+  border-color: var(--border-app) !important;
 }
 
+/* Secondary surfaces (subtle bands, section headers) */
 html.dark .bg-slate-50,
 html.dark .bg-slate-50\/60,
-html.dark .bg-slate-50\/70 {
-  background-color: #162337 !important;
+html.dark .bg-slate-50\/70,
+html.dark .bg-slate-50\/80,
+html.dark .bg-\[\#F8FAFC\],
+html.dark .bg-\[\#EDF4FB\],
+html.dark .bg-\[\#FBFDFE\],
+html.dark .bg-\[\#F1F5F9\],
+html.dark .bg-\[\#F3F6FA\] {
+  background-color: var(--surface-1) !important;
 }
 
+/* Form fields → secondary surface */
 html.dark .field {
-  background-color: #0f1a2b !important;
-  color: #e5edf7 !important;
-  border-color: #304765 !important;
+  background-color: var(--surface-2) !important;
+  color: var(--text-primary) !important;
+  border-color: var(--border-app) !important;
 }
 
+/* Text hierarchy */
 html.dark .text-slate-900,
 html.dark .text-slate-800,
 html.dark .text-slate-700,
-html.dark .text-slate-600,
+html.dark .text-slate-600 {
+  color: var(--text-secondary) !important;
+}
 html.dark .text-slate-500,
-html.dark .text-slate-400 {
-  color: #c4d0df !important;
+html.dark .text-slate-400,
+html.dark .text-slate-300 {
+  color: var(--text-muted) !important;
 }
 
+/* Brand navy text → primary text in dark */
 html.dark .text-\[\#092B57\],
 html.dark .text-\[\#0B3568\],
 html.dark .text-\[\#0F315A\],
-html.dark .text-\[\#132238\] {
-  color: #e5edf7 !important;
+html.dark .text-\[\#132238\],
+html.dark .text-\[\#123B6D\] {
+  color: var(--text-primary) !important;
 }
 
+/* Borders → subtle border token */
 html.dark .border-slate-200,
+html.dark .border-slate-200\/90,
 html.dark .border-slate-100,
 html.dark .border-\[\#DCE5EF\],
 html.dark .border-\[\#CBD7E6\],
-html.dark .border-\[\#EDF2F7\] {
-  border-color: #263a55 !important;
+html.dark .border-\[\#EDF2F7\],
+html.dark .border-\[\#E4EBF3\],
+html.dark .divide-slate-100 > :not([hidden]) ~ :not([hidden]),
+html.dark .divide-\[\#F1F5F9\] > :not([hidden]) ~ :not([hidden]) {
+  border-color: var(--border-app) !important;
 }
 
+/* Hover / interactive surfaces */
 html.dark .hover\:bg-slate-50:hover,
 html.dark .hover\:bg-slate-100:hover,
 html.dark .hover\:bg-\[\#F8FBFE\]:hover {
-  background-color: #192a42 !important;
+  background-color: var(--surface-interactive) !important;
 }
 
-html.dark .divide-slate-100 > :not([hidden]) ~ :not([hidden]),
-html.dark .divide-\[\#F1F5F9\] > :not([hidden]) ~ :not([hidden]) {
-  border-color: #263a55 !important;
+/* Sidebar — darker navy primary, subtle right border */
+html.dark .sidebar-regas {
+  background-color: var(--surface-1) !important;
+  color: var(--text-primary) !important;
+}
+html.dark .sidebar-nav-item {
+  color: var(--text-secondary) !important;
+}
+html.dark .sidebar-nav-item:hover {
+  background-color: var(--surface-interactive) !important;
+  color: var(--text-primary) !important;
 }
 
+/* Shared tables */
 html.dark .fieldops-shell table thead {
-  background: #162337 !important;
-  color: #b8c7d9 !important;
+  background: var(--surface-1) !important;
+  color: var(--text-secondary) !important;
 }
-
 html.dark .fieldops-shell table tbody tr:hover {
-  background: #192a42 !important;
+  background: var(--surface-interactive) !important;
 }
 
-html.dark .bg-\[\#F8FAFC\],
-html.dark .bg-\[\#EDF4FB\] {
-  background-color: #162337 !important;
+/* Modal / dropdown surfaces (fallback for components still using bg-white) */
+html.dark .bg-white\/95,
+html.dark .bg-white\/90,
+html.dark .bg-white\/80 {
+  background-color: var(--surface-3) !important;
+}
+
+/* Scrollbar */
+html.dark ::-webkit-scrollbar-track {
+  background: var(--surface-1) !important;
+}
+html.dark ::-webkit-scrollbar-thumb {
+  background: var(--border-app) !important;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -79,3 +129,15 @@ html.dark .bg-\[\#EDF4FB\] {
     scroll-behavior: auto !important;
   }
 }
+
+/* Status badges — semantic translucent tones for dark surfaces */
+html.dark .bg-emerald-50 { background-color: rgba(22,163,74,0.14) !important; }
+html.dark .text-emerald-700, html.dark .text-emerald-800, html.dark .text-emerald-600 { color: #6EE7B7 !important; }
+html.dark .border-emerald-200, html.dark .border-emerald-100 { border-color: rgba(22,163,74,0.30) !important; }
+html.dark .bg-amber-50 { background-color: rgba(245,158,11,0.14) !important; }
+html.dark .text-amber-700, html.dark .text-amber-800, html.dark .text-amber-600 { color: #FCD34D !important; }
+html.dark .border-amber-200, html.dark .border-amber-100 { border-color: rgba(245,158,11,0.30) !important; }
+html.dark .bg-red-50 { background-color: rgba(220,38,38,0.14) !important; }
+html.dark .text-red-700, html.dark .text-red-800, html.dark .text-red-600 { color: #FCA5A5 !important; }
+html.dark .border-red-200, html.dark .border-red-100 { border-color: rgba(220,38,38,0.30) !important; }
+html.dark .bg-slate-100 { background-color: var(--surface-interactive) !important; }
