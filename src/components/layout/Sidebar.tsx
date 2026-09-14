@@ -140,6 +140,7 @@ export function Sidebar({
       items: [
         { label: 'Jadwal Saya', href: '/operator/schedule', icon: CalendarDays, tone: 'blue' },
         { label: 'Roster Bulanan', href: '/operator/jadwal-saya', icon: CalendarClock, tone: 'blue' },
+        { label: 'Roster Operator', href: '/operator/roster', icon: Users, tone: 'navy' },
         { label: 'Absensi Saya', href: '/operator/attendance', icon: Clock, tone: 'green' },
         { label: 'Pergantian Shift', href: '/operator/shift-exchange', icon: ArrowLeftRight, tone: 'amber' },
       ],

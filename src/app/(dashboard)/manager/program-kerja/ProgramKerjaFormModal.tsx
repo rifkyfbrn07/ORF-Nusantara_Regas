@@ -9,13 +9,6 @@ import { Modal } from '@/components/ui/Modal';
 import { FileUploadProof } from '@/components/ui/FileUploadProof';
 import { CATEGORY_LABELS, STATUS_LABELS } from './shared';
 
-interface PicUserOption {
-  id: string;
-  name: string;
-  username: string;
-  role: 'ADMIN' | 'MANAGER' | 'OPERATOR';
-}
-
 interface FormState {
   year: number;
   category: ProgramKerjaCategory;
@@ -28,7 +21,6 @@ interface FormState {
   status: ProgramStatus;
   notes: string;
   deadline: string;
-  picId: string;
   evidenceUrl: string;
   evidenceName: string;
   evidenceMime: string;
@@ -49,7 +41,6 @@ const EMPTY_FORM: FormState = {
   status: 'PLAN',
   notes: '',
   deadline: '',
-  picId: '',
   evidenceUrl: '',
   evidenceName: '',
   evidenceMime: '',
@@ -60,12 +51,11 @@ const EMPTY_FORM: FormState = {
 
 interface ProgramKerjaFormModalProps {
   program: ProgramKerjaDTO | null;
-  picUsers: PicUserOption[];
   onClose: () => void;
   onSaved: () => void;
 }
 
-export function ProgramKerjaFormModal({ program, picUsers, onClose, onSaved }: ProgramKerjaFormModalProps) {
+export function ProgramKerjaFormModal({ program, onClose, onSaved }: ProgramKerjaFormModalProps) {
   const [form, setForm] = useState<FormState>(
     program
       ? {
@@ -80,7 +70,6 @@ export function ProgramKerjaFormModal({ program, picUsers, onClose, onSaved }: P
           status: program.status,
           notes: program.notes ?? '',
           deadline: program.deadline?.slice(0, 10) ?? '',
-          picId: program.picId ?? '',
           evidenceUrl: program.evidenceUrl ?? '',
           evidenceName: program.evidenceName ?? '',
           evidenceMime: program.evidenceMime ?? '',
@@ -124,7 +113,6 @@ export function ProgramKerjaFormModal({ program, picUsers, onClose, onSaved }: P
         realization: form.realization.trim() || undefined,
                 notes: form.notes.trim() || undefined,
         deadline: form.deadline || null,
-        picId: form.picId || null,
         evidenceUrl: form.evidenceUrl || undefined,
         evidenceName: form.evidenceName || undefined,
         evidenceMime: form.evidenceMime || undefined,
@@ -185,18 +173,9 @@ export function ProgramKerjaFormModal({ program, picUsers, onClose, onSaved }: P
           <input type="text" className="field w-full" value={form.name} onChange={(e) => set('name', e.target.value)} placeholder="Nama Program Kerja" required minLength={3} />
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-2">
-          <div>
-            <label className="mb-1 block text-[10px] font-bold uppercase tracking-wide text-slate-500">PIC / Penanggung Jawab</label>
-            <select className="field w-full" value={form.picId} onChange={(e) => set('picId', e.target.value)}>
-              <option value="">Belum ditugaskan</option>
-              {picUsers.map((user) => <option key={user.id} value={user.id}>{user.name} · @{user.username} ({user.role})</option>)}
-            </select>
-          </div>
-          <div>
-            <label className="mb-1 block text-[10px] font-bold uppercase tracking-wide text-slate-500">Deadline</label>
-            <input type="date" className="field w-full" value={form.deadline} onChange={(e) => set('deadline', e.target.value)} />
-          </div>
+        <div>
+          <label className="mb-1 block text-[10px] font-bold uppercase tracking-wide text-slate-500">Deadline</label>
+          <input type="date" className="field w-full" value={form.deadline} onChange={(e) => set('deadline', e.target.value)} />
         </div>
 
         <div className="grid gap-3 sm:grid-cols-2">

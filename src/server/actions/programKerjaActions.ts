@@ -8,7 +8,7 @@ import {
   deleteProgramKerja,
   upsertProgramKerjaTask,
   setTaskDone,
-  updatePicProgress,
+  updateProgramProgress,
 } from '../services/programKerjaService';
 import {
   programKerjaCreateSchema,
@@ -67,7 +67,7 @@ export async function deleteProgramKerjaAction(id: string) {
 
 export async function upsertTaskAction(input: { programId: string; label: string; isDone: boolean }) {
   try {
-    const user = await requireRole(['ADMIN', 'MANAGER', 'OPERATOR']);
+    const user = await requireRole(['ADMIN', 'MANAGER']);
     if (!input.programId || input.label.trim().length < 3) return { success: false as const, error: 'Program dan nama task wajib diisi.' };
     const task = await upsertProgramKerjaTask({
       programId: input.programId,
@@ -85,7 +85,7 @@ export async function upsertTaskAction(input: { programId: string; label: string
 
 export async function setTaskDoneAction(input: { taskId: string; isDone: boolean }) {
   try {
-    const user = await requireRole(['ADMIN', 'MANAGER', 'OPERATOR']);
+    const user = await requireRole(['ADMIN', 'MANAGER']);
     await setTaskDone({ taskId: input.taskId, isDone: input.isDone, actorId: user.id, actorRole: user.role });
     revalidateProgramKerja();
     return { success: true as const };
@@ -106,10 +106,10 @@ export async function updatePicProgressAction(input: {
   driveWebViewLink?: string;
 }) {
   try {
-    const user = await requireRole(['ADMIN', 'MANAGER', 'OPERATOR']);
+    const user = await requireRole(['ADMIN', 'MANAGER']);
     const parsedProgress = programKerjaProgressSchema.safeParse(input.progress);
     if (!parsedProgress.success) return { success: false as const, error: parsedProgress.error.issues[0]?.message || 'Progress harus 0–100%.' };
-    const result = await updatePicProgress(input.programId, parsedProgress.data, user.id, user.role, {
+    const result = await updateProgramProgress(input.programId, parsedProgress.data, user.id, user.role, {
       note: input.note,
       evidenceUrl: input.evidenceUrl,
       evidenceName: input.evidenceName,

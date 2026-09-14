@@ -28,6 +28,7 @@ export function MobileNav({ user, unreadCount = 0, onOpenDrawer }: MobileNavProp
   const operatorLinks = [
     { label: 'Home', href: '/operator/dashboard', icon: LayoutDashboard },
     { label: 'Jadwal', href: '/operator/schedule', icon: CalendarDays },
+    { label: 'Roster', href: '/operator/roster', icon: Users },
     { label: 'Absensi', href: '/operator/attendance', icon: Clock },
     { label: 'Notifikasi', href: '/notifications', icon: Bell, badge: unreadCount },
   ];

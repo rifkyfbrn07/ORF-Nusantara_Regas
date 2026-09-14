@@ -3,7 +3,7 @@
 import React, { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { CalendarRange, List, Plus, Search, SlidersHorizontal } from 'lucide-react';
-import type { ProgramKerjaDTO, ProgramKerjaStats, ProgramAnnualChartData } from '@/server/services/programKerjaService';
+import type { ProgramKerjaDTO, ProgramKerjaStats } from '@/server/services/programKerjaService';
 import { deleteProgramKerjaAction } from '@/server/actions/programKerjaActions';
 import { ProgramKerjaFormModal } from './ProgramKerjaFormModal';
 import { ProgramListView } from './ProgramListView';
@@ -11,22 +11,13 @@ import { ProgramTimelineView } from './ProgramTimelineView';
 import { ProgramKerjaCharts } from './ProgramKerjaCharts';
 import { CATEGORY_LABELS, STATUS_LABELS, MONTH_SHORT } from './shared';
 
-interface PicUserOption {
-  id: string;
-  name: string;
-  username: string;
-  role: 'ADMIN' | 'MANAGER' | 'OPERATOR';
-}
-
 interface ProgramKerjaClientProps {
   programs: ProgramKerjaDTO[];
   stats: ProgramKerjaStats;
   years: number[];
-  chart: ProgramAnnualChartData;
-  picUsers: PicUserOption[];
 }
 
-export function ProgramKerjaClient({ programs, stats, years, chart, picUsers }: ProgramKerjaClientProps) {
+export function ProgramKerjaClient({ programs, stats, years }: ProgramKerjaClientProps) {
   const router = useRouter();
   const [view, setView] = useState<'list' | 'timeline'>('list');
   const [filterYear, setFilterYear] = useState('all');
@@ -46,7 +37,7 @@ export function ProgramKerjaClient({ programs, stats, years, chart, picUsers }: 
       if (filterStatus !== 'all' && p.status !== filterStatus) return false;
       if (filterMonth !== 'all' && !p.months.some((m) => String(m.month) === filterMonth)) return false;
       if (q) {
-        const haystack = `${p.name} ${CATEGORY_LABELS[p.category]} ${p.picName ?? ''} ${p.picUsername ?? ''} ${p.plan ?? ''} ${p.notes ?? ''}`.toLowerCase();
+        const haystack = `${p.name} ${CATEGORY_LABELS[p.category]} ${p.plan ?? ''} ${p.notes ?? ''}`.toLowerCase();
         if (!haystack.includes(q)) return false;
       }
       return true;
@@ -64,6 +55,25 @@ export function ProgramKerjaClient({ programs, stats, years, chart, picUsers }: 
       belum: filtered.filter((p) => p.status === 'BELUM_TEREALISASI').length,
     };
   }, [filtered]);
+
+  // Grafik mengikuti filter (bulan + kategori + tahun + status + search)
+  const filteredChart = useMemo(() => {
+    const bar = MONTH_SHORT.map((label, index) => {
+      const m = index + 1;
+      const monthPrograms = filtered.filter((p) => p.months.some((x) => x.month === m));
+      const realisasi = monthPrograms.filter((p) => p.months.some((x) => x.month === m && x.realization >= 100)).length;
+      const tidak = monthPrograms.filter((p) => p.months.some((x) => x.month === m && x.realization <= 0)).length;
+      return { month: label, plan: monthPrograms.length, realisasi, tidakTerealisasi: tidak };
+    });
+    const donut = [
+      { name: 'Realisasi', value: kpi.realisasi, color: '#16A34A' },
+      { name: 'On Progress', value: filtered.filter((p) => p.status === 'ON_PROGRESS').length, color: '#F59E0B' },
+      { name: 'Tidak Terealisasi', value: kpi.belum, color: '#DC2626' },
+      { name: 'Plan', value: kpi.plan, color: '#94A3B8' },
+    ];
+    const year = filterYear !== 'all' ? Number(filterYear) : 2026;
+    return { year, bar, donut };
+  }, [filtered, kpi, filterYear]);
 
   function openCreate() {
     setModalProgram(null);
@@ -118,7 +128,7 @@ export function ProgramKerjaClient({ programs, stats, years, chart, picUsers }: 
               <input
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
-                placeholder="Cari program, PIC, kategori..."
+                placeholder="Cari program, kategori..."
                 className="field w-full pl-9 text-xs"
               />
             </label>
@@ -156,7 +166,7 @@ export function ProgramKerjaClient({ programs, stats, years, chart, picUsers }: 
         <div className="mt-2 text-[10px] font-semibold text-slate-400">Menampilkan {filtered.length} dari {programs.length} program · search dan filter kategori dapat digunakan bersamaan.</div>
       </div>
 
-      <ProgramKerjaCharts bar={chart.bar} donut={chart.donut} year={chart.year} />
+      <ProgramKerjaCharts bar={filteredChart.bar} donut={filteredChart.donut} year={filteredChart.year} />
 
       {view === 'list' ? (
         <ProgramListView programs={filtered} deletingId={deletingId} onEdit={openEdit} onDelete={handleDelete} />
@@ -171,7 +181,6 @@ export function ProgramKerjaClient({ programs, stats, years, chart, picUsers }: 
       {modalOpen && (
         <ProgramKerjaFormModal
           program={modalProgram}
-          picUsers={picUsers}
           onClose={() => setModalOpen(false)}
           onSaved={() => {
             setModalOpen(false);

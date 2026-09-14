@@ -30,10 +30,6 @@ export interface ProgramKerjaDTO {
   status: ProgramStatus;
   notes: string | null;
   deadline: string | null;
-  picId: string | null;
-  picName: string | null;
-  picUsername: string | null;
-  picProgress: number;
   evidenceUrl: string | null;
   evidenceName: string | null;
   evidenceMime: string | null;
@@ -79,7 +75,7 @@ export interface ProgramAnnualChartData {
   donut: { name: string; value: number; color: string }[];
 }
 
-function serializeProgram(program: Prisma.ProgramKerjaGetPayload<{ include: { months: true; pic: { select: { id: true; name: true; username: true } }; tasks: true; progressLogs: { include: { user: { select: { name: true } } }; orderBy: { createdAt: 'desc' } } } }>): ProgramKerjaDTO {
+function serializeProgram(program: Prisma.ProgramKerjaGetPayload<{ include: { months: true; tasks: true; progressLogs: { include: { user: { select: { name: true } } }; orderBy: { createdAt: 'desc' } } } }>): ProgramKerjaDTO {
   return {
     id: program.id,
     year: program.year,
@@ -93,10 +89,6 @@ function serializeProgram(program: Prisma.ProgramKerjaGetPayload<{ include: { mo
     status: program.status,
     notes: program.notes,
     deadline: program.deadline ? program.deadline.toISOString() : null,
-    picId: program.picId,
-    picName: program.pic?.name ?? null,
-    picUsername: program.pic?.username ?? null,
-    picProgress: program.picProgress,
     evidenceUrl: program.evidenceUrl,
     evidenceName: program.evidenceName,
     evidenceMime: program.evidenceMime,
@@ -142,26 +134,10 @@ export async function listProgramKerja(filters?: {
     where,
     include: {
       months: { orderBy: [{ month: 'asc' }, { week: 'asc' }] },
-      pic: { select: { id: true, name: true, username: true } },
       tasks: { orderBy: [{ order: 'asc' }, { createdAt: 'asc' }] },
       progressLogs: { include: { user: { select: { name: true } } }, orderBy: { createdAt: 'desc' } },
     },
     orderBy: [{ year: 'desc' }, { category: 'asc' }, { sequence: 'asc' }],
-  });
-  return programs.map(serializeProgram);
-}
-
-/** Program Kerja yang ditugaskan kepada satu PIC/operator (mode operator). */
-export async function listAssignedProgramKerja(picUserId: string): Promise<ProgramKerjaDTO[]> {
-  const programs = await prisma.programKerja.findMany({
-    where: { picId: picUserId },
-    include: {
-      months: { orderBy: [{ month: 'asc' }, { week: 'asc' }] },
-      pic: { select: { id: true, name: true, username: true } },
-      tasks: { orderBy: [{ order: 'asc' }, { createdAt: 'asc' }] },
-      progressLogs: { include: { user: { select: { name: true } } }, orderBy: { createdAt: 'desc' } },
-    },
-    orderBy: [{ year: 'desc' }, { sequence: 'asc' }],
   });
   return programs.map(serializeProgram);
 }
@@ -299,8 +275,6 @@ export async function createProgramKerja(input: ProgramKerjaCreateInput, actorId
       status: input.status as ProgramStatus,
       notes: input.notes ?? null,
       deadline: input.deadline ? new Date(`${input.deadline}T00:00:00+07:00`) : null,
-      picId: input.picId || null,
-      picProgress: 0,
       evidenceUrl: input.evidenceUrl ?? null,
       evidenceName: input.evidenceName ?? null,
       evidenceMime: input.evidenceMime ?? null,
@@ -359,7 +333,6 @@ export async function updateProgramKerja(input: ProgramKerjaUpdateInput, actorId
       ...(data.status !== undefined ? { status: data.status as ProgramStatus } : {}),
       ...(data.notes !== undefined ? { notes: data.notes ?? null } : {}),
       ...(data.deadline !== undefined ? { deadline: data.deadline ? new Date(`${data.deadline}T00:00:00+07:00`) : null } : {}),
-      ...(data.picId !== undefined ? { picId: data.picId || null } : {}),
       ...(data.evidenceUrl !== undefined ? { evidenceUrl: data.evidenceUrl ?? null } : {}),
       ...(data.evidenceName !== undefined ? { evidenceName: data.evidenceName ?? null } : {}),
       ...(data.evidenceMime !== undefined ? { evidenceMime: data.evidenceMime ?? null } : {}),
@@ -436,8 +409,8 @@ export async function upsertProgramKerjaTask(params: {
   });
   if (!program) throw new Error('Program Kerja tidak ditemukan.');
 
-  // Otorisasi: PIC sendiri, MANAGER, atau ADMIN
-  const canAssign = params.actorRole === 'ADMIN' || params.actorRole === 'MANAGER' || program.picId === params.actorId;
+  // Otorisasi: MANAGER atau ADMIN (operator view-only — PIC tidak lagi dipakai)
+  const canAssign = params.actorRole === 'ADMIN' || params.actorRole === 'MANAGER';
   if (!canAssign) throw new Error('Anda tidak berwenang memperbarui checklist program ini.');
 
   const task = await prisma.programKerjaTask.create({
@@ -457,11 +430,10 @@ export async function upsertProgramKerjaTask(params: {
 export async function setTaskDone(params: { taskId: string; isDone: boolean; actorId: string; actorRole: string }) {
   const task = await prisma.programKerjaTask.findUnique({
     where: { id: params.taskId },
-    select: { id: true, programId: true, program: { select: { picId: true } } },
+    select: { id: true, programId: true },
   });
   if (!task) throw new Error('Task tidak ditemukan.');
-  const program = await prisma.programKerja.findUnique({ where: { id: task.programId }, select: { picId: true } });
-  const can = params.actorRole === 'ADMIN' || params.actorRole === 'MANAGER' || program?.picId === params.actorId;
+  const can = params.actorRole === 'ADMIN' || params.actorRole === 'MANAGER';
   if (!can) throw new Error('Anda tidak berwenang memperbarui checklist program ini.');
 
   await prisma.programKerjaTask.update({
@@ -472,26 +444,26 @@ export async function setTaskDone(params: { taskId: string; isDone: boolean; act
   return { success: true };
 }
 
-/** Recompute progress berdasarkan task completed (only milik pic) + update picProgress */
+/** Recompute progress berdasarkan task completed + update progress */
 async function recomputeTaskProgress(programId: string) {
   const tasks = await prisma.programKerjaTask.findMany({ where: { programId }, select: { isDone: true } });
   const doneCount = tasks.filter((t) => t.isDone).length;
   const progress = tasks.length === 0 ? 0 : Math.round((doneCount / tasks.length) * 100);
-  await prisma.programKerja.update({ where: { id: programId }, data: { picProgress: progress } });
+  await prisma.programKerja.update({ where: { id: programId }, data: { progress } });
   return { doneCount, total: tasks.length, progress };
 }
 
-/** Operator meng-update progress (0..100) sesuai permission — PIC sendiri/Manager/Admin */
-export async function updatePicProgress(
+/** Update progress (0..100) — Manager/Admin (operator view-only) */
+export async function updateProgramProgress(
   programId: string,
   progress: number,
   actorId: string,
   actorRole: string,
   evidence?: { evidenceUrl?: string; evidenceName?: string; evidenceMime?: string; evidenceSize?: number; driveFileId?: string; driveWebViewLink?: string; note?: string }
 ) {
-  const program = await prisma.programKerja.findUnique({ where: { id: programId }, select: { id: true, picId: true, progress: true, picProgress: true } });
+  const program = await prisma.programKerja.findUnique({ where: { id: programId }, select: { id: true, progress: true } });
   if (!program) throw new Error('Program Kerja tidak ditemukan.');
-  const can = actorRole === 'ADMIN' || actorRole === 'MANAGER' || program.picId === actorId;
+  const can = actorRole === 'ADMIN' || actorRole === 'MANAGER';
   if (!can) throw new Error('Anda tidak berwenang memperbarui progress program ini.');
   const clamped = Math.min(100, Math.max(0, Math.round(progress)));
 
@@ -522,7 +494,6 @@ export async function updatePicProgress(
   await prisma.programKerja.update({
     where: { id: programId },
     data: {
-      picProgress: clamped,
       progress: clamped,
       ...(evidence?.evidenceUrl ? { evidenceUrl: evidence.evidenceUrl } : {}),
       ...(evidence?.evidenceName ? { evidenceName: evidence.evidenceName } : {}),

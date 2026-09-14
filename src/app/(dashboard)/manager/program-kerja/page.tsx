@@ -1,11 +1,9 @@
 import React from 'react';
 import { requireRole } from '@/lib/auth/session';
-import { prisma } from '@/lib/db/prisma';
 import {
   listProgramKerja,
   getProgramKerjaStats,
   getProgramKerjaYears,
-  getProgramKerjaAnnualChart,
 } from '@/server/services/programKerjaService';
 import { ProgramKerjaClient } from './ProgramKerjaClient';
 import { PageHeader } from '@/components/ui/PageHeader';
@@ -19,18 +17,11 @@ export default async function ManagerProgramKerjaPage({ searchParams }: PageProp
 
   const params = await searchParams;
   const yearParam = typeof params.year === 'string' ? Number(params.year) : NaN;
-  const activeYear = Number.isFinite(yearParam) ? yearParam : 2026;
 
-  const [programs, stats, years, chart, picUsers] = await Promise.all([
+  const [programs, stats, years] = await Promise.all([
     listProgramKerja({ year: Number.isFinite(yearParam) ? yearParam : undefined }),
     getProgramKerjaStats(Number.isFinite(yearParam) ? yearParam : undefined),
     getProgramKerjaYears(),
-    getProgramKerjaAnnualChart(activeYear),
-    prisma.user.findMany({
-      where: { role: { in: ['MANAGER', 'OPERATOR'] }, isActive: true },
-      select: { id: true, name: true, username: true, role: true },
-      orderBy: [{ role: 'asc' }, { name: 'asc' }],
-    }),
   ]);
 
   return (
@@ -45,8 +36,6 @@ export default async function ManagerProgramKerjaPage({ searchParams }: PageProp
         programs={programs}
         stats={stats}
         years={years}
-        chart={chart}
-        picUsers={picUsers}
       />
     </div>
   );
