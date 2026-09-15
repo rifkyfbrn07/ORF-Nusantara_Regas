@@ -13,8 +13,10 @@ import {
 export interface ProgramKerjaMonthDTO {
   month: number;
   week: number;
-  target: number;
-  realization: number;
+  /** Nilai Plan (P) pada periode; null = tidak ada data (sel kosong), bukan 0. */
+  target: number | null;
+  /** Nilai Realisasi (R) pada periode; null = tidak ada data (sel kosong), bukan 0. */
+  realization: number | null;
 }
 
 export interface ProgramKerjaDTO {
@@ -180,6 +182,7 @@ export async function getProgramKerjaAnnualChart(year: number): Promise<ProgramA
 
     const byMonth = new Map<number, number>();
     for (const m of p.months) {
+      if (m.realization === null) continue; // sel kosong = tidak ada data (bukan 0)
       byMonth.set(m.month, Math.max(byMonth.get(m.month) ?? 0, m.realization));
     }
     for (const [month, realization] of byMonth) {

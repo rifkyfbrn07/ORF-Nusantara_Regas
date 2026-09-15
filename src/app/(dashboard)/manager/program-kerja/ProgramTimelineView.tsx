@@ -12,6 +12,7 @@ interface ProgramTimelineViewProps {
 function monthAggregate(program: ProgramKerjaDTO): (number | null)[] {
   const agg: (number | null)[] = Array(12).fill(null);
   for (const m of program.months) {
+    if (m.realization === null) continue; // sel kosong = tidak ada data (bukan 0)
     agg[m.month - 1] =
       agg[m.month - 1] === null ? m.realization : Math.max(agg[m.month - 1]!, m.realization);
   }

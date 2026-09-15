@@ -61,8 +61,8 @@ export function ProgramKerjaClient({ programs, stats, years }: ProgramKerjaClien
     const bar = MONTH_SHORT.map((label, index) => {
       const m = index + 1;
       const monthPrograms = filtered.filter((p) => p.months.some((x) => x.month === m));
-      const realisasi = monthPrograms.filter((p) => p.months.some((x) => x.month === m && x.realization >= 100)).length;
-      const tidak = monthPrograms.filter((p) => p.months.some((x) => x.month === m && x.realization <= 0)).length;
+      const realisasi = monthPrograms.filter((p) => p.months.some((x) => x.month === m && x.realization !== null && x.realization >= 100)).length;
+      const tidak = monthPrograms.filter((p) => p.months.some((x) => x.month === m && x.realization !== null && x.realization <= 0)).length;
       return { month: label, plan: monthPrograms.length, realisasi, tidakTerealisasi: tidak };
     });
     const donut = [

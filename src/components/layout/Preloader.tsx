@@ -1,113 +1,38 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
 import Image from 'next/image';
+import { useEffect, useState } from 'react';
 
-/**
- * Opening / Preloader animation — clean white background, logo Regas centered,
- * elegant segmented loading indicator (red/blue accent), then fade out.
- * Total ~1.5s. Supports prefers-reduced-motion.
- */
+const STEPS = [['Menghubungkan', 'Database'], ['Sinkronisasi', 'Data'], ['Preparing', 'Dashboard'], ['Sistem Siap', '']] as const;
+
+/** Root application preloader. Its staged progress represents initial client boot. */
 export function Preloader() {
   const [visible, setVisible] = useState(true);
   const [fading, setFading] = useState(false);
-  const [reducedMotion, setReducedMotion] = useState(false);
   const [progress, setProgress] = useState(0);
 
   useEffect(() => {
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     const timers: ReturnType<typeof setTimeout>[] = [];
-
-    const start = setTimeout(() => {
-      const reduced =
-        typeof window !== 'undefined' &&
-        window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-      setReducedMotion(reduced);
-
-      if (reduced) {
-        // Reduced motion: quick, calm fade — no staged movement
-        setProgress(100);
-        timers.push(setTimeout(() => setFading(true), 300));
-        timers.push(setTimeout(() => setVisible(false), 800));
-        return;
-      }
-
-      // Animate progress segments (0 → 100 over ~1.2s)
-      timers.push(setTimeout(() => setProgress(35), 300));
-      timers.push(setTimeout(() => setProgress(65), 650));
-      timers.push(setTimeout(() => setProgress(100), 1000));
-
-      // Fade out at ~1.4s, remove from DOM at ~1.7s
-      timers.push(setTimeout(() => setFading(true), 1400));
-      timers.push(setTimeout(() => setVisible(false), 1700));
-    }, 0);
-
-    return () => {
-      clearTimeout(start);
-      timers.forEach(clearTimeout);
-    };
+    if (reduced) {
+      timers.push(setTimeout(() => setProgress(100), 0), setTimeout(() => setFading(true), 300), setTimeout(() => setVisible(false), 800));
+    } else {
+      timers.push(setTimeout(() => setProgress(28), 220), setTimeout(() => setProgress(68), 620), setTimeout(() => setProgress(100), 1120), setTimeout(() => setFading(true), 1500), setTimeout(() => setVisible(false), 1900));
+    }
+    return () => timers.forEach(clearTimeout);
   }, []);
 
   if (!visible) return null;
+  const activeStep = progress < 35 ? 0 : progress < 100 ? 2 : 3;
+  const processing = progress < 35 ? 'Menghubungkan data operasional' : progress < 100 ? 'Memproses data operasional' : 'Sistem operasional siap';
 
-  return (
-    <div
-      className={`fixed inset-0 z-[9999] flex flex-col items-center justify-center overflow-hidden transition-opacity duration-500 select-none ${
-        fading ? 'opacity-0 pointer-events-none' : 'opacity-100'
-      }`}
-      style={{ backgroundColor: '#FFFFFF' }}
-      aria-hidden={fading}
-      aria-busy="true"
-      role="status"
-      aria-label="Memuat aplikasi Distribusi Gas & ORF"
-    >
-      {/* Subtle top accent line */}
-      <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-[#E1251B] via-[#0072CE] to-[#83B81A] opacity-80" />
-
-      {/* Logo Regas centered */}
-      <div className="relative flex flex-col items-center justify-center px-6">
-        <div
-          className={`relative flex items-center justify-center p-4 transition-all duration-500 ease-out ${
-            reducedMotion ? 'opacity-100 scale-100' : 'opacity-95 scale-95'
-          }`}
-        >
-          <Image
-            src="/regas-.png"
-            alt="Pertamina Nusantara Regas"
-            width={280}
-            height={88}
-            priority
-            className="h-auto w-52 object-contain sm:w-64 md:w-72"
-          />
-        </div>
-
-        {/* Elegant segmented loading indicator */}
-        <div className="mt-6 flex w-56 items-center gap-1.5">
-          {[0, 1, 2, 3, 4].map((i) => {
-            const threshold = (i + 1) * 20;
-            const active = progress >= threshold;
-            const partial = !active && progress >= threshold - 20;
-            const pct = partial ? (progress - (threshold - 20)) / 20 : active ? 1 : 0;
-            return (
-              <div key={i} className="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-100">
-                <div
-                  className="h-full rounded-full bg-gradient-to-r from-[#E1251B] to-[#0072CE] transition-all duration-300"
-                  style={{ width: `${Math.round(pct * 100)}%` }}
-                />
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Branding text */}
-        <div className="mt-4 text-center">
-          <div className="text-xs font-black uppercase tracking-[0.2em] text-[#0B3568]">
-            Distribusi Gas &amp; ORF
-          </div>
-          <p className="mt-0.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-            Operational Workforce &amp; Shift Management
-          </p>
-        </div>
-      </div>
-    </div>
-  );
+  return <div className={`preloader fixed inset-0 z-[9999] isolate min-h-[100dvh] overflow-hidden bg-[#fefefe] text-[#163b70] transition-opacity duration-[400ms] ${fading ? 'pointer-events-none opacity-0' : 'opacity-100'}`} aria-hidden={fading} aria-busy="true" aria-label="Memuat aplikasi Distribusi Gas dan ORF" role="status">
+    <div className="preloader-brand preloader-brand-left"><i /> <span>Energy<br />for a brighter<br />tomorrow</span></div>
+    <div className="preloader-brand preloader-brand-right"><span>Pertamina<br />Nusantara Regas</span><i /></div>
+    <div className="preloader-side preloader-side-left" aria-hidden="true"><b /><i /><em /></div><div className="preloader-side preloader-side-right" aria-hidden="true"><b /><i /><em /></div>
+    <main className="preloader-center"><div className="preloader-orbits" aria-hidden="true"><div className="preloader-orbit preloader-orbit-one"><span className="preloader-dot dot-red" /></div><div className="preloader-orbit preloader-orbit-two"><span className="preloader-dot dot-blue" /><span className="preloader-dot dot-green" /></div></div>
+      <div className="preloader-content"><Image src="/regas-.png" alt="Pertamina Nusantara Regas" width={340} height={107} priority className="preloader-logo" /><div className="preloader-system-title">Sistem Operasional</div><div className="preloader-system-subtitle">Distribusi Gas &amp; ORF</div><div className="preloader-segments" aria-label="Sistem sedang memproses"><i /><i /><i /></div><p className="preloader-processing">{processing}<span className="preloader-ellipsis">...</span></p><div className="preloader-progress-row" aria-label={`Kemajuan memuat ${progress} persen`}><div className="preloader-progress-track"><div className="preloader-progress-fill" style={{ width: `${progress}%` }} /></div><strong>{progress}%</strong></div>
+        <ol className="preloader-timeline" aria-label="Status persiapan sistem">{STEPS.map(([lineOne, lineTwo], index) => { const completed = index < activeStep; const current = index === activeStep && progress < 100; return <li key={lineOne} className={completed ? 'is-complete' : current ? 'is-current' : ''}><span className="preloader-step-icon">{completed && '✓'}</span><span>{lineOne}{lineTwo && <><br />{lineTwo}</>}</span></li>; })}</ol>
+      </div></main><footer className="preloader-footer"><div className="preloader-footer-company"><span><i /><i /><i /></span><b />Pertamina Nusantara Regas</div><div>Reliable <b>•</b> Safe <b>•</b> Sustainable</div></footer>
+  </div>;
 }

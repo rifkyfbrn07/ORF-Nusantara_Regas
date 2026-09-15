@@ -94,6 +94,18 @@ enum ProgramStatus {
   BELUM_TEREALISASI
 }
 
+enum ImportDocumentType {
+  PROGRAM_KERJA
+  JADWAL_KERJA
+}
+
+enum ImportStatus {
+  PENDING
+  SUCCESS
+  FAILED
+  CANCELLED
+}
+
 model Department {
   id          String   @id @default(cuid())
   name        String   @unique
@@ -163,6 +175,7 @@ model User {
   programProgressLogs    ProgramKerjaProgressLog[] @relation("ProgramKerjaProgressActors")
   createdAnnouncements   Announcement[]      @relation("CreatedAnnouncements")
   uploadedReports        OperationalReport[] @relation("UploadedReports")
+  dataImports            DataImport[]        @relation("DataImportActors")
   createdAt              DateTime            @default(now())
   updatedAt              DateTime            @updatedAt
 
@@ -465,14 +478,54 @@ model ProgramKerjaMonth {
   program     ProgramKerja @relation(fields: [programId], references: [id], onDelete: Cascade)
   month       Int
   week        Int
-  target      Int         @default(100)
-  realization Int         @default(0)
+  /** Nilai Plan (P) pada periode bulan + minggu. NULL = tidak ada data (sel kosong), bukan 0. */
+  target      Int?
+  /** Nilai Realisasi (R) pada periode bulan + minggu. NULL = tidak ada data (sel kosong), bukan 0. */
+  realization Int?
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
 
   @@unique([programId, month, week])
   @@index([programId, month])
   @@index([month])
+}
+
+/**
+ * Riwayat / histori Import Data (Excel / PDF).
+ * Data dokumen hanya dianggap sebagai input — seluruh perubahan ditulis
+ * dalam satu database transaction dan dicatat di sini.
+ */
+model DataImport {
+  id                String             @id @default(cuid())
+  fileName          String
+  fileHash          String
+  fileSize          Int
+  documentType      ImportDocumentType @default(PROGRAM_KERJA)
+  status            ImportStatus       @default(PENDING)
+  /** Daftar sheet yang dibaca (JSON array string). */
+  sheetNames        Json?
+  year              Int?
+  totalRecords      Int                @default(0)
+  planRecords       Int                @default(0)
+  realizationRecords Int               @default(0)
+  notesRecords      Int                @default(0)
+  createdCount      Int                @default(0)
+  updatedCount      Int                @default(0)
+  unchangedCount    Int                @default(0)
+  conflictCount      Int                @default(0)
+  rejectedCount      Int                @default(0)
+  /** Snapshot ringkas hasil parse + preview perubahan (JSON). */
+  summary           Json?
+  errorSummary      String?
+  importedById      String?
+  importedBy        User?              @relation("DataImportActors", fields: [importedById], references: [id], onDelete: SetNull)
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+
+  @@index([documentType])
+  @@index([status])
+  @@index([importedById])
+  @@index([createdAt])
 }
 
 model OperationalReport {

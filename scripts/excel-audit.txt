@@ -1,0 +1,205 @@
+COLUMNS PANJANG: D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R,S,T,U,V,W,X,Y,Z,AA,AB,AC,AD,AE,AF,AG,AH,AI,AJ,AK,AL,AM,AN,AO,AP,AQ,AR,AS,AT,AU,AV,AW,AX,AY
+==== SHEET: Plan 2026 ====
+MERGES: [{"s":{"c":0,"r":0},"e":{"c":51,"r":0}},{"s":{"c":0,"r":1},"e":{"c":0,"r":2}},{"s":{"c":1,"r":1},"e":{"c":2,"r":2}},{"s":{"c":3,"r":1},"e":{"c":6,"r":1}},{"s":{"c":7,"r":1},"e":{"c":10,"r":1}},{"s":{"c":11,"r":1},"e":{"c":14,"r":1}},{"s":{"c":15,"r":1},"e":{"c":18,"r":1}},{"s":{"c":19,"r":1},"e":{"c":22,"r":1}},{"s":{"c":23,"r":1},"e":{"c":26,"r":1}},{"s":{"c":27,"r":1},"e":{"c":30,"r":1}},{"s":{"c":1,"r":3},"e":{"c":2,"r":3}},{"s":{"c":0,"r":4},"e":{"c":0,"r":5}},{"s":{"c":1,"r":4},"e":{"c":1,"r":5}},{"s":{"c":51,"r":4},"e":{"c":51,"r":5}},{"s":{"c":0,"r":6},"e":{"c":0,"r":7}},{"s":{"c":1,"r":6},"e":{"c":1,"r":7}},{"s":{"c":51,"r":6},"e":{"c":51,"r":7}},{"s":{"c":31,"r":1},"e":{"c":34,"r":1}},{"s":{"c":35,"r":1},"e":{"c":38,"r":1}},{"s":{"c":39,"r":1},"e":{"c":42,"r":1}},{"s":{"c":43,"r":1},"e":{"c":46,"r":1}},{"s":{"c":47,"r":1},"e":{"c":50,"r":1}},{"s":{"c":51,"r":1},"e":{"c":51,"r":2}},{"s":{"c":0,"r":12},"e":{"c":0,"r":13}},{"s":{"c":1,"r":12},"e":{"c":1,"r":13}},{"s":{"c":51,"r":12},"e":{"c":51,"r":13}},{"s":{"c":0,"r":14},"e":{"c":0,"r":15}},{"s":{"c":1,"r":14},"e":{"c":1,"r":15}},{"s":{"c":51,"r":14},"e":{"c":51,"r":15}},{"s":{"c":0,"r":8},"e":{"c":0,"r":9}},{"s":{"c":1,"r":8},"e":{"c":1,"r":9}},{"s":{"c":51,"r":8},"e":{"c":51,"r":9}},{"s":{"c":0,"r":10},"e":{"c":0,"r":11}},{"s":{"c":1,"r":10},"e":{"c":1,"r":11}},{"s":{"c":51,"r":10},"e":{"c":51,"r":11}},{"s":{"c":0,"r":21},"e":{"c":0,"r":22}},{"s":{"c":1,"r":21},"e":{"c":1,"r":22}},{"s":{"c":51,"r":21},"e":{"c":51,"r":22}},{"s":{"c":0,"r":23},"e":{"c":0,"r":24}},{"s":{"c":1,"r":23},"e":{"c":1,"r":24}},{"s":{"c":51,"r":23},"e":{"c":51,"r":24}},{"s":{"c":0,"r":17},"e":{"c":0,"r":18}},{"s":{"c":1,"r":17},"e":{"c":1,"r":18}},{"s":{"c":51,"r":17},"e":{"c":51,"r":18}},{"s":{"c":0,"r":19},"e":{"c":0,"r":20}},{"s":{"c":1,"r":19},"e":{"c":1,"r":20}},{"s":{"c":51,"r":19},"e":{"c":51,"r":20}},{"s":{"c":0,"r":29},"e":{"c":0,"r":30}},{"s":{"c":1,"r":29},"e":{"c":1,"r":30}},{"s":{"c":51,"r":29},"e":{"c":51,"r":30}},{"s":{"c":0,"r":31},"e":{"c":0,"r":32}},{"s":{"c":1,"r":31},"e":{"c":1,"r":32}},{"s":{"c":51,"r":31},"e":{"c":51,"r":32}},{"s":{"c":0,"r":25},"e":{"c":0,"r":26}},{"s":{"c":1,"r":25},"e":{"c":1,"r":26}},{"s":{"c":51,"r":25},"e":{"c":51,"r":26}},{"s":{"c":0,"r":27},"e":{"c":0,"r":28}},{"s":{"c":1,"r":27},"e":{"c":1,"r":28}},{"s":{"c":51,"r":27},"e":{"c":51,"r":28}},{"s":{"c":0,"r":37},"e":{"c":0,"r":38}},{"s":{"c":1,"r":37},"e":{"c":1,"r":38}},{"s":{"c":0,"r":39},"e":{"c":0,"r":40}},{"s":{"c":1,"r":39},"e":{"c":1,"r":40}},{"s":{"c":0,"r":42},"e":{"c":0,"r":43}},{"s":{"c":1,"r":42},"e":{"c":1,"r":43}},{"s":{"c":51,"r":42},"e":{"c":51,"r":43}},{"s":{"c":0,"r":33},"e":{"c":0,"r":34}},{"s":{"c":1,"r":33},"e":{"c":1,"r":34}},{"s":{"c":51,"r":33},"e":{"c":51,"r":34}},{"s":{"c":0,"r":35},"e":{"c":0,"r":36}},{"s":{"c":1,"r":35},"e":{"c":1,"r":36}},{"s":{"c":51,"r":35},"e":{"c":51,"r":36}},{"s":{"c":0,"r":48},"e":{"c":0,"r":49}},{"s":{"c":1,"r":48},"e":{"c":1,"r":49}},{"s":{"c":51,"r":48},"e":{"c":51,"r":49}},{"s":{"c":0,"r":50},"e":{"c":0,"r":51}},{"s":{"c":1,"r":50},"e":{"c":1,"r":51}},{"s":{"c":0,"r":52},"e":{"c":0,"r":53}},{"s":{"c":1,"r":52},"e":{"c":1,"r":53}},{"s":{"c":0,"r":44},"e":{"c":0,"r":45}},{"s":{"c":1,"r":44},"e":{"c":1,"r":45}},{"s":{"c":51,"r":44},"e":{"c":51,"r":45}},{"s":{"c":0,"r":46},"e":{"c":0,"r":47}},{"s":{"c":1,"r":46},"e":{"c":1,"r":47}},{"s":{"c":51,"r":46},"e":{"c":51,"r":47}},{"s":{"c":0,"r":58},"e":{"c":0,"r":59}},{"s":{"c":1,"r":58},"e":{"c":1,"r":59}},{"s":{"c":51,"r":58},"e":{"c":51,"r":59}},{"s":{"c":0,"r":60},"e":{"c":0,"r":61}},{"s":{"c":1,"r":60},"e":{"c":1,"r":61}},{"s":{"c":51,"r":60},"e":{"c":51,"r":61}},{"s":{"c":0,"r":54},"e":{"c":0,"r":55}},{"s":{"c":1,"r":54},"e":{"c":1,"r":55}},{"s":{"c":51,"r":54},"e":{"c":51,"r":55}},{"s":{"c":0,"r":56},"e":{"c":0,"r":57}},{"s":{"c":1,"r":56},"e":{"c":1,"r":57}},{"s":{"c":51,"r":56},"e":{"c":51,"r":57}},{"s":{"c":0,"r":68},"e":{"c":0,"r":69}},{"s":{"c":1,"r":68},"e":{"c":1,"r":69}},{"s":{"c":51,"r":68},"e":{"c":51,"r":69}},{"s":{"c":0,"r":62},"e":{"c":0,"r":63}},{"s":{"c":1,"r":62},"e":{"c":1,"r":63}},{"s":{"c":0,"r":64},"e":{"c":0,"r":65}},{"s":{"c":1,"r":64},"e":{"c":1,"r":65}},{"s":{"c":51,"r":64},"e":{"c":51,"r":65}},{"s":{"c":0,"r":66},"e":{"c":0,"r":67}},{"s":{"c":1,"r":66},"e":{"c":1,"r":67}},{"s":{"c":51,"r":66},"e":{"c":51,"r":67}},{"s":{"c":51,"r":79},"e":{"c":51,"r":80}},{"s":{"c":0,"r":81},"e":{"c":0,"r":82}},{"s":{"c":1,"r":81},"e":{"c":1,"r":82}},{"s":{"c":51,"r":81},"e":{"c":51,"r":82}},{"s":{"c":0,"r":70},"e":{"c":0,"r":71}},{"s":{"c":1,"r":70},"e":{"c":1,"r":71}},{"s":{"c":51,"r":70},"e":{"c":51,"r":71}},{"s":{"c":0,"r":72},"e":{"c":0,"r":73}},{"s":{"c":1,"r":72},"e":{"c":1,"r":73}},{"s":{"c":0,"r":75},"e":{"c":0,"r":76}},{"s":{"c":1,"r":75},"e":{"c":1,"r":76}},{"s":{"c":51,"r":75},"e":{"c":51,"r":76}},{"s":{"c":51,"r":77},"e":{"c":51,"r":78}},{"s":{"c":29,"r":95},"e":{"c":39,"r":95}},{"s":{"c":3,"r":86},"e":{"c":8,"r":86}},{"s":{"c":31,"r":87},"e":{"c":35,"r":87}},{"s":{"c":42,"r":87},"e":{"c":46,"r":87}},{"s":{"c":31,"r":93},"e":{"c":35,"r":93}},{"s":{"c":42,"r":93},"e":{"c":46,"r":93}},{"s":{"c":31,"r":94},"e":{"c":35,"r":94}},{"s":{"c":39,"r":94},"e":{"c":49,"r":94}},{"s":{"c":0,"r":77},"e":{"c":0,"r":78}},{"s":{"c":16,"r":78},"e":{"c":20,"r":78}},{"s":{"c":0,"r":79},"e":{"c":0,"r":80}},{"s":{"c":1,"r":79},"e":{"c":1,"r":80}}]
+1| A=PROGRAM KERJA DEPARTEMEN DISTRIBUSI GAS DAN MANAJEMEN ORF\nTAHUN 2026
+2| A=NO ; B=Program Kerja ; D=44927 ; H=44958 ; L=44986 ; P=45017 ; T=45047 ; X=45078 ; AB=45108 ; AF=45139 ; AJ=45170 ; AN=45200 ; AR=45231 ; AV=45261 ; AZ=Keterangan || PERIODS[m1.w1=44927,m2.w1=44958,m3.w1=44986,m4.w1=45017,m5.w1=45047,m6.w1=45078,m7.w1=45108,m8.w1=45139,m9.w1=45170,m10.w1=45200,m11.w1=45231,m12.w1=45261]
+3| D=I ; E=II ; F=III ; G=IV ; H=I ; I=II ; J=III ; K=IV ; L=I ; M=II ; N=III ; O=IV ; P=I ; Q=II ; R=III ; S=IV ; T=I ; U=II ; V=III ; W=IV ; X=I ; Y=II ; Z=III ; AA=IV ; AB=I ; AC=II ; AD=III ; AE=IV ; AF=I ; AG=II ; AH=III ; AI=IV ; AJ=I ; AK=II ; AL=III ; AM=IV ; AN=I ; AO=II ; AP=III ; AQ=IV ; AR=I ; AS=II ; AT=III ; AU=IV ; AV=I ; AW=II ; AX=III ; AY=IV || PERIODS[m1.w1=I,m1.w2=II,m1.w3=III,m1.w4=IV,m2.w1=I,m2.w2=II,m2.w3=III,m2.w4=IV,m3.w1=I,m3.w2=II,m3.w3=III,m3.w4=IV,m4.w1=I,m4.w2=II,m4.w3=III,m4.w4=IV,m5.w1=I,m5.w2=II,m5.w3=III,m5.w4=IV,m6.w1=I,m6.w2=II,m6.w3=III,m6.w4=IV,m7.w1=I,m7.w2=II,m7.w3=III,m7.w4=IV,m8.w1=I,m8.w2=II,m8.w3=III,m8.w4=IV,m9.w1=I,m9.w2=II,m9.w3=III,m9.w4=IV,m10.w1=I,m10.w2=II,m10.w3=III,m10.w4=IV,m11.w1=I,m11.w2=II,m11.w3=III,m11.w4=IV,m12.w1=I,m12.w2=II,m12.w3=III,m12.w4=IV]
+4| A=A ; B=PENGADAAN
+5| A=1 ; B=Pengadaan Jasa Pelayanan Radio Trunking  ; C=P ; AZ=Kontrak baru 2026
+6| C=R ; U=50 || PERIODS[m5.w2=50]
+7| A=2 ; B=Pengadaan Patroli Pengawasan jalur pipa bawah laut dan penunjang operasi  ; C=P ; AZ=Kontrak baru 2026
+8| C=R ; O=80 || PERIODS[m3.w4=80]
+9| A=3 ; B=Pengadaan Barton Chart ; C=P
+10| C=R ; D=100 || PERIODS[m1.w1=100]
+11| A=4 ; B=Pengadaan Jasa Kalibrasi Gas Detector (Merk MSA) ; C=P
+12| C=R ; X=90 || PERIODS[m6.w1=90]
+13| A=5 ; B=Pengaadan Bahan Bakar EDG (pada saat level 600 liter) ; C=P ; AZ=Pembelian tergantung level tank solar ± 600 L
+14| C=R ; O=100 || PERIODS[m3.w4=100]
+15| A=6 ; B=Pengadaan Jasa Perpanjangan KIR & STNK Mobil DAMKAR ; C=P
+16| C=R ; Q=0 || PERIODS[m4.w2=0]
+17| A=B ; B=RAPAT KOORDINASI
+18| A=1 ; B=Rapat Koordinasi DIV Operasi ; C=P
+19| C=R ; X=100 || PERIODS[m6.w1=100]
+20| A=2 ; B=Rapat Koordinasi Departemen Distribusi Gas & ORF ; C=P
+21| C=R ; S=100 ; W=100 || PERIODS[m4.w4=100,m5.w4=100]
+22| A=3 ; B=Rapat Koordinasi Penyaluran Gas NR-PLN (3 bulan) ; C=P
+23| C=R ; R=100 || PERIODS[m4.w3=100]
+24| A=5 ; B=Gas Coordination Meeting (GCM) ; C=P
+25| C=R ; J=100 ; N=0 ; R=0 ; V=0 || PERIODS[m2.w3=100,m3.w3=0,m4.w3=0,m5.w3=0]
+26| A=6 ; B=Rapat Koordinasi Pgasol (3 bulan) ; C=P ; AZ=Awal pelaksanaan di akhir bulan Juli
+27| C=R
+28| A=7 ; B=Kegiatan Olahraga Bersama (Customer Enggagement) ; C=P
+29| C=R
+30| A=8 ; B=Bechmark Pertamina Group ; C=P
+31| C=R
+32| A=9 ; B=Kunjungan Ke PLN Group ; C=P ; AZ=Realisasi : Kunjungan PLN NP UP MTW\nRencana : Kunjungan P2B\n
+33| C=R
+34| A=10 ; B=Rapat Rekon BMN ; C=P
+35| C=R ; G=100 || PERIODS[m1.w4=100]
+36| A=11 ; B=Rapat Rekon FSA ; C=P
+37| C=R ; W=100 || PERIODS[m5.w4=100]
+38| A=12 ; B=Rekon BOG ; C=P
+39| C=R
+40| C=P
+41| C=R
+42| A=C ; B=OPERASIONAL RUTIN
+43| A=1 ; B=Monitoring Penyaluran Gas (Harian) ; C=P ; AZ=Di laksanakan setiap harinya
+44| C=R ; D=100 ; E=100 ; F=100 ; G=100 ; H=100 ; I=100 ; J=100 ; K=100 ; L=100 ; M=100 ; N=100 ; O=100 ; P=100 ; Q=100 ; R=100 ; S=100 ; T=100 ; U=100 ; V=100 ; W=100 ; X=100 || PERIODS[m1.w1=100,m1.w2=100,m1.w3=100,m1.w4=100,m2.w1=100,m2.w2=100,m2.w3=100,m2.w4=100,m3.w1=100,m3.w2=100,m3.w3=100,m3.w4=100,m4.w1=100,m4.w2=100,m4.w3=100,m4.w4=100,m5.w1=100,m5.w2=100,m5.w3=100,m5.w4=100,m6.w1=100]
+45| A=2 ; B=Monitoring Peralatan Operasi (Harian) ; C=P ; AZ=Di laksanakan setiap harinya
+46| C=R ; D=100 ; E=100 ; F=100 ; G=100 ; H=100 ; I=100 ; J=100 ; K=100 ; L=100 ; M=100 ; N=100 ; O=100 ; P=100 ; Q=100 ; R=100 ; S=100 ; T=100 ; U=100 ; V=100 ; W=100 ; X=100 || PERIODS[m1.w1=100,m1.w2=100,m1.w3=100,m1.w4=100,m2.w1=100,m2.w2=100,m2.w3=100,m2.w4=100,m3.w1=100,m3.w2=100,m3.w3=100,m3.w4=100,m4.w1=100,m4.w2=100,m4.w3=100,m4.w4=100,m5.w1=100,m5.w2=100,m5.w3=100,m5.w4=100,m6.w1=100]
+47| A=3 ; B=Monitoring Patroli Laut dan Sarana Navigasii (Harian) ; C=P ; AZ=Di laksanakan setiap harinya
+48| C=R ; D=100 ; E=100 ; F=100 ; G=100 ; H=100 ; I=100 ; J=100 ; K=100 ; L=100 ; M=100 ; N=100 ; O=100 ; P=100 ; Q=100 ; R=100 ; S=100 ; T=100 ; U=100 ; V=100 ; W=100 ; X=100 || PERIODS[m1.w1=100,m1.w2=100,m1.w3=100,m1.w4=100,m2.w1=100,m2.w2=100,m2.w3=100,m2.w4=100,m3.w1=100,m3.w2=100,m3.w3=100,m3.w4=100,m4.w1=100,m4.w2=100,m4.w3=100,m4.w4=100,m5.w1=100,m5.w2=100,m5.w3=100,m5.w4=100,m6.w1=100]
+49| A=4 ; B=Kegiatan Drill HSSE ; C=P ; AZ=Target pelaksanaan setahun 6 kali
+50| C=R ; V=100 || PERIODS[m5.w3=100]
+51| A=5 ; B=Satgas Natal & tahun baru (NATARU) ; C=P
+52| C=R ; D=100 || PERIODS[m1.w1=100]
+53| A=6 ; B=Satgas Ramadhan & Idul fitri (RAFI) ; C=P
+54| C=R ; O=100 ; P=100 || PERIODS[m3.w4=100,m4.w1=100]
+55| A=7 ; B=Permit To Work ; C=P ; AZ=Pelaksaan tergantung dari Fungsi lain
+56| C=R ; D=100 ; E=100 ; F=100 ; G=100 ; H=100 ; I=100 ; J=100 ; K=100 ; L=100 ; M=100 ; N=100 ; O=100 ; P=100 ; Q=100 ; R=100 ; S=100 ; T=100 ; U=100 ; V=100 ; W=100 ; X=100 || PERIODS[m1.w1=100,m1.w2=100,m1.w3=100,m1.w4=100,m2.w1=100,m2.w2=100,m2.w3=100,m2.w4=100,m3.w1=100,m3.w2=100,m3.w3=100,m3.w4=100,m4.w1=100,m4.w2=100,m4.w3=100,m4.w4=100,m5.w1=100,m5.w2=100,m5.w3=100,m5.w4=100,m6.w1=100]
+57| A=8 ; B=Laporan Manajemen (Bulanan) ; C=P
+58| C=R ; D=100 ; H=100 ; L=100 ; P=100 ; T=100 ; X=100 || PERIODS[m1.w1=100,m2.w1=100,m3.w1=100,m4.w1=100,m5.w1=100,m6.w1=100]
+59| A=9 ; B=Laporan Sub Holding Gas (Bulanan) ; C=P
+60| C=R ; D=100 ; H=100 ; L=100 ; P=100 ; T=100 ; X=100 || PERIODS[m1.w1=100,m2.w1=100,m3.w1=100,m4.w1=100,m5.w1=100,m6.w1=100]
+61| A=10 ; B=Laporan Risk (3 Bulan) ; C=P
+62| C=R ; O=100 || PERIODS[m3.w4=100]
+63| A=11 ; B=Laporan TOP Risk ; C=P
+64| C=R ; D=100 ; H=100 ; L=100 ; P=100 ; T=100 ; X=100 || PERIODS[m1.w1=100,m2.w1=100,m3.w1=100,m4.w1=100,m5.w1=100,m6.w1=100]
+65| A=12 ; B=Laporan Daily Report (Harian) ; C=P ; AZ=Di laksanakan setiap harinya
+66| C=R ; D=100 ; E=100 ; F=100 ; G=100 ; H=100 ; I=100 ; J=100 ; K=100 ; L=100 ; M=100 ; N=100 ; O=100 ; P=100 ; Q=100 ; R=100 ; S=100 ; T=100 ; U=100 ; V=100 ; W=100 ; X=100 || PERIODS[m1.w1=100,m1.w2=100,m1.w3=100,m1.w4=100,m2.w1=100,m2.w2=100,m2.w3=100,m2.w4=100,m3.w1=100,m3.w2=100,m3.w3=100,m3.w4=100,m4.w1=100,m4.w2=100,m4.w3=100,m4.w4=100,m5.w1=100,m5.w2=100,m5.w3=100,m5.w4=100,m6.w1=100]
+67| A=13 ; B=Laporan Billing Penyaluran Gas (2 Mingguan) ; C=P
+68| C=R ; G=100 ; K=100 ; O=100 ; S=100 ; W=100 || PERIODS[m1.w4=100,m2.w4=100,m3.w4=100,m4.w4=100,m5.w4=100]
+69| A=14 ; B=Laporan Start Discharge Cargo ; C=P ; AZ=Mengikuti Jadwal kedatangan kargo
+70| C=R ; D=100 ; E=100 ; F=100 ; G=100 ; H=100 ; I=100 ; J=100 ; K=100 ; L=100 ; M=100 ; N=100 ; O=100 ; P=100 ; Q=100 ; R=100 ; S=100 ; T=100 ; U=100 ; V=100 ; W=100 ; X=100 || PERIODS[m1.w1=100,m1.w2=100,m1.w3=100,m1.w4=100,m2.w1=100,m2.w2=100,m2.w3=100,m2.w4=100,m3.w1=100,m3.w2=100,m3.w3=100,m3.w4=100,m4.w1=100,m4.w2=100,m4.w3=100,m4.w4=100,m5.w1=100,m5.w2=100,m5.w3=100,m5.w4=100,m6.w1=100]
+71| A=16 ; B=House Keeping ; C=P ; AZ=Di lakasanakan Setiap hari Jum'at
+72| C=R
+73| A=17 ; B=Review TKI/TKO ; C=P
+74| C=R
+75| A=D ; B=AUDIT
+76| A=1 ; B=Internal Audit Sistem Manajemen Terpadu (SMT) ; C=P ; AZ=Pelaksanaan tergantung dari fungsi QM
+77| C=R
+78| A=2 ; B=Preliminary Survey Audit atas Biaya Operasional Regasifikasi PT ; C=P
+79| B=Nusantara Regas ; C=R ; Q=100 || PERIODS[m4.w2=100]
+80| A=3 ; B=Eksternal Audit Sistem Manajemen Terpadu (SMT) ; C=P ; AZ=Pelaksanaan tergantung dari fungsi QM
+81| C=R
+82| A=4 ; B=SUPREME ; C=P ; AZ=Pelaksanaan tergantung dari fungsi HSSE
+83| C=R
+84| 
+85| B=Plan (P)
+86| B=Realisasi (R)
+87| B=Tidak Terlealisasi
+88| AF=Dibuat oleh: ; AQ=Disetujui oleh ; AZ=Diketahui oleh: || PERIODS[m8.w1=Dibuat oleh:,m10.w4=Disetujui oleh]
+89| 
+90| 
+91| 
+92| 
+93| 
+94| AF=Ade Imat Ruhimat ; AQ=Yosep Ismail Zulkarnain ; AZ=Grace Intan Melania || PERIODS[m8.w1=Ade Imat Ruhimat,m10.w4=Yosep Ismail Zulkarnain]
+95| AF=SO Distribusi Gas & ORF ; AN=Ka.Dep. Distribusi Gas & Manajemen ORF ; AZ=VP Operasi || PERIODS[m8.w1=SO Distribusi Gas & ORF,m10.w1=Ka.Dep. Distribusi Gas & Manajemen ORF]
+96| 
+==== SHEET: Plan 2026 (2) ====
+MERGES: [{"s":{"c":0,"r":0},"e":{"c":51,"r":0}},{"s":{"c":0,"r":1},"e":{"c":0,"r":2}},{"s":{"c":1,"r":1},"e":{"c":2,"r":2}},{"s":{"c":3,"r":1},"e":{"c":6,"r":1}},{"s":{"c":7,"r":1},"e":{"c":10,"r":1}},{"s":{"c":11,"r":1},"e":{"c":14,"r":1}},{"s":{"c":15,"r":1},"e":{"c":18,"r":1}},{"s":{"c":19,"r":1},"e":{"c":22,"r":1}},{"s":{"c":23,"r":1},"e":{"c":26,"r":1}},{"s":{"c":27,"r":1},"e":{"c":30,"r":1}},{"s":{"c":1,"r":3},"e":{"c":2,"r":3}},{"s":{"c":0,"r":4},"e":{"c":0,"r":5}},{"s":{"c":1,"r":4},"e":{"c":1,"r":5}},{"s":{"c":51,"r":4},"e":{"c":51,"r":5}},{"s":{"c":0,"r":6},"e":{"c":0,"r":7}},{"s":{"c":1,"r":6},"e":{"c":1,"r":7}},{"s":{"c":51,"r":6},"e":{"c":51,"r":7}},{"s":{"c":31,"r":1},"e":{"c":34,"r":1}},{"s":{"c":35,"r":1},"e":{"c":38,"r":1}},{"s":{"c":39,"r":1},"e":{"c":42,"r":1}},{"s":{"c":43,"r":1},"e":{"c":46,"r":1}},{"s":{"c":47,"r":1},"e":{"c":50,"r":1}},{"s":{"c":51,"r":1},"e":{"c":51,"r":2}},{"s":{"c":0,"r":12},"e":{"c":0,"r":13}},{"s":{"c":1,"r":12},"e":{"c":1,"r":13}},{"s":{"c":51,"r":12},"e":{"c":51,"r":13}},{"s":{"c":0,"r":14},"e":{"c":0,"r":15}},{"s":{"c":1,"r":14},"e":{"c":1,"r":15}},{"s":{"c":51,"r":14},"e":{"c":51,"r":15}},{"s":{"c":0,"r":8},"e":{"c":0,"r":9}},{"s":{"c":1,"r":8},"e":{"c":1,"r":9}},{"s":{"c":51,"r":8},"e":{"c":51,"r":9}},{"s":{"c":0,"r":10},"e":{"c":0,"r":11}},{"s":{"c":1,"r":10},"e":{"c":1,"r":11}},{"s":{"c":51,"r":10},"e":{"c":51,"r":11}},{"s":{"c":0,"r":21},"e":{"c":0,"r":22}},{"s":{"c":1,"r":21},"e":{"c":1,"r":22}},{"s":{"c":51,"r":21},"e":{"c":51,"r":22}},{"s":{"c":0,"r":23},"e":{"c":0,"r":24}},{"s":{"c":1,"r":23},"e":{"c":1,"r":24}},{"s":{"c":51,"r":23},"e":{"c":51,"r":24}},{"s":{"c":0,"r":17},"e":{"c":0,"r":18}},{"s":{"c":1,"r":17},"e":{"c":1,"r":18}},{"s":{"c":51,"r":17},"e":{"c":51,"r":18}},{"s":{"c":0,"r":19},"e":{"c":0,"r":20}},{"s":{"c":1,"r":19},"e":{"c":1,"r":20}},{"s":{"c":51,"r":19},"e":{"c":51,"r":20}},{"s":{"c":0,"r":31},"e":{"c":0,"r":32}},{"s":{"c":1,"r":31},"e":{"c":1,"r":32}},{"s":{"c":51,"r":29},"e":{"c":51,"r":30}},{"s":{"c":0,"r":33},"e":{"c":0,"r":34}},{"s":{"c":1,"r":33},"e":{"c":1,"r":34}},{"s":{"c":51,"r":31},"e":{"c":51,"r":32}},{"s":{"c":0,"r":25},"e":{"c":0,"r":26}},{"s":{"c":1,"r":25},"e":{"c":1,"r":26}},{"s":{"c":51,"r":25},"e":{"c":51,"r":26}},{"s":{"c":0,"r":29},"e":{"c":0,"r":30}},{"s":{"c":1,"r":29},"e":{"c":1,"r":30}},{"s":{"c":51,"r":27},"e":{"c":51,"r":28}},{"s":{"c":0,"r":27},"e":{"c":0,"r":28}},{"s":{"c":1,"r":27},"e":{"c":1,"r":28}},{"s":{"c":0,"r":39},"e":{"c":0,"r":40}},{"s":{"c":1,"r":39},"e":{"c":1,"r":40}},{"s":{"c":0,"r":42},"e":{"c":0,"r":43}},{"s":{"c":1,"r":42},"e":{"c":1,"r":43}},{"s":{"c":0,"r":35},"e":{"c":0,"r":36}},{"s":{"c":1,"r":35},"e":{"c":1,"r":36}},{"s":{"c":51,"r":33},"e":{"c":51,"r":34}},{"s":{"c":0,"r":37},"e":{"c":0,"r":38}},{"s":{"c":1,"r":37},"e":{"c":1,"r":38}},{"s":{"c":51,"r":35},"e":{"c":51,"r":36}},{"s":{"c":51,"r":37},"e":{"c":51,"r":38}},{"s":{"c":51,"r":39},"e":{"c":51,"r":40}},{"s":{"c":51,"r":42},"e":{"c":51,"r":43}},{"s":{"c":0,"r":48},"e":{"c":0,"r":49}},{"s":{"c":1,"r":48},"e":{"c":1,"r":49}},{"s":{"c":51,"r":46},"e":{"c":51,"r":47}},{"s":{"c":0,"r":50},"e":{"c":0,"r":51}},{"s":{"c":1,"r":50},"e":{"c":1,"r":51}},{"s":{"c":0,"r":52},"e":{"c":0,"r":53}},{"s":{"c":1,"r":52},"e":{"c":1,"r":53}},{"s":{"c":0,"r":44},"e":{"c":0,"r":45}},{"s":{"c":1,"r":44},"e":{"c":1,"r":45}},{"s":{"c":0,"r":46},"e":{"c":0,"r":47}},{"s":{"c":1,"r":46},"e":{"c":1,"r":47}},{"s":{"c":51,"r":44},"e":{"c":51,"r":45}},{"s":{"c":51,"r":48},"e":{"c":51,"r":49}},{"s":{"c":51,"r":50},"e":{"c":51,"r":51}},{"s":{"c":0,"r":58},"e":{"c":0,"r":59}},{"s":{"c":1,"r":58},"e":{"c":1,"r":59}},{"s":{"c":51,"r":56},"e":{"c":51,"r":57}},{"s":{"c":0,"r":60},"e":{"c":0,"r":61}},{"s":{"c":1,"r":60},"e":{"c":1,"r":61}},{"s":{"c":51,"r":58},"e":{"c":51,"r":59}},{"s":{"c":0,"r":54},"e":{"c":0,"r":55}},{"s":{"c":1,"r":54},"e":{"c":1,"r":55}},{"s":{"c":51,"r":52},"e":{"c":51,"r":53}},{"s":{"c":0,"r":56},"e":{"c":0,"r":57}},{"s":{"c":1,"r":56},"e":{"c":1,"r":57}},{"s":{"c":51,"r":54},"e":{"c":51,"r":55}},{"s":{"c":0,"r":68},"e":{"c":0,"r":69}},{"s":{"c":1,"r":68},"e":{"c":1,"r":69}},{"s":{"c":51,"r":66},"e":{"c":51,"r":67}},{"s":{"c":0,"r":76},"e":{"c":0,"r":77}},{"s":{"c":1,"r":76},"e":{"c":1,"r":77}},{"s":{"c":51,"r":74},"e":{"c":51,"r":75}},{"s":{"c":0,"r":62},"e":{"c":0,"r":63}},{"s":{"c":1,"r":62},"e":{"c":1,"r":63}},{"s":{"c":0,"r":64},"e":{"c":0,"r":65}},{"s":{"c":1,"r":64},"e":{"c":1,"r":65}},{"s":{"c":51,"r":62},"e":{"c":51,"r":63}},{"s":{"c":0,"r":66},"e":{"c":0,"r":67}},{"s":{"c":1,"r":66},"e":{"c":1,"r":67}},{"s":{"c":51,"r":64},"e":{"c":51,"r":65}},{"s":{"c":0,"r":70},"e":{"c":0,"r":71}},{"s":{"c":0,"r":72},"e":{"c":0,"r":73}},{"s":{"c":1,"r":70},"e":{"c":1,"r":71}},{"s":{"c":1,"r":72},"e":{"c":1,"r":73}},{"s":{"c":1,"r":74},"e":{"c":1,"r":75}},{"s":{"c":0,"r":74},"e":{"c":0,"r":75}},{"s":{"c":51,"r":83},"e":{"c":51,"r":84}},{"s":{"c":51,"r":89},"e":{"c":51,"r":90}},{"s":{"c":0,"r":78},"e":{"c":0,"r":79}},{"s":{"c":1,"r":78},"e":{"c":1,"r":79}},{"s":{"c":0,"r":81},"e":{"c":0,"r":82}},{"s":{"c":1,"r":81},"e":{"c":1,"r":82}},{"s":{"c":0,"r":83},"e":{"c":0,"r":84}},{"s":{"c":51,"r":81},"e":{"c":51,"r":82}},{"s":{"c":16,"r":84},"e":{"c":20,"r":84}},{"s":{"c":51,"r":78},"e":{"c":51,"r":79}},{"s":{"c":1,"r":83},"e":{"c":1,"r":84}},{"s":{"c":3,"r":94},"e":{"c":8,"r":94}},{"s":{"c":31,"r":95},"e":{"c":35,"r":95}},{"s":{"c":42,"r":95},"e":{"c":46,"r":95}},{"s":{"c":31,"r":101},"e":{"c":35,"r":101}},{"s":{"c":42,"r":101},"e":{"c":46,"r":101}},{"s":{"c":31,"r":102},"e":{"c":35,"r":102}},{"s":{"c":39,"r":102},"e":{"c":49,"r":102}},{"s":{"c":0,"r":85},"e":{"c":0,"r":86}},{"s":{"c":1,"r":85},"e":{"c":1,"r":86}},{"s":{"c":0,"r":87},"e":{"c":0,"r":88}},{"s":{"c":0,"r":89},"e":{"c":0,"r":90}},{"s":{"c":1,"r":87},"e":{"c":1,"r":88}},{"s":{"c":1,"r":89},"e":{"c":1,"r":90}}]
+1| A=PROGRAM KERJA DEPARTEMEN DISTRIBUSI GAS DAN MANAJEMEN ORF\nTAHUN 2026
+2| A=NO ; B=Program Kerja ; D=44927 ; H=44958 ; L=44986 ; P=45017 ; T=45047 ; X=45078 ; AB=45108 ; AF=45139 ; AJ=45170 ; AN=45200 ; AR=45231 ; AV=45261 ; AZ=Keterangan || PERIODS[m1.w1=44927,m2.w1=44958,m3.w1=44986,m4.w1=45017,m5.w1=45047,m6.w1=45078,m7.w1=45108,m8.w1=45139,m9.w1=45170,m10.w1=45200,m11.w1=45231,m12.w1=45261]
+3| D=I ; E=II ; F=III ; G=IV ; H=I ; I=II ; J=III ; K=IV ; L=I ; M=II ; N=III ; O=IV ; P=I ; Q=II ; R=III ; S=IV ; T=I ; U=II ; V=III ; W=IV ; X=I ; Y=II ; Z=III ; AA=IV ; AB=I ; AC=II ; AD=III ; AE=IV ; AF=I ; AG=II ; AH=III ; AI=IV ; AJ=I ; AK=II ; AL=III ; AM=IV ; AN=I ; AO=II ; AP=III ; AQ=IV ; AR=I ; AS=II ; AT=III ; AU=IV ; AV=I ; AW=II ; AX=III ; AY=IV || PERIODS[m1.w1=I,m1.w2=II,m1.w3=III,m1.w4=IV,m2.w1=I,m2.w2=II,m2.w3=III,m2.w4=IV,m3.w1=I,m3.w2=II,m3.w3=III,m3.w4=IV,m4.w1=I,m4.w2=II,m4.w3=III,m4.w4=IV,m5.w1=I,m5.w2=II,m5.w3=III,m5.w4=IV,m6.w1=I,m6.w2=II,m6.w3=III,m6.w4=IV,m7.w1=I,m7.w2=II,m7.w3=III,m7.w4=IV,m8.w1=I,m8.w2=II,m8.w3=III,m8.w4=IV,m9.w1=I,m9.w2=II,m9.w3=III,m9.w4=IV,m10.w1=I,m10.w2=II,m10.w3=III,m10.w4=IV,m11.w1=I,m11.w2=II,m11.w3=III,m11.w4=IV,m12.w1=I,m12.w2=II,m12.w3=III,m12.w4=IV]
+4| A=A ; B=PENGADAAN
+5| A=1 ; B=Pengadaan Jasa Pelayanan Radio Trunking  ; C=P ; AZ=- Klarifikasi dan/atau negosiasi\nPengadaan jasa layanan radio komunikasi trunking\n- Membuat Memo klarisifikasi nilai HPS\n- Pelaksanaan operasional radio trungking masih bisa digunakan dengan radio exsisting yang ada.
+6| C=R
+7| A=2 ; B=Pengadaan Patroli Pengawasan jalur pipa bawah laut dan penunjang operasi  ; C=P ; AZ=- Proses review Draf Adendum Kontrak sudah di Pgasol
+8| C=R
+9| A=3 ; B=Pengadaan Barton Chart ; C=P ; AZ=Udah PO dan PR
+10| C=R ; D=100 || PERIODS[m1.w1=100]
+11| A=4 ; B=Pengadaan Jasa Kalibrasi Gas Detector (Merk MSA) ; C=P ; AZ=Proses Vendor menagihkan via I-vendor (Closed)
+12| C=R ; X=100 || PERIODS[m6.w1=100]
+13| A=5 ; B=Pengaadan Bahan Bakar EDG (pada saat level 600 liter) ; C=P ; AZ=- Pembelian pada saat TA 600L\n- Sesuai kondisi level tank
+14| C=R ; O=100 || PERIODS[m3.w4=100]
+15| A=6 ; B=Pengadaan Jasa Perpanjangan KIR & STNK Mobil DAMKAR ; C=P ; AZ=- Untuk proses STNK sudah selesai \n- KIR sudah selesai
+16| C=R ; AD=100 || PERIODS[m7.w3=100]
+17| A=B ; B=RAPAT KOORDINASI
+18| A=1 ; B=Rapat Koordinasi DIV Operasi ; C=P
+19| C=R ; X=100 ; AC=100 ; AF=100 || PERIODS[m6.w1=100,m7.w2=100,m8.w1=100]
+20| A=2 ; B=Rapat Koordinasi Departemen Distribusi Gas & ORF ; C=P
+21| C=R ; S=100 ; W=100 ; AE=100 || PERIODS[m4.w4=100,m5.w4=100,m7.w4=100]
+22| A=3 ; B=Rapat Koordinasi Penyaluran Gas NR-PLN (3 bulan) ; C=P
+23| C=R ; R=100 ; AB=100 || PERIODS[m4.w3=100,m7.w1=100]
+24| A=4 ; B=Gas Coordination Meeting (GCM) ; C=P
+25| C=R ; J=100 ; N=0 ; R=0 ; V=0 ; Z=100 ; AD=0 || PERIODS[m2.w3=100,m3.w3=0,m4.w3=0,m5.w3=0,m6.w3=100,m7.w3=0]
+26| A=5 ; B=Rapat Koordinasi Pgasol (3 bulan) ; C=P ; AZ=Awal pelaksanaan di akhir bulan Juli
+27| C=R
+28| A=6 ; B=Rapat Efisiensi Operasi Holding (3 bulan) ; C=P ; AZ=- Monitoring TW 1 pada bulan April\n- Monitoring TW 2 pada bulan Juli
+29| C=R ; S=100 ; AE=100 || PERIODS[m4.w4=100,m7.w4=100]
+30| A=7 ; B=Kegiatan Olahraga Bersama (Customer Engagement) ; C=P
+31| C=R
+32| A=8 ; B=Bechmark Pertamina/PGN Group ; C=P ; AZ=- Bechmark ke PLI Lampung\n- Bechmark ke PGE Kamojang
+33| C=R ; AB=100 || PERIODS[m7.w1=100]
+34| A=9 ; B=Kunjungan Ke PLN Group ; C=P
+35| C=R
+36| A=10 ; B=Rapat Rekon BMN ; C=P ; AZ=- Rekon tahun 2025 semester 2 dilaksanakan bulan Januari 2026\n- Sudah dilaksanakan Rekon semester I pada tanggal 31 Juli 2026
+37| C=R ; G=100 ; AE=100 || PERIODS[m1.w4=100,m7.w4=100]
+38| A=11 ; B=Rapat Rekon FSA ; C=P ; AZ=- Berdasarkan Perjanjian Pemanfaatan Fasilitas Secara '- -Bersama antara PHE ONWJ dengan PT NR tanggal 25 Mei 2023, Pasal 5 tentang Pembebanan Biaya Operasi dan Pemeliharaan Fasilitas, Pasal 5.1\n- Setiap tahunnya, selambat-lambatnya 30 (tiga puluh) Hari Kalender sebelum tanggal 31 Desember di tahun berjalan (November 2026)\n- Mengirim surat ke PHE ONWJ pada bulan februari untuk agenda rekonsiliasi penyaluran tahun 2026 
+39| C=R ; W=100 || PERIODS[m5.w4=100]
+40| A=12 ; B=Rekon BOG ; C=P
+41| C=R ; AB=100 || PERIODS[m7.w1=100]
+42| A=C ; B=OPERASIONAL RUTIN
+43| A=1 ; B=Monitoring Penyaluran Gas (Harian) ; C=P ; AZ=Di laksanakan setiap harinya
+44| C=R ; D=100 ; E=100 ; F=100 ; G=100 ; H=100 ; I=100 ; J=100 ; K=100 ; L=100 ; M=100 ; N=100 ; O=100 ; P=100 ; Q=100 ; R=100 ; S=100 ; T=100 ; U=100 ; V=100 ; W=100 ; X=100 ; Y=100 ; Z=100 ; AA=100 ; AB=100 ; AC=100 ; AD=100 ; AE=100 || PERIODS[m1.w1=100,m1.w2=100,m1.w3=100,m1.w4=100,m2.w1=100,m2.w2=100,m2.w3=100,m2.w4=100,m3.w1=100,m3.w2=100,m3.w3=100,m3.w4=100,m4.w1=100,m4.w2=100,m4.w3=100,m4.w4=100,m5.w1=100,m5.w2=100,m5.w3=100,m5.w4=100,m6.w1=100,m6.w2=100,m6.w3=100,m6.w4=100,m7.w1=100,m7.w2=100,m7.w3=100,m7.w4=100]
+45| A=2 ; B=Monitoring Peralatan Operasi (Harian) ; C=P ; AZ=Di laksanakan setiap harinya
+46| C=R ; D=100 ; E=100 ; F=100 ; G=100 ; H=100 ; I=100 ; J=100 ; K=100 ; L=100 ; M=100 ; N=100 ; O=100 ; P=100 ; Q=100 ; R=100 ; S=100 ; T=100 ; U=100 ; V=100 ; W=100 ; X=100 ; Y=100 ; Z=100 ; AA=100 ; AB=100 ; AC=100 ; AD=100 ; AE=100 || PERIODS[m1.w1=100,m1.w2=100,m1.w3=100,m1.w4=100,m2.w1=100,m2.w2=100,m2.w3=100,m2.w4=100,m3.w1=100,m3.w2=100,m3.w3=100,m3.w4=100,m4.w1=100,m4.w2=100,m4.w3=100,m4.w4=100,m5.w1=100,m5.w2=100,m5.w3=100,m5.w4=100,m6.w1=100,m6.w2=100,m6.w3=100,m6.w4=100,m7.w1=100,m7.w2=100,m7.w3=100,m7.w4=100]
+47| A=3 ; B=Monitoring Patroli Laut dan Sarana Navigasii (Harian) ; C=P ; AZ=Target pelaksanaan setahun 6 kali
+48| C=R ; D=100 ; E=100 ; F=100 ; G=100 ; H=100 ; I=100 ; J=100 ; K=100 ; L=100 ; M=100 ; N=100 ; O=100 ; P=100 ; Q=100 ; R=100 ; S=100 ; T=100 ; U=100 ; V=100 ; W=100 ; X=100 ; Y=100 ; Z=100 ; AA=100 ; AB=100 ; AC=100 ; AD=100 ; AE=100 || PERIODS[m1.w1=100,m1.w2=100,m1.w3=100,m1.w4=100,m2.w1=100,m2.w2=100,m2.w3=100,m2.w4=100,m3.w1=100,m3.w2=100,m3.w3=100,m3.w4=100,m4.w1=100,m4.w2=100,m4.w3=100,m4.w4=100,m5.w1=100,m5.w2=100,m5.w3=100,m5.w4=100,m6.w1=100,m6.w2=100,m6.w3=100,m6.w4=100,m7.w1=100,m7.w2=100,m7.w3=100,m7.w4=100]
+49| A=4 ; B=Kegiatan Drill HSSE ; C=P ; AZ=- Bulan Mei Drill fire\n- Bulan April Drill SCBA
+50| C=R ; V=100 ; AE=100 || PERIODS[m5.w3=100,m7.w4=100]
+51| A=5 ; B=Satgas Natal & tahun baru (NATARU) ; C=P
+52| C=R ; D=100 || PERIODS[m1.w1=100]
+53| A=6 ; B=Satgas Ramadhan & Idul fitri (RAFI) ; C=P ; AZ=Pelaksaan tergantung dari Fungsi lain
+54| C=R ; O=100 ; P=100 || PERIODS[m3.w4=100,m4.w1=100]
+55| A=7 ; B=Permit To Work ; C=P
+56| C=R ; D=100 ; E=100 ; F=100 ; G=100 ; H=100 ; I=100 ; J=100 ; K=100 ; L=100 ; M=100 ; N=100 ; O=100 ; P=100 ; Q=100 ; R=100 ; S=100 ; T=100 ; U=100 ; V=100 ; W=100 ; X=100 ; Y=100 ; Z=100 ; AA=100 ; AB=100 ; AC=100 ; AD=100 ; AE=100 || PERIODS[m1.w1=100,m1.w2=100,m1.w3=100,m1.w4=100,m2.w1=100,m2.w2=100,m2.w3=100,m2.w4=100,m3.w1=100,m3.w2=100,m3.w3=100,m3.w4=100,m4.w1=100,m4.w2=100,m4.w3=100,m4.w4=100,m5.w1=100,m5.w2=100,m5.w3=100,m5.w4=100,m6.w1=100,m6.w2=100,m6.w3=100,m6.w4=100,m7.w1=100,m7.w2=100,m7.w3=100,m7.w4=100]
+57| A=8 ; B=Laporan Manajemen (Bulanan) ; C=P
+58| C=R ; D=100 ; H=100 ; L=100 ; P=100 ; T=100 ; X=100 ; AB=100 || PERIODS[m1.w1=100,m2.w1=100,m3.w1=100,m4.w1=100,m5.w1=100,m6.w1=100,m7.w1=100]
+59| A=9 ; B=Laporan Sub Holding Gas (Bulanan) ; C=P
+60| C=R ; D=100 ; H=100 ; L=100 ; P=100 ; T=100 ; X=100 ; AB=100 || PERIODS[m1.w1=100,m2.w1=100,m3.w1=100,m4.w1=100,m5.w1=100,m6.w1=100,m7.w1=100]
+61| A=10 ; B=Laporan Risk (3 Bulan) ; C=P
+62| C=R ; O=100 ; AA=100 || PERIODS[m3.w4=100,m6.w4=100]
+63| A=11 ; B=Laporan TOP Risk (NR Emas) ; C=P ; AZ=Di laksanakan setiap harinya
+64| C=R ; D=100 ; H=100 ; L=100 ; P=100 ; T=100 ; X=100 ; AB=100 || PERIODS[m1.w1=100,m2.w1=100,m3.w1=100,m4.w1=100,m5.w1=100,m6.w1=100,m7.w1=100]
+65| A=12 ; B=Laporan Daily Report (Harian) ; C=P
+66| C=R ; D=100 ; E=100 ; F=100 ; G=100 ; H=100 ; I=100 ; J=100 ; K=100 ; L=100 ; M=100 ; N=100 ; O=100 ; P=100 ; Q=100 ; R=100 ; S=100 ; T=100 ; U=100 ; V=100 ; W=100 ; X=100 ; Y=100 ; Z=100 ; AA=100 ; AB=100 ; AC=100 ; AD=100 ; AE=100 || PERIODS[m1.w1=100,m1.w2=100,m1.w3=100,m1.w4=100,m2.w1=100,m2.w2=100,m2.w3=100,m2.w4=100,m3.w1=100,m3.w2=100,m3.w3=100,m3.w4=100,m4.w1=100,m4.w2=100,m4.w3=100,m4.w4=100,m5.w1=100,m5.w2=100,m5.w3=100,m5.w4=100,m6.w1=100,m6.w2=100,m6.w3=100,m6.w4=100,m7.w1=100,m7.w2=100,m7.w3=100,m7.w4=100]
+67| A=13 ; B=Laporan Billing Penyaluran Gas  ; C=P ; AZ=Mengikuti Jadwal kedatangan kargo
+68| C=R ; G=100 ; K=100 ; O=100 ; S=100 ; W=100 ; AA=100 || PERIODS[m1.w4=100,m2.w4=100,m3.w4=100,m4.w4=100,m5.w4=100,m6.w4=100]
+69| A=14 ; B=Laporan Start Discharge Cargo ; C=P
+70| C=R ; D=100 ; E=100 ; F=100 ; G=100 ; H=100 ; I=100 ; J=100 ; K=100 ; L=100 ; M=100 ; N=100 ; O=100 ; P=100 ; Q=100 ; R=100 ; S=100 ; T=100 ; U=100 ; V=100 ; W=100 ; X=100 ; Y=100 ; Z=100 ; AA=100 ; AB=100 ; AC=100 ; AD=100 ; AE=100 || PERIODS[m1.w1=100,m1.w2=100,m1.w3=100,m1.w4=100,m2.w1=100,m2.w2=100,m2.w3=100,m2.w4=100,m3.w1=100,m3.w2=100,m3.w3=100,m3.w4=100,m4.w1=100,m4.w2=100,m4.w3=100,m4.w4=100,m5.w1=100,m5.w2=100,m5.w3=100,m5.w4=100,m6.w1=100,m6.w2=100,m6.w3=100,m6.w4=100,m7.w1=100,m7.w2=100,m7.w3=100,m7.w4=100]
+71| A=15 ; B=Laporan ICOFER ; C=P
+72| C=R
+73| A=16 ; B=Laporan IVENDOR ; C=P
+74| C=R
+75| A=17 ; B=Laporan PMS (KPI) ; C=P ; AZ=Di lakasanakan Setiap hari Jum'at
+76| C=R
+77| A=18 ; B=House Keeping ; C=P
+78| C=R
+79| A=19 ; B=Review TKI/TKO ; C=P ; AZ=Pelaksanaan tergantung dari fungsi QM
+80| C=R
+81| A=D ; B=AUDIT
+82| A=1 ; B=Internal Audit Sistem Manajemen Terpadu (SMT) ; C=P
+83| C=R
+84| A=2 ; B=Preliminary Survey Audit atas Biaya Operasional Regasifikasi ; C=P ; AZ=Pelaksanaan tergantung dari fungsi QM
+85| C=R ; Q=100 || PERIODS[m4.w2=100]
+86| A=3 ; B=Eksternal Audit Sistem Manajemen Terpadu (SMT) ; C=P
+87| C=R
+88| A=4 ; B=SUPREME ; C=P
+89| C=R
+90| A=5 ; C=P ; AZ=Pelaksanaan tergantung dari fungsi HSSE
+91| C=R
+92| 
+93| B=Plan (P)
+94| B=Realisasi (R)
+95| 
+96| AF=Dibuat oleh: ; AQ=Disetujui oleh ; AZ=Diketahui oleh: || PERIODS[m8.w1=Dibuat oleh:,m10.w4=Disetujui oleh]
+97| 
+98| 
+99| 
+100| 
+101| 
+102| AF=Ade Imat Ruhimat ; AQ=Yosep Ismail Zulkarnain ; AZ=Opan Sopandi || PERIODS[m8.w1=Ade Imat Ruhimat,m10.w4=Yosep Ismail Zulkarnain]
+103| AF=SO Distribusi Gas & ORF ; AN=Ka.Dep. Distribusi Gas & Manajemen ORF ; AZ=VP Operasi || PERIODS[m8.w1=SO Distribusi Gas & ORF,m10.w1=Ka.Dep. Distribusi Gas & Manajemen ORF]
+104| 
