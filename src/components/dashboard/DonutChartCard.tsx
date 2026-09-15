@@ -66,10 +66,10 @@ export function DonutChartCard({ counts }: DonutChartCardProps) {
     <div className="bg-white rounded-xl p-4 border border-[#E2E8F0] shadow-xs flex flex-col justify-between h-full min-h-[250px] max-h-[290px]">
       {/* Header */}
       <div className="flex items-center justify-between pb-2 border-b border-slate-100 shrink-0">
-        <h3 className="text-xs sm:text-sm font-bold text-[#0B3568]">
+        <h3 className="text-xs sm:text-sm font-bold text-text-primary">
           Status Tenaga Kerja Hari Ini
         </h3>
-        <span className="text-[10px] font-semibold text-slate-400">
+        <span className="text-[10px] font-semibold text-text-muted">
           Total: {total} Personil
         </span>
       </div>
@@ -84,7 +84,7 @@ export function DonutChartCard({ counts }: DonutChartCardProps) {
                 cx="65"
                 cy="65"
                 r={radius}
-                stroke="#F1F5F9"
+                stroke="var(--border-app)"
                 strokeWidth={strokeWidth}
                 fill="transparent"
               />
@@ -109,10 +109,10 @@ export function DonutChartCard({ counts }: DonutChartCardProps) {
 
             {/* Center Donut Total Text */}
             <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center">
-              <span className="text-xl sm:text-2xl font-black text-[#0B3568] leading-none">
+              <span className="text-xl sm:text-2xl font-black text-text-primary leading-none">
                 {total}
               </span>
-              <span className="text-[9px] font-semibold text-[#64748B] mt-0.5">
+              <span className="text-[9px] font-semibold text-text-muted mt-0.5">
                 Total
               </span>
             </div>
@@ -136,12 +136,12 @@ export function DonutChartCard({ counts }: DonutChartCardProps) {
                   className="w-2 h-2 rounded-full shrink-0"
                   style={{ backgroundColor: item.color }}
                 />
-                <span className="font-medium text-[#334155] truncate text-[11px]">{item.label}</span>
+                <span className="font-medium text-text-secondary truncate text-[11px]">{item.label}</span>
               </div>
 
               <div className="flex items-center gap-2 text-right shrink-0">
-                <span className="font-bold text-[#0B3568] text-xs">{item.count}</span>
-                <span className="text-[10px] text-slate-400 font-mono w-9 text-right">
+                <span className="font-bold text-text-primary text-xs">{item.count}</span>
+                <span className="text-[10px] text-text-muted font-mono w-9 text-right">
                   {item.percent}%
                 </span>
               </div>

@@ -63,7 +63,7 @@ export default function LoginPage() {
             <div className="mb-2.5">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src="/regas-.png"
+                src="/images/regas-.png"
                 alt="Pertamina Nusantara Regas"
                 className="h-12 w-auto object-contain"
               />

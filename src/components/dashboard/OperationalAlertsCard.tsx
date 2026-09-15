@@ -50,12 +50,12 @@ export function OperationalAlertsCard({ alerts = [] }: OperationalAlertsCardProp
     <div className="bg-white rounded-xl p-4 border border-[#E2E8F0] shadow-xs flex flex-col justify-between h-full min-h-[250px] max-h-[290px]">
       {/* Header */}
       <div className="flex items-center justify-between pb-2 border-b border-slate-100 shrink-0">
-        <h3 className="text-xs sm:text-sm font-bold text-[#0B3568]">
+        <h3 className="text-xs sm:text-sm font-bold text-text-primary">
           Operational Alerts
         </h3>
         <Link
           href="/manager/attendance"
-          className="text-[11px] font-semibold text-[#1769AA] hover:underline"
+          className="text-[11px] font-semibold text-[#0066B3] hover:underline"
         >
           Lihat Semua →
         </Link>
@@ -82,16 +82,16 @@ export function OperationalAlertsCard({ alerts = [] }: OperationalAlertsCardProp
               <div className="flex items-start gap-2 min-w-0">
                 <span className={`w-2 h-2 rounded-full mt-1 shrink-0 ${dotColor}`} />
                 <div className="min-w-0">
-                  <h4 className="text-xs font-bold text-[#1E293B] group-hover:text-[#1769AA] transition-colors truncate">
+                  <h4 className="text-xs font-bold text-text-primary group-hover:text-[#0066B3] transition-colors truncate">
                     {al.title}
                   </h4>
-                  <p className="text-[10px] text-[#64748B] truncate">
+                  <p className="text-[10px] text-text-secondary truncate">
                     {al.description}
                   </p>
                 </div>
               </div>
 
-              <span className="text-[9.5px] text-slate-400 shrink-0 font-medium whitespace-nowrap pt-0.5">
+              <span className="text-[9.5px] text-text-muted shrink-0 font-medium whitespace-nowrap pt-0.5">
                 {al.time || 'Baru saja'}
               </span>
             </Link>

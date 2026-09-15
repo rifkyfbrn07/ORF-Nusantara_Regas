@@ -47,7 +47,7 @@ export function CurrentShiftCard({ coverage }: CurrentShiftCardProps) {
     <div className="bg-white rounded-xl p-4 border border-[#E2E8F0] shadow-xs flex flex-col justify-between h-full min-h-[250px] max-h-[290px]">
       {/* Header */}
       <div className="flex items-center justify-between pb-2 border-b border-slate-100 shrink-0">
-        <h3 className="text-xs sm:text-sm font-bold text-[#0B3568]">
+        <h3 className="text-xs sm:text-sm font-bold text-text-primary">
           Shift Hari Ini
         </h3>
         <span className="text-[10px] font-semibold text-emerald-600">
@@ -67,8 +67,8 @@ export function CurrentShiftCard({ coverage }: CurrentShiftCardProps) {
             >
               <div className="flex items-start justify-between">
                 <div>
-                  <h4 className="text-xs font-bold text-[#0B3568] leading-tight">{shift.name}</h4>
-                  <p className="text-[8.5px] text-slate-400 font-mono mt-0.5">{shift.time}</p>
+                  <h4 className="text-xs font-bold text-text-primary leading-tight">{shift.name}</h4>
+                  <p className="text-[8.5px] text-text-muted font-mono mt-0.5">{shift.time}</p>
                 </div>
                 <ArrowUpRight className="w-3 h-3 text-slate-400 shrink-0" />
               </div>
@@ -81,7 +81,7 @@ export function CurrentShiftCard({ coverage }: CurrentShiftCardProps) {
                       cx="25"
                       cy="25"
                       r={radius}
-                      stroke="#E2E8F0"
+                      stroke="var(--border-app)"
                       strokeWidth="4"
                       fill="transparent"
                     />
@@ -97,7 +97,7 @@ export function CurrentShiftCard({ coverage }: CurrentShiftCardProps) {
                       fill="transparent"
                     />
                   </svg>
-                  <span className="absolute text-[10px] font-black text-[#0B3568]">
+                  <span className="absolute text-[10px] font-black text-text-primary">
                     {shift.percent}%
                   </span>
                 </div>
@@ -111,7 +111,7 @@ export function CurrentShiftCard({ coverage }: CurrentShiftCardProps) {
                       <UserAvatar key={opIdx} name={op} size={16} className="ring-1 ring-white" />
                     ))}
                   </div>
-                  <span className="text-slate-500 font-semibold text-[9px] ml-1">{shift.operatorCount}</span>
+                  <span className="text-text-secondary font-semibold text-[9px] ml-1">{shift.operatorCount}</span>
                 </div>
 
                 <div className="flex items-center gap-0.5 text-emerald-600 font-bold text-[8.5px]">

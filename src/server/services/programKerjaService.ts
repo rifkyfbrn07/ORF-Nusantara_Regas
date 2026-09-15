@@ -38,6 +38,7 @@ export interface ProgramKerjaDTO {
   evidenceSize: number | null;
   driveFileId: string | null;
   driveWebViewLink: string | null;
+  pic: { id: string; name: string } | null;
   tasks: { id: string; label: string; isDone: boolean; order: number }[];
   months: ProgramKerjaMonthDTO[];
   progressLogs: {
@@ -77,7 +78,7 @@ export interface ProgramAnnualChartData {
   donut: { name: string; value: number; color: string }[];
 }
 
-function serializeProgram(program: Prisma.ProgramKerjaGetPayload<{ include: { months: true; tasks: true; progressLogs: { include: { user: { select: { name: true } } }; orderBy: { createdAt: 'desc' } } } }>): ProgramKerjaDTO {
+function serializeProgram(program: Prisma.ProgramKerjaGetPayload<{ include: { pic: { select: { id: true; name: true } }; months: true; tasks: true; progressLogs: { include: { user: { select: { name: true } } }; orderBy: { createdAt: 'desc' } } } }>): ProgramKerjaDTO {
   return {
     id: program.id,
     year: program.year,
@@ -97,6 +98,7 @@ function serializeProgram(program: Prisma.ProgramKerjaGetPayload<{ include: { mo
     evidenceSize: program.evidenceSize,
     driveFileId: program.driveFileId,
     driveWebViewLink: program.driveWebViewLink,
+    pic: program.pic,
     tasks: program.tasks.map((t) => ({ id: t.id, label: t.label, isDone: t.isDone, order: t.order })),
     months: program.months
       .map((m) => ({ month: m.month, week: m.week, target: m.target, realization: m.realization }))
@@ -135,6 +137,7 @@ export async function listProgramKerja(filters?: {
   const programs = await prisma.programKerja.findMany({
     where,
     include: {
+      pic: { select: { id: true, name: true } },
       months: { orderBy: [{ month: 'asc' }, { week: 'asc' }] },
       tasks: { orderBy: [{ order: 'asc' }, { createdAt: 'asc' }] },
       progressLogs: { include: { user: { select: { name: true } } }, orderBy: { createdAt: 'desc' } },

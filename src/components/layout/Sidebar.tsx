@@ -277,11 +277,11 @@ export function Sidebar({
         >
           <div className="relative shrink-0 flex items-center">
             <Image
-              src="/regas-.png"
+              src="/images/regas-.png"
               alt="Pertamina Nusantara Regas"
               width={90}
               height={28}
-              className="h-6 w-auto object-contain"
+              className="regas-logo h-6 w-auto object-contain"
               priority
             />
           </div>

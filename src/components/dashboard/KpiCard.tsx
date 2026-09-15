@@ -158,22 +158,22 @@ export function KpiCard({
       cuti: {
         iconColor: 'text-indigo-600',
         iconBg: 'bg-indigo-50',
-        textColor: 'text-indigo-950',
+        textColor: 'text-text-primary',
       },
       izin: {
         iconColor: 'text-teal-600',
         iconBg: 'bg-teal-50',
-        textColor: 'text-teal-950',
+        textColor: 'text-text-primary',
       },
       sakit: {
         iconColor: 'text-rose-600',
         iconBg: 'bg-rose-50',
-        textColor: 'text-rose-950',
+        textColor: 'text-text-primary',
       },
       off: {
         iconColor: 'text-slate-600',
         iconBg: 'bg-slate-100',
-        textColor: 'text-slate-900',
+        textColor: 'text-text-primary',
       },
     }[miniType];
 
@@ -294,7 +294,7 @@ export function KpiCard({
 
       {/* Large Value */}
       <div className="my-1 flex items-baseline justify-between">
-        <div className="text-2xl sm:text-3xl font-black text-[#1E293B] tracking-tight leading-none">
+        <div className="text-2xl sm:text-3xl font-black text-text-primary tracking-tight leading-none">
           {typeof value === 'number' ? <CountUp value={value} duration={750} /> : value}
         </div>
         <span className="text-[9px] text-slate-400 font-medium">Operator</span>

@@ -10,7 +10,7 @@ export default function NotFound() {
         {/* REGAS Logo */}
         <div className="flex justify-center">
           <Image
-            src="/regas-.png"
+            src="/images/regas-.png"
             alt="Pertamina Nusantara Regas"
             width={130}
             height={48}

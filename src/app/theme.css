@@ -16,6 +16,10 @@ html.dark body {
   background-image: none !important;
 }
 
+/* The verified transparent Regas mark has dark lettering; retain its alpha and
+   turn the mark light only on navy surfaces, never adding a background plate. */
+html.dark .regas-logo { filter: brightness(0) invert(1); }
+
 /* Cards / panels / generic white surfaces → card surface */
 html.dark .bg-white,
 html.dark .login-floating-card,
@@ -104,8 +108,14 @@ html.dark .text-\[\#1769AA\] {
   color: #66C8FF !important;
 }
 html.dark .text-\[\#64748B\],
-html.dark .text-\[\#475569\] {
+html.dark .text-\[\#475569\],
+html.dark .text-\[\#334155\] {
   color: var(--text-secondary) !important;
+}
+html.dark .text-\[\#1E293B\],
+html.dark .text-\[\#172033\],
+html.dark .text-\[\#0F2F63\] {
+  color: var(--text-primary) !important;
 }
 
 /* Borders → subtle border token */
