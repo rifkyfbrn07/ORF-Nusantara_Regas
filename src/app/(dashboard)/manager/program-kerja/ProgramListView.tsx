@@ -1,7 +1,8 @@
 'use client';
 
 import React from 'react';
-import { Loader2, Pencil, Trash2, ExternalLink } from 'lucide-react';
+import { Loader2, Pencil, Trash2 } from 'lucide-react';
+import { EvidenceViewer } from '@/components/ui/EvidenceViewer';
 import type { ProgramKerjaDTO } from '@/server/services/programKerjaService';
 import type { ProgramCategory } from '@prisma/client';
 import { CATEGORY_LABELS, EmptyState, ProgressCell, StatusBadge } from './shared';
@@ -27,19 +28,8 @@ function groupByCategory(programs: ProgramKerjaDTO[]): { category: string; label
 }
 
 function DriveLink({ p }: { p: ProgramKerjaDTO }) {
-  const url = p.driveWebViewLink || p.evidenceUrl;
-  if (!url) return null;
-  return (
-    <a
-      href={url}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="inline-flex items-center gap-1 rounded-md border border-[#CBD7E6] px-1.5 py-0.5 text-[9.5px] font-bold text-[#0066B3] hover:bg-[#EAF4FC]"
-      title="Buka Evidence"
-    >
-      <ExternalLink className="h-3 w-3" /> Bukti
-    </a>
-  );
+  if (!p.driveFileId && !p.driveWebViewLink && !p.evidenceUrl) return null;
+  return <EvidenceViewer file={{ fileId: p.driveFileId, fileName: p.evidenceName, mimeType: p.evidenceMime, fileSize: p.evidenceSize, legacyUrl: p.driveWebViewLink || p.evidenceUrl }} label="Bukti" className="inline-flex items-center gap-1 rounded-md border border-[#CBD7E6] px-1.5 py-0.5 text-[9.5px] font-bold text-[#0066B3] hover:bg-[#EAF4FC]" />;
 }
 export function ProgramListView({ programs, deletingId, onEdit, onDelete }: ProgramListViewProps) {
   const groups = groupByCategory(programs);

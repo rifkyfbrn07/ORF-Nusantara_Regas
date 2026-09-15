@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { ArrowLeftRight, CheckCircle, AlertCircle, Send, X, ExternalLink, Search, CalendarDays, Check, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
+import { ArrowLeftRight, CheckCircle, AlertCircle, Send, X, Search, CalendarDays, Check, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
+import { EvidenceViewer } from '@/components/ui/EvidenceViewer';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { Modal } from '@/components/ui/Modal';
 import { FileUploadProof } from '@/components/ui/FileUploadProof';
@@ -317,11 +318,7 @@ const handleSubmit = async (e: React.FormEvent) => {
                     </p>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
-                    {ex.driveWebViewLink && (
-                      <a href={ex.driveWebViewLink} target="_blank" rel="noopener noreferrer" className="p-2 rounded-lg border border-slate-200 text-[#0B3568] hover:bg-slate-50" title="Lihat Bukti">
-                        <ExternalLink className="h-3.5 w-3.5" />
-                      </a>
-                    )}
+                    {(ex.driveFileId || ex.driveWebViewLink || ex.attachmentUrl) && <EvidenceViewer file={{ fileId: ex.driveFileId, fileName: ex.attachmentName, legacyUrl: ex.driveWebViewLink || ex.attachmentUrl }} label="Lihat Bukti" />}
                     <button
                       type="button"
                       onClick={() => handleRespond(ex.id, false)}
@@ -373,11 +370,7 @@ const handleSubmit = async (e: React.FormEvent) => {
                   OFF: {ex.requesterSchedule.date} ↔ {ex.targetDate} · {ex.reason}
                 </p>
               </div>
-              {ex.driveWebViewLink && (
-                <a href={ex.driveWebViewLink} target="_blank" rel="noopener noreferrer" className="p-2 rounded-lg border border-slate-200 text-[#0B3568] hover:bg-slate-50" title="Lihat Bukti">
-                  <ExternalLink className="h-3.5 w-3.5" />
-                </a>
-              )}
+              {(ex.driveFileId || ex.driveWebViewLink || ex.attachmentUrl) && <EvidenceViewer file={{ fileId: ex.driveFileId, fileName: ex.attachmentName, legacyUrl: ex.driveWebViewLink || ex.attachmentUrl }} label="Lihat Bukti" />}
             </div>
           ))}
         </div>

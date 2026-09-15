@@ -23,6 +23,23 @@ export interface DriveFileMetadata {
   isDriveStorage: boolean;
 }
 
+export async function getStoredFileContent(fileId: string): Promise<Response> {
+  const accessToken = await getGoogleDriveAccessToken();
+  if (!accessToken) {
+    throw new Error('Penyimpanan Google Drive belum dikonfigurasi.');
+  }
+
+  const response = await fetch(
+    `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}?alt=media`,
+    { headers: { Authorization: `Bearer ${accessToken}` } }
+  );
+
+  if (response.status === 404) throw new Error('FILE_NOT_FOUND');
+  if (response.status === 401 || response.status === 403) throw new Error('FILE_ACCESS_DENIED');
+  if (!response.ok || !response.body) throw new Error('FILE_RETRIEVAL_FAILED');
+  return response;
+}
+
 // MIME Types allowed
 const ALLOWED_MIME_TYPES = new Set([
   'application/pdf',
@@ -299,7 +316,12 @@ export async function uploadFileToStorage(options: UploadFileOptions): Promise<D
     }
   }
 
-  // Local Storage Fallback (Offline / Development)
+  // A filesystem is not durable on Vercel. Keep the fallback strictly local for development.
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('Google Drive belum dikonfigurasi. Unggahan bukti memerlukan penyimpanan persisten.');
+  }
+
+  // Local development fallback only.
   const localRelativeDir = path.join('uploads', categoryFolder.toLowerCase().replace(/\s+/g, '-'), String(year));
   const localAbsDir = path.join(process.cwd(), 'public', localRelativeDir);
   await fs.mkdir(localAbsDir, { recursive: true });

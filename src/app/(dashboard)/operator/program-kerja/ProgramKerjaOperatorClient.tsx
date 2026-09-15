@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useMemo, useState } from 'react';
-import { ExternalLink, Search } from 'lucide-react';
+import { Search } from 'lucide-react';
+import { EvidenceViewer } from '@/components/ui/EvidenceViewer';
 import type { ProgramKerjaDTO } from '@/server/services/programKerjaService';
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -42,18 +43,8 @@ function ProgressBar({ value, target }: { value: number; target: number }) {
 }
 
 function EvidenceLink({ p }: { p: ProgramKerjaDTO }) {
-  const url = p.driveWebViewLink || p.evidenceUrl;
-  if (!url) return null;
-  return (
-    <a
-      href={url}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="inline-flex items-center gap-1 rounded-md border border-[#CBD7E6] px-2 py-1 text-[10px] font-bold text-[#0066B3] hover:bg-[#EAF4FC]"
-    >
-      <ExternalLink className="h-3 w-3" /> Lihat Evidence
-    </a>
-  );
+  if (!p.driveFileId && !p.driveWebViewLink && !p.evidenceUrl) return null;
+  return <EvidenceViewer file={{ fileId: p.driveFileId, fileName: p.evidenceName, mimeType: p.evidenceMime, fileSize: p.evidenceSize, legacyUrl: p.driveWebViewLink || p.evidenceUrl }} label="Lihat Evidence" />;
 }
 
 function ProgramCard({ p }: { p: ProgramKerjaDTO }) {

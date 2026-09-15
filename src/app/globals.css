@@ -45,15 +45,16 @@
    CARD  #102B46 · INTERACTIVE #143553 · BORDER rgba(148,163,184,.16)
    ============================================================ */
 html.dark {
-  --surface-0: #061426;
-  --surface-1: #0B1E33;
-  --surface-2: #0F2740;
-  --surface-3: #102B46;
-  --surface-interactive: #143553;
+  --surface-0: #07182A;
+  --surface-1: #0A1D31;
+  --surface-2: #0D2339;
+  --surface-3: #102B45;
+  --surface-interactive: #143451;
   --border-app: rgba(148, 163, 184, 0.16);
-  --text-primary: #F1F5F9;
-  --text-secondary: #A8BAD0;
-  --text-muted: #71859D;
+  --text-primary: #F8FAFC;
+  --text-secondary: #B8C7D9;
+  --text-muted: #8FA4BB;
+  --input-surface: #0A2036;
   color-scheme: dark;
 }
 

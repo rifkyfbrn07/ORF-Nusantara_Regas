@@ -685,11 +685,9 @@ export function ManagerRequestsClient({
           size="lg"
           footer={
             <div className="flex items-center justify-between w-full">
-              {previewItem.driveWebViewLink || previewItem.attachmentUrl ? (
+              {previewItem.driveFileId || previewItem.driveWebViewLink || previewItem.attachmentUrl ? (
                 <a
-                  href={previewItem.driveWebViewLink || previewItem.attachmentUrl || '#'}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                  href={previewItem.driveFileId ? `/api/files/${encodeURIComponent(previewItem.driveFileId)}?download=1` : previewItem.driveWebViewLink || previewItem.attachmentUrl || '#'}
                   className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1.5 transition"
                 >
                   <ExternalLink className="h-3.5 w-3.5" />
@@ -741,7 +739,7 @@ export function ManagerRequestsClient({
               <div className="rounded-xl overflow-hidden border border-slate-200 max-h-96 flex items-center justify-center bg-slate-100">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src={previewItem.attachmentUrl || previewItem.driveWebViewLink || ''}
+                  src={previewItem.driveFileId ? `/api/files/${encodeURIComponent(previewItem.driveFileId)}` : previewItem.attachmentUrl || previewItem.driveWebViewLink || ''}
                   alt="Bukti Surat Cuti"
                   className="max-h-96 w-auto object-contain"
                 />

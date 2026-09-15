@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef } from 'react';
-import { UploadCloud, CheckCircle2, AlertCircle, Loader2, X, FileText, ExternalLink } from 'lucide-react';
+import { UploadCloud, CheckCircle2, AlertCircle, Loader2, X, FileText } from 'lucide-react';
 import { uploadProofFileAction } from '@/server/actions/driveUploadActions';
 import { DriveFileMetadata } from '@/server/services/googleDriveService';
 
@@ -220,17 +220,6 @@ export function FileUploadProof({
           </div>
 
           <div className="flex items-center gap-1 shrink-0">
-            {uploadedFile.webViewLink && (
-              <a
-                href={uploadedFile.webViewLink}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="p-1.5 rounded-lg text-emerald-800 hover:bg-emerald-100 transition"
-                title="Buka Pratinjau Berkas"
-              >
-                <ExternalLink className="h-3.5 w-3.5" />
-              </a>
-            )}
             <button
               type="button"
               onClick={handleClear}
