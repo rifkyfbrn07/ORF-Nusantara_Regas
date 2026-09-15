@@ -60,10 +60,16 @@ export function ProgramKerjaClient({ programs, stats, years }: ProgramKerjaClien
   const filteredChart = useMemo(() => {
     const bar = MONTH_SHORT.map((label, index) => {
       const m = index + 1;
-      const monthPrograms = filtered.filter((p) => p.months.some((x) => x.month === m));
-      const realisasi = monthPrograms.filter((p) => p.months.some((x) => x.month === m && x.realization !== null && x.realization >= 100)).length;
-      const tidak = monthPrograms.filter((p) => p.months.some((x) => x.month === m && x.realization !== null && x.realization <= 0)).length;
-      return { month: label, plan: monthPrograms.length, realisasi, tidakTerealisasi: tidak };
+      // ProgramKerjaMonth selalu punya 48 baris untuk menjaga matriks tetap
+      // lengkap. Hanya target non-null yang merupakan sel Plan biru dari Excel.
+      const planned = filtered.filter((p) => p.months.some((x) => x.month === m && x.target !== null));
+      const realisasi = planned.filter((p) =>
+        p.months.some((x) => x.month === m && x.realization !== null && x.realization >= 100)
+      ).length;
+      const tidak = planned.filter((p) =>
+        p.months.some((x) => x.month === m && x.realization !== null && x.realization <= 0)
+      ).length;
+      return { month: label, plan: planned.length, realisasi, tidakTerealisasi: tidak };
     });
     const donut = [
       { name: 'Realisasi', value: kpi.realisasi, color: '#16A34A' },

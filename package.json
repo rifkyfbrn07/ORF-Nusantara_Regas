@@ -17,6 +17,7 @@
     "seed:admin": "tsx prisma/adminSeed.ts",
     "seed:all": "tsx prisma/seed.ts",
     "seed:regas": "tsx prisma/regasSeed.ts",
+    "import:program-kerja": "tsx scripts/import-program-kerja-2026.ts",
     "db:studio": "prisma studio",
     "db:migrate": "prisma migrate dev"
   },

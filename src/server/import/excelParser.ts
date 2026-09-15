@@ -127,13 +127,8 @@ function scanWorkSheet(sheetName: string, ws: XLSX.WorkSheet): SheetScan {
     if (c === 'P') {
       pushPending();
       if (!b) {
-        issues.push({
-          sheet: sheetName,
-          row: i + 1,
-          column: 'B',
-          value: '(kosong)',
-          message: 'Baris Program (P) tidak memiliki nama program di kolom B.',
-        });
+        // Template sumber menyisakan pasangan P/R kosong di akhir beberapa
+        // kategori. Tanpa identitas program, ini adalah elemen layout saja.
         continue;
       }
       const seqRaw = Number(a.replace(/[^\d]/g, ''));
@@ -157,8 +152,10 @@ function scanWorkSheet(sheetName: string, ws: XLSX.WorkSheet): SheetScan {
         anchors: [{ sheet: sheetName, row: i + 1, column: 'B' }],
       };
       for (let col = PERIOD_START_COL; col <= PERIOD_END_COL; col++) {
+        const address = XLSX.utils.encode_cell({ r: i, c: col });
         const parsed = parseNumericCell(row[col]);
-        if (!parsed.ok) continue;
+        const filledPlan = isBluePlanFill(ws[address]);
+        if (!parsed.ok && !filledPlan) continue;
         const { month, week } = periodAt(col);
         pending.planPeriods.push({
           sheet: sheetName,
@@ -166,9 +163,10 @@ function scanWorkSheet(sheetName: string, ws: XLSX.WorkSheet): SheetScan {
           col: XLSX.utils.encode_col(col),
           month,
           week,
-          value: parsed.value,
+          // Existing ProgramKerjaMonth semantics use 100 as a planned target.
+          value: parsed.ok ? parsed.value : 100,
         });
-        if (parsed.value < 0 || parsed.value > 100) {
+        if (parsed.ok && (parsed.value < 0 || parsed.value > 100)) {
           issues.push({
             sheet: sheetName,
             row: i + 1,
@@ -183,6 +181,11 @@ function scanWorkSheet(sheetName: string, ws: XLSX.WorkSheet): SheetScan {
 
     if (c === 'R') {
       if (!pending) {
+        const hasPeriodValue = row
+          .slice(PERIOD_START_COL, PERIOD_END_COL + 1)
+          .some((value) => parseNumericCell(value).ok);
+        // Companion R row for an empty P layout placeholder.
+        if (!b && !hasPeriodValue) continue;
         issues.push({
           sheet: sheetName,
           row: i + 1,
@@ -321,11 +324,39 @@ export interface ParsedProgramKerjaWorkbook {
 
 /** Parse workbook Program Kerja dan gabungkan antar sheet (deduplikasi program). */
 export function parseProgramKerjaWorkbook(buffer: ArrayBuffer | Buffer): ParsedProgramKerjaWorkbook {
-  const wb = XLSX.read(buffer as ArrayBuffer, { type: 'array', cellDates: false });
+  const wb = XLSX.read(buffer as ArrayBuffer, { type: 'array', cellDates: false, cellStyles: true });
   const sheetNames = wb.SheetNames.filter((name) => Boolean(wb.Sheets[name]));
   const scans = sheetNames.map((name) => scanWorkSheet(name, wb.Sheets[name]));
   const { records, issues: mergeIssues } = mergeScans(scans);
   const year = scans.reduce((acc, s) => (s.year > acc ? s.year : acc), 0);
   const issues = scans.flatMap((s) => s.issues).concat(mergeIssues);
   return { year, sheets: sheetNames, records, issues };
+}
+
+type CellStyleShape = {
+  patternType?: unknown;
+  fgColor?: { rgb?: unknown; indexed?: unknown; theme?: unknown };
+  bgColor?: { rgb?: unknown; indexed?: unknown; theme?: unknown };
+};
+
+/**
+ * A blue fill on a P-row period cell is a plan marker even when its value is
+ * empty. The source workbook uses 00B0F0; RGB, indexed and Office Accent 1
+ * representations are supported for compatible Excel exports.
+ */
+function isBluePlanFill(cell: XLSX.CellObject | undefined): boolean {
+  const style = cell && (cell as unknown as { s?: CellStyleShape }).s;
+  if (!style || style.patternType !== 'solid') return false;
+  const colors = [style.fgColor, style.bgColor].filter(Boolean) as NonNullable<CellStyleShape['fgColor']>[];
+  return colors.some((color) => {
+    const rawRgb = typeof color.rgb === 'string' ? color.rgb.replace(/^#/, '').toUpperCase() : '';
+    const rgb = rawRgb.length === 8 ? rawRgb.slice(2) : rawRgb;
+    if (rgb.length === 6) {
+      const red = Number.parseInt(rgb.slice(0, 2), 16);
+      const green = Number.parseInt(rgb.slice(2, 4), 16);
+      const blue = Number.parseInt(rgb.slice(4, 6), 16);
+      if (blue >= 140 && blue > red + 35 && blue > green + 25) return true;
+    }
+    return color.indexed === 12 || color.indexed === 32 || color.theme === 4;
+  });
 }

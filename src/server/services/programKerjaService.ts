@@ -166,7 +166,7 @@ const MONTH_SHORT_ID = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 
 export async function getProgramKerjaAnnualChart(year: number): Promise<ProgramAnnualChartData> {
   const programs = await prisma.programKerja.findMany({
     where: { year },
-    select: { status: true, months: { select: { month: true, realization: true } } },
+    select: { status: true, months: { select: { month: true, target: true, realization: true } } },
   });
 
   const monthAgg = new Map<number, { plan: number; realisasi: number; tidakTerealisasi: number }>();
@@ -183,14 +183,18 @@ export async function getProgramKerjaAnnualChart(year: number): Promise<ProgramA
     else if (p.status === ProgramStatus.BELUM_TEREALISASI) belumCount += 1;
     else if (p.status === ProgramStatus.PLAN) planCount += 1;
 
+    const plannedMonths = new Set<number>();
     const byMonth = new Map<number, number>();
     for (const m of p.months) {
+      if (m.target !== null) plannedMonths.add(m.month);
       if (m.realization === null) continue; // sel kosong = tidak ada data (bukan 0)
       byMonth.set(m.month, Math.max(byMonth.get(m.month) ?? 0, m.realization));
     }
-    for (const [month, realization] of byMonth) {
+    for (const month of plannedMonths) {
       const agg = monthAgg.get(month)!;
       agg.plan += 1;
+      const realization = byMonth.get(month);
+      if (realization === undefined) continue;
       if (realization >= 100) agg.realisasi += 1;
       else if (realization <= 0) agg.tidakTerealisasi += 1;
     }

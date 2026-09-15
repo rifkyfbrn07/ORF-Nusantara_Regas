@@ -56,7 +56,7 @@ export function ProgramKerjaCharts({
               <YAxis allowDecimals={false} tick={{ fontSize: 10, fill: '#64748B' }} tickLine={false} axisLine={false} />
               <Tooltip contentStyle={tooltipStyle} cursor={{ fill: '#F1F5F9' }} />
               <Legend wrapperStyle={{ fontSize: 10 }} />
-              <Bar dataKey="plan" name="Plan (P)" fill="#94A3B8" radius={[3, 3, 0, 0]} maxBarSize={16} />
+              <Bar dataKey="plan" name="Plan (P)" fill="#0088D8" radius={[3, 3, 0, 0]} maxBarSize={16} />
               <Bar dataKey="realisasi" name="Realisasi (R)" fill="#16A34A" radius={[3, 3, 0, 0]} maxBarSize={16} />
               <Bar dataKey="tidakTerealisasi" name="Tidak Terealisasi" fill="#DC2626" radius={[3, 3, 0, 0]} maxBarSize={16} />
             </BarChart>
