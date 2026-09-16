@@ -25,6 +25,7 @@ import {
   TrendingUp,
   Activity,
   LucideIcon,
+  ArrowUpRight,
 } from 'lucide-react';
 import { CountUp } from '@/components/ui/CountUp';
 
@@ -96,7 +97,7 @@ export function KpiCard({
   onClick,
   index = 0,
 }: KpiCardProps) {
-  const entranceDelay = `${Math.min(index, 11) * 35}ms`;
+  const entranceDelay = `${Math.min(index, 11) * 60}ms`;
 
   // Resolve Icon Component safely
   let Icon: LucideIcon | React.ComponentType<{ className?: string }> = Users;
@@ -120,60 +121,60 @@ export function KpiCard({
     else if (miniType === 'off') Icon = Coffee;
   }
 
-  // 1. Primary Total Operator Card (Navy Blue, Compact ~95px)
+  // 1. Primary Total Operator Card (Navy Blue Card with Top Accent)
   if (variant === 'total' || (variant === 'primary' && isPrimary)) {
     return (
       <div
         onClick={onClick}
         style={{ animationDelay: entranceDelay }}
-        className="anim-fade-up bg-[#0B3568] text-white rounded-xl p-3 sm:p-3.5 shadow-xs relative overflow-hidden flex flex-col justify-between h-[96px] sm:h-[104px] group hover:shadow-md transition-all select-none"
+        className="anim-fade-up bg-gradient-to-br from-[#0B3568] to-[#061D3B] dark:from-[#0D2B4D] dark:to-[#07192C] text-white rounded-2xl p-4 border-t-2 border-t-[#0088D8] border-x border-b border-[#0B3568]/40 shadow-sm relative overflow-hidden flex flex-col justify-between h-[110px] group transition-all duration-200 hover:-translate-y-1 hover:shadow-lg select-none cursor-pointer"
       >
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-1.5">
-            <div className="p-1 rounded-lg bg-[#1769AA]/50 text-white">
-              <Icon className="h-3.5 w-3.5" />
+          <div className="flex items-center gap-2">
+            <div className="p-1.5 rounded-xl bg-[#0088D8]/20 text-[#38BDF8] border border-blue-400/20 shadow-xs">
+              <Icon className="h-4 w-4" />
             </div>
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-200">
+            <span className="text-[10.5px] font-extrabold uppercase tracking-wider text-slate-200">
               {label}
             </span>
           </div>
-          <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded-full bg-white/15 text-white text-[9px] font-bold">
-            ↑ 4%
+          <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full bg-white/15 text-white text-[9.5px] font-extrabold">
+            <ArrowUpRight className="h-3 w-3" /> 4%
           </span>
         </div>
 
-        <div className="mt-1 flex items-baseline justify-between">
+        <div className="flex items-baseline justify-between mt-1">
           <div className="text-2xl sm:text-3xl font-black tracking-tight text-white leading-none">
             {typeof value === 'number' ? <CountUp value={value} duration={750} /> : value}
           </div>
-          <span className="text-[9px] text-slate-300 font-medium">vs kemarin</span>
+          <span className="text-[9.5px] text-slate-300 font-medium">vs kemarin</span>
         </div>
       </div>
     );
   }
 
-  // 2. Mini KPI Cards (Cuti, Izin, Sakit, Off - Compact ~96px)
+  // 2. Mini KPI Cards (Cuti, Izin, Sakit, Off)
   if (variant === 'mini') {
     const miniStyles = {
       cuti: {
-        iconColor: 'text-indigo-600',
-        iconBg: 'bg-indigo-50',
-        textColor: 'text-text-primary',
+        iconColor: 'text-indigo-600 dark:text-indigo-400',
+        iconBg: 'bg-indigo-50 dark:bg-indigo-500/15',
+        topAccent: 'border-t-indigo-500',
       },
       izin: {
-        iconColor: 'text-teal-600',
-        iconBg: 'bg-teal-50',
-        textColor: 'text-text-primary',
+        iconColor: 'text-teal-600 dark:text-teal-400',
+        iconBg: 'bg-teal-50 dark:bg-teal-500/15',
+        topAccent: 'border-t-teal-500',
       },
       sakit: {
-        iconColor: 'text-rose-600',
-        iconBg: 'bg-rose-50',
-        textColor: 'text-text-primary',
+        iconColor: 'text-[#E5242A] dark:text-rose-400',
+        iconBg: 'bg-red-50 dark:bg-rose-500/15',
+        topAccent: 'border-t-[#E5242A]',
       },
       off: {
-        iconColor: 'text-slate-600',
-        iconBg: 'bg-slate-100',
-        textColor: 'text-text-primary',
+        iconColor: 'text-slate-600 dark:text-slate-300',
+        iconBg: 'bg-slate-100 dark:bg-slate-500/15',
+        topAccent: 'border-t-slate-400',
       },
     }[miniType];
 
@@ -181,97 +182,124 @@ export function KpiCard({
       <div
         onClick={onClick}
         style={{ animationDelay: entranceDelay }}
-        className="anim-fade-up bg-white rounded-xl p-2 px-2.5 border border-[#E2E8F0] shadow-xs flex flex-col justify-between h-[96px] sm:h-[104px] hover:border-slate-300 transition-all text-center select-none"
+        className={clsx(
+          'anim-fade-up bg-white dark:bg-[#0D263E] rounded-2xl p-3 border-t-2 border-x border-b border-[#E2E8F0] dark:border-[rgba(120,190,235,0.14)] shadow-sm flex flex-col justify-between h-[110px] text-center select-none cursor-pointer transition-all duration-200 hover:-translate-y-1 hover:shadow-md',
+          miniStyles.topAccent
+        )}
       >
         <div className="flex items-center justify-between">
-          <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">
+          <span className="text-[9.5px] font-extrabold text-[#64748B] dark:text-[#8EA7BD] uppercase tracking-wider">
             {label}
           </span>
-          <div className={clsx('p-1 rounded-md', miniStyles.iconBg, miniStyles.iconColor)}>
-            <Icon className="h-3 w-3" />
+          <div className={clsx('p-1 rounded-lg', miniStyles.iconBg, miniStyles.iconColor)}>
+            <Icon className="h-3.5 w-3.5" />
           </div>
         </div>
-        <div className={clsx('text-xl sm:text-2xl font-black leading-none my-auto', miniStyles.textColor)}>
+        <div className="text-xl sm:text-2xl font-black text-[#0B3568] dark:text-[#F5FAFF] leading-none my-auto">
           {typeof value === 'number' ? <CountUp value={value} duration={600} /> : value}
         </div>
-        <span className="text-[8.5px] text-slate-400 font-medium">Orang</span>
+        <span className="text-[9px] text-[#64748B] dark:text-[#8EA7BD] font-medium">Personil</span>
       </div>
     );
   }
 
-  // 3. Metric Cards (Hadir, Terlambat, Belum Absen - Compact ~96px)
+  // 3. Metric Cards with Login-Style Clean Badges & Top Accent
   const metricConfig = {
     hadir: {
-      dotColor: 'bg-emerald-500',
-      badgeBg: 'bg-emerald-50 text-emerald-700',
-      barColor: 'bg-emerald-500',
-      defaultPercent: '87.5%',
+      iconColor: 'text-[#69BE28] dark:text-[#4ADE80]',
+      iconBg: 'bg-emerald-50 dark:bg-emerald-500/15',
+      topAccent: 'border-t-[#69BE28]',
+      badgeBg: 'bg-emerald-50 text-[#69BE28] dark:bg-emerald-500/15 dark:text-emerald-400',
+      badgeText: '↑ 87.5%',
+      subtext: 'Tercatat hadir',
     },
     green: {
-      dotColor: 'bg-emerald-500',
-      badgeBg: 'bg-emerald-50 text-emerald-700',
-      barColor: 'bg-emerald-500',
-      defaultPercent: '87.5%',
+      iconColor: 'text-[#69BE28] dark:text-[#4ADE80]',
+      iconBg: 'bg-emerald-50 dark:bg-emerald-500/15',
+      topAccent: 'border-t-[#69BE28]',
+      badgeBg: 'bg-emerald-50 text-[#69BE28] dark:bg-emerald-500/15 dark:text-emerald-400',
+      badgeText: 'Aktif',
+      subtext: 'Status operasional',
     },
     terlambat: {
-      dotColor: 'bg-[#F58220]',
-      badgeBg: 'bg-orange-50 text-[#F58220]',
-      barColor: 'bg-[#F58220]',
-      defaultPercent: '6.3%',
+      iconColor: 'text-[#F58220] dark:text-orange-400',
+      iconBg: 'bg-orange-50 dark:bg-orange-500/15',
+      topAccent: 'border-t-[#F58220]',
+      badgeBg: 'bg-orange-50 text-[#F58220] dark:bg-orange-500/15 dark:text-orange-400',
+      badgeText: '6.3%',
+      subtext: 'Perlu verifikasi',
     },
     orange: {
-      dotColor: 'bg-[#F58220]',
-      badgeBg: 'bg-orange-50 text-[#F58220]',
-      barColor: 'bg-[#F58220]',
-      defaultPercent: '6.3%',
+      iconColor: 'text-[#F58220] dark:text-orange-400',
+      iconBg: 'bg-orange-50 dark:bg-orange-500/15',
+      topAccent: 'border-t-[#F58220]',
+      badgeBg: 'bg-orange-50 text-[#F58220] dark:bg-orange-500/15 dark:text-orange-400',
+      badgeText: 'Progress',
+      subtext: 'Target berjalan',
     },
     amber: {
-      dotColor: 'bg-[#F59E0B]',
-      badgeBg: 'bg-amber-50 text-amber-700',
-      barColor: 'bg-[#F59E0B]',
-      defaultPercent: '12%',
+      iconColor: 'text-[#F59E0B] dark:text-amber-400',
+      iconBg: 'bg-amber-50 dark:bg-amber-500/15',
+      topAccent: 'border-t-[#F59E0B]',
+      badgeBg: 'bg-amber-50 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400',
+      badgeText: 'Pending',
+      subtext: 'Menunggu review',
     },
     belumAbsen: {
-      dotColor: 'bg-[#DC2626]',
-      badgeBg: 'bg-red-50 text-[#DC2626]',
-      barColor: 'bg-[#DC2626]',
-      defaultPercent: '4.2%',
+      iconColor: 'text-[#E5242A] dark:text-red-400',
+      iconBg: 'bg-red-50 dark:bg-red-500/15',
+      topAccent: 'border-t-[#E5242A]',
+      badgeBg: 'bg-red-50 text-[#E5242A] dark:bg-red-500/15 dark:text-red-400',
+      badgeText: '4.2%',
+      subtext: 'Belum check-in',
     },
     red: {
-      dotColor: 'bg-[#DC2626]',
-      badgeBg: 'bg-red-50 text-[#DC2626]',
-      barColor: 'bg-[#DC2626]',
-      defaultPercent: '4.2%',
+      iconColor: 'text-[#E5242A] dark:text-red-400',
+      iconBg: 'bg-red-50 dark:bg-red-500/15',
+      topAccent: 'border-t-[#E5242A]',
+      badgeBg: 'bg-red-50 text-[#E5242A] dark:bg-red-500/15 dark:text-red-400',
+      badgeText: 'Inactive',
+      subtext: 'Non-aktif / off',
     },
     blue: {
-      dotColor: 'bg-[#1769AA]',
-      badgeBg: 'bg-blue-50 text-[#1769AA]',
-      barColor: 'bg-[#1769AA]',
-      defaultPercent: '100%',
+      iconColor: 'text-[#0088D8] dark:text-[#38BDF8]',
+      iconBg: 'bg-blue-50 dark:bg-blue-500/15',
+      topAccent: 'border-t-[#0088D8]',
+      badgeBg: 'bg-blue-50 text-[#0088D8] dark:bg-blue-500/15 dark:text-[#38BDF8]',
+      badgeText: '↑ 12%',
+      subtext: 'Total jadwal',
     },
     navy: {
-      dotColor: 'bg-[#123B6D]',
-      badgeBg: 'bg-blue-50 text-[#123B6D]',
-      barColor: 'bg-[#123B6D]',
-      defaultPercent: '100%',
+      iconColor: 'text-[#0B3568] dark:text-[#93C5FD]',
+      iconBg: 'bg-slate-100 dark:bg-slate-500/15',
+      topAccent: 'border-t-[#0066B3]',
+      badgeBg: 'bg-blue-50 text-[#0066B3] dark:bg-blue-500/15 dark:text-[#93C5FD]',
+      badgeText: 'Roster',
+      subtext: 'Tenaga kerja',
     },
     slate: {
-      dotColor: 'bg-slate-500',
-      badgeBg: 'bg-slate-50 text-slate-600',
-      barColor: 'bg-slate-400',
-      defaultPercent: '50%',
+      iconColor: 'text-[#64748B] dark:text-[#94A3B8]',
+      iconBg: 'bg-slate-100 dark:bg-slate-500/15',
+      topAccent: 'border-t-slate-400',
+      badgeBg: 'bg-slate-100 text-slate-700 dark:bg-slate-500/15 dark:text-slate-300',
+      badgeText: 'Plan',
+      subtext: 'Rencana program',
     },
     primary: {
-      dotColor: 'bg-[#0B3568]',
-      badgeBg: 'bg-blue-50 text-[#0B3568]',
-      barColor: 'bg-[#0B3568]',
-      defaultPercent: '100%',
+      iconColor: 'text-[#0088D8] dark:text-[#38BDF8]',
+      iconBg: 'bg-blue-50 dark:bg-blue-500/15',
+      topAccent: 'border-t-[#0088D8]',
+      badgeBg: 'bg-blue-50 text-[#0088D8] dark:bg-blue-500/15 dark:text-[#38BDF8]',
+      badgeText: 'Total',
+      subtext: 'Semua personil',
     },
     gray: {
-      dotColor: 'bg-slate-400',
-      badgeBg: 'bg-slate-50 text-slate-700',
-      barColor: 'bg-slate-400',
-      defaultPercent: '0%',
+      iconColor: 'text-[#64748B] dark:text-slate-400',
+      iconBg: 'bg-slate-100 dark:bg-slate-500/15',
+      topAccent: 'border-t-slate-300',
+      badgeBg: 'bg-slate-100 text-slate-600 dark:bg-slate-500/15 dark:text-slate-400',
+      badgeText: '0%',
+      subtext: 'Tidak ada data',
     },
   }[variant];
 
@@ -279,30 +307,34 @@ export function KpiCard({
     <div
       onClick={onClick}
       style={{ animationDelay: entranceDelay }}
-      className="anim-fade-up bg-white rounded-xl p-3 sm:p-3.5 border border-[#E2E8F0] shadow-xs flex flex-col justify-between h-[96px] sm:h-[104px] hover:border-slate-300 transition-all select-none"
+      className={clsx(
+        'anim-fade-up bg-white dark:bg-[#0D263E] rounded-2xl p-4 border-t-2 border-x border-b border-[#E2E8F0] dark:border-[rgba(120,190,235,0.14)] shadow-sm flex flex-col justify-between h-[110px] transition-all duration-200 hover:-translate-y-1 hover:shadow-md select-none cursor-pointer',
+        metricConfig.topAccent
+      )}
     >
-      {/* Top Header */}
+      {/* Top Row: Icon + Label + Badge */}
       <div className="flex items-center justify-between">
-        <div className={clsx('inline-flex items-center gap-1 px-1.5 py-0.2 rounded-full text-[9.5px] font-black', metricConfig.badgeBg)}>
-          <span className={clsx('h-1.5 w-1.5 rounded-full', metricConfig.dotColor)} />
-          <span>{label}</span>
+        <div className="flex items-center gap-2">
+          <div className={clsx('p-1.5 rounded-xl shadow-2xs', metricConfig.iconBg, metricConfig.iconColor)}>
+            <Icon className="h-4 w-4" />
+          </div>
+          <span className="text-[10px] font-extrabold text-[#64748B] dark:text-[#8EA7BD] uppercase tracking-wider">
+            {label}
+          </span>
         </div>
-        <span className="text-[10px] font-bold text-slate-400">
-          {percent || metricConfig.defaultPercent}
+        <span className={clsx('px-2 py-0.5 rounded-full text-[9px] font-extrabold', metricConfig.badgeBg)}>
+          {percent ? `↑ ${percent}` : metricConfig.badgeText}
         </span>
       </div>
 
-      {/* Large Value */}
-      <div className="my-1 flex items-baseline justify-between">
-        <div className="text-2xl sm:text-3xl font-black text-text-primary tracking-tight leading-none">
+      {/* Middle/Bottom Row: Big Number & Subtext */}
+      <div className="flex items-baseline justify-between mt-1">
+        <div className="text-2xl sm:text-3xl font-black text-[#0B3568] dark:text-[#F5FAFF] tracking-tight leading-none">
           {typeof value === 'number' ? <CountUp value={value} duration={750} /> : value}
         </div>
-        <span className="text-[9px] text-slate-400 font-medium">Operator</span>
-      </div>
-
-      {/* Bottom Color Progress Line */}
-      <div className="w-full bg-slate-100 h-1 rounded-full overflow-hidden">
-        <div className={clsx('h-full rounded-full bar-grow', metricConfig.barColor)} style={{ width: percent || metricConfig.defaultPercent }} />
+        <span className="text-[9.5px] text-[#64748B] dark:text-[#8EA7BD] font-medium">
+          {metricConfig.subtext}
+        </span>
       </div>
     </div>
   );

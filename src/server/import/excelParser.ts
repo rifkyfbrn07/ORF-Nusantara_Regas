@@ -344,7 +344,7 @@ type CellStyleShape = {
  * empty. The source workbook uses 00B0F0; RGB, indexed and Office Accent 1
  * representations are supported for compatible Excel exports.
  */
-function isBluePlanFill(cell: XLSX.CellObject | undefined): boolean {
+export function isBluePlanFill(cell: XLSX.CellObject | undefined): boolean {
   const style = cell && (cell as unknown as { s?: CellStyleShape }).s;
   if (!style || style.patternType !== 'solid') return false;
   const colors = [style.fgColor, style.bgColor].filter(Boolean) as NonNullable<CellStyleShape['fgColor']>[];

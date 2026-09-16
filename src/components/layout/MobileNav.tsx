@@ -44,7 +44,7 @@ export function MobileNav({ user, unreadCount = 0, onOpenDrawer }: MobileNavProp
   return (
     <nav
       aria-label="Mobile Navigation"
-      className="md:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-[#DCE5EF] z-40 px-2 py-1.5 flex items-center justify-around shadow-lg"
+      className="md:hidden fixed bottom-0 left-0 right-0 bg-surface-1/95 backdrop-blur-md border-t border-surface-border z-40 px-2 py-1.5 flex items-center justify-around shadow-lg"
     >
       {links.map((link) => {
         const Icon = link.icon;
@@ -62,14 +62,14 @@ export function MobileNav({ user, unreadCount = 0, onOpenDrawer }: MobileNavProp
             className={clsx(
               'flex flex-col items-center justify-center py-1 px-2.5 rounded-xl text-[10px] font-semibold transition-all relative',
               isActive
-                ? 'text-[#0066B3] font-black'
-                : 'text-[#64748B] hover:text-[#0066B3]'
+                ? 'text-[#0088D8] dark:text-[#38BDF8] font-black'
+                : 'text-text-muted hover:text-text-primary'
             )}
           >
             <div className="relative">
-              <Icon className={clsx('h-5 w-5', isActive ? 'text-[#0066B3]' : 'text-[#64748B]')} />
+              <Icon className={clsx('h-5 w-5', isActive ? 'text-[#0088D8] dark:text-[#38BDF8]' : 'text-text-muted')} />
               {link.badge && link.badge > 0 ? (
-                <span className="absolute -top-1 -right-2 h-3.5 w-3.5 bg-[#E1251B] text-white text-[8px] font-black rounded-full flex items-center justify-center ring-1 ring-white">
+                <span className="absolute -top-1 -right-2 h-3.5 w-3.5 bg-[#E5242A] text-white text-[8px] font-black rounded-full flex items-center justify-center ring-1 ring-surface-1">
                   {link.badge}
                 </span>
               ) : null}
@@ -82,10 +82,10 @@ export function MobileNav({ user, unreadCount = 0, onOpenDrawer }: MobileNavProp
       {/* Menu / Drawer Toggle Button */}
       <button
         onClick={onOpenDrawer}
-        className="flex flex-col items-center justify-center py-1 px-2.5 rounded-xl text-[10px] font-semibold text-[#5F718A] hover:text-[#0B3568] transition cursor-pointer"
+        className="flex flex-col items-center justify-center py-1 px-2.5 rounded-xl text-[10px] font-semibold text-text-muted hover:text-text-primary transition cursor-pointer"
         aria-label="Buka Menu Lengkap"
       >
-        <Menu className="h-5 w-5 text-[#5F718A]" />
+        <Menu className="h-5 w-5 text-text-muted" />
         <span className="mt-0.5">Menu</span>
       </button>
     </nav>

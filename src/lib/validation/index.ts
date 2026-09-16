@@ -283,6 +283,7 @@ export const programKerjaBaseSchema = z.object({
   status: programKerjaStatusEnum.default('PLAN'),
   notes: z.string().max(1000, 'Keterangan maksimal 1000 karakter').optional(),
   deadline: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Format deadline YYYY-MM-DD').nullable().optional(),
+  picId: z.string().min(1, 'PIC tidak valid').optional(),
   evidenceUrl: z.string().optional(),
   evidenceName: z.string().optional(),
   evidenceMime: z.string().optional(),

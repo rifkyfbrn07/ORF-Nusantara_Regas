@@ -16,11 +16,11 @@ const STATUS_LABELS: Record<string, string> = {
   PLAN: 'PLAN',
   REALISASI: 'REALISASI',
   ON_PROGRESS: 'ON PROGRESS',
-  BELUM_TEREALISASI: 'BELUM TERREALISASI',
+  BELUM_TEREALISASI: 'TIDAK TEREALISASI',
 };
 
 const STATUS_BADGE: Record<string, string> = {
-  PLAN: 'bg-slate-100 text-slate-600 border-slate-200',
+  PLAN: 'bg-blue-50 text-[#0066B3] border-blue-200',
   REALISASI: 'bg-emerald-50 text-emerald-700 border-emerald-200',
   ON_PROGRESS: 'bg-amber-50 text-amber-700 border-amber-200',
   BELUM_TEREALISASI: 'bg-red-50 text-red-700 border-red-200',

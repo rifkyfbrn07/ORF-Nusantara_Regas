@@ -24,13 +24,37 @@ const PERIODS = Array.from({ length: 12 * 4 }, (_, index) => ({
   week: (index % 4) + 1,
 }));
 
-function deriveStatus(values: Array<number | null>): { status: ProgramStatus; progress: number } {
-  const realizations = values.filter((value): value is number => value !== null);
+function deriveStatus(
+  targetValues: Array<number | null>,
+  realizationValues: Array<number | null>
+): { status: ProgramStatus; progress: number } {
+  const realizations = realizationValues.filter((value): value is number => value !== null);
   if (!realizations.length) return { status: ProgramStatus.PLAN, progress: 0 };
-  const progress = Math.round(realizations.reduce((sum, value) => sum + value, 0) / realizations.length);
-  if (progress >= 100) return { status: ProgramStatus.REALISASI, progress: 100 };
-  if (progress > 0) return { status: ProgramStatus.ON_PROGRESS, progress };
-  return { status: ProgramStatus.BELUM_TEREALISASI, progress: 0 };
+
+  const plannedIndices = targetValues
+    .map((target, idx) => (target !== null ? idx : -1))
+    .filter((idx) => idx !== -1);
+
+  const totalPlannedCount = plannedIndices.length || realizations.length;
+  const realizedSum = realizationValues.reduce<number>((sum, val) => sum + (val ?? 0), 0);
+  const avgProgress = Math.round((realizedSum / (totalPlannedCount * 100)) * 100);
+  const boundedProgress = Math.min(100, Math.max(0, avgProgress));
+
+  const hasUnrealizedPlan = plannedIndices.some((idx) => realizationValues[idx] === null);
+
+  if (realizations.every((val) => val === 0)) {
+    return { status: ProgramStatus.BELUM_TEREALISASI, progress: 0 };
+  }
+
+  if (boundedProgress >= 100 && !hasUnrealizedPlan) {
+    return { status: ProgramStatus.REALISASI, progress: 100 };
+  }
+
+  if (realizedSum > 0 || realizations.length > 0) {
+    return { status: ProgramStatus.ON_PROGRESS, progress: boundedProgress };
+  }
+
+  return { status: ProgramStatus.PLAN, progress: 0 };
 }
 
 function valueAt(
@@ -90,7 +114,7 @@ async function main(): Promise<void> {
     );
     const targetValues = PERIODS.map(({ month, week }) => valueAt(record.planPeriods, month, week));
     const realizationValues = PERIODS.map(({ month, week }) => valueAt(record.realisasiPeriods, month, week));
-    const { status, progress } = deriveStatus(realizationValues);
+    const { status, progress } = deriveStatus(targetValues, realizationValues);
     const months = PERIODS.map(({ month, week }, index) => ({
       month,
       week,

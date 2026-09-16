@@ -59,7 +59,7 @@ async function main() {
   check('memuat keterangan target 6 kali', progHtml.includes('Target pelaksanaan setahun 6 kali'));
   check('memuat kategori A. Pengadaan', progHtml.includes('A. Pengadaan'));
   check('memuat status ON PROGRESS', progHtml.includes('ON PROGRESS'));
-  check('memuat status BELUM TERREALISASI', progHtml.includes('BELUM TERREALISASI'));
+  check('memuat status TIDAK TEREALISASI', progHtml.includes('TIDAK TEREALISASI'));
   check('memuat KPI Belum Terealisasi', progHtml.includes('Belum Terealisasi'));
 
   console.log('--- /operator/jadwal-saya (Itqi Arradi) ---');

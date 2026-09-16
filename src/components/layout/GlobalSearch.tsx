@@ -50,7 +50,7 @@ export function GlobalSearch() {
 
   useEffect(() => {
     const q = query.trim();
-    if (q.length < 2) return; // reset ditangani di handleQueryChange agar tidak setState dalam effect
+    if (q.length < 2) return;
     timerRef.current = setTimeout(async () => {
       setLoading(true);
       try {
@@ -93,58 +93,58 @@ export function GlobalSearch() {
 
   return (
     <div className="relative w-full" ref={boxRef}>
-      <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+      <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-[#64748B] dark:text-[#7FB4D6] pointer-events-none" />
       <input
         type="text"
         value={query}
         onChange={(e) => handleQueryChange(e.target.value)}
         onFocus={() => query.trim().length >= 2 && setOpen(true)}
         placeholder="Cari username, nama, menu, atau informasi..."
-        className="w-full pl-8.5 pr-8 py-1.5 text-xs bg-slate-50 hover:bg-slate-100/70 focus:bg-white border border-slate-200 focus:border-[#0066B3] rounded-lg text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-[#0066B3]/20 transition"
+        className="w-full pl-8.5 pr-8 py-2 text-xs bg-[#F4F9FC] dark:bg-[#081D31] hover:bg-white dark:hover:bg-[#0A2238] focus:bg-white dark:focus:bg-[#081D31] border border-[#E2E8F0] dark:border-[rgba(100,180,230,0.16)] focus:border-[#0077C8] dark:focus:border-[#38A9EA] rounded-xl text-[#0B3568] dark:text-[#EAF5FC] placeholder-[#64748B] dark:placeholder-[#8FA9BE] focus:outline-none focus:ring-2 focus:ring-[#0077C8]/20 dark:focus:ring-[#38A9EA]/20 transition"
         aria-label="Cari username, nama, menu, atau informasi"
       />
       {loading && (
-        <Loader2 className="w-3.5 h-3.5 absolute right-3 top-1/2 -translate-y-1/2 text-[#0066B3] animate-spin" />
+        <Loader2 className="w-3.5 h-3.5 absolute right-3 top-1/2 -translate-y-1/2 text-[#0077C8] dark:text-[#38A9EA] animate-spin" />
       )}
       {open && query.trim().length >= 2 && (
-        <div className="anim-dropdown absolute left-0 right-0 sm:right-auto sm:w-[380px] mt-2 bg-white rounded-xl shadow-lg border border-slate-200 z-50 overflow-hidden">
+        <div className="anim-dropdown absolute left-0 right-0 sm:right-auto sm:w-[380px] mt-2 bg-white dark:bg-[#102B45] rounded-2xl shadow-2xl border border-[#E2E8F0] dark:border-[rgba(100,180,230,0.20)] z-50 overflow-hidden">
           {loading ? (
-            <div className="px-4 py-6 flex items-center justify-center gap-2 text-xs font-semibold text-slate-400">
-              <Loader2 className="h-3.5 w-3.5 animate-spin" /> Mencari...
+            <div className="px-4 py-6 flex items-center justify-center gap-2 text-xs font-semibold text-[#64748B] dark:text-[#8FA9BE]">
+              <Loader2 className="h-3.5 w-3.5 animate-spin text-[#0077C8] dark:text-[#38A9EA]" /> Mencari...
             </div>
           ) : error ? (
-            <div className="px-4 py-5 flex items-start gap-2 text-xs font-semibold text-red-600">
+            <div className="px-4 py-5 flex items-start gap-2 text-xs font-semibold text-red-500">
               <AlertCircle className="h-4 w-4 shrink-0" /> {error}
             </div>
           ) : results.length === 0 ? (
             <div className="px-4 py-6 text-center">
-              <SearchX className="h-5 w-5 mx-auto text-slate-300 mb-1" />
-              <p className="text-xs font-bold text-slate-500">Tidak ada hasil untuk &ldquo;{query.trim()}&rdquo;</p>
-              <p className="text-[10px] text-slate-400 mt-0.5">Coba kata kunci lain (username, nama, menu).</p>
+              <SearchX className="h-5 w-5 mx-auto text-[#64748B] dark:text-[#8FA9BE] mb-1" />
+              <p className="text-xs font-bold text-[#0B3568] dark:text-[#EAF4FB]">Tidak ada hasil untuk &ldquo;{query.trim()}&rdquo;</p>
+              <p className="text-[10px] text-[#64748B] dark:text-[#8FA9BE] mt-0.5">Coba kata kunci lain (username, nama, menu).</p>
             </div>
           ) : (
-            <ul className="max-h-80 overflow-y-auto divide-y divide-slate-100">
+            <ul className="max-h-80 overflow-y-auto divide-y divide-[#E2E8F0] dark:divide-[rgba(100,180,230,0.12)] scrollbar-thin">
               {results.map((r, i) => {
                 const Icon = TYPE_ICON[r.type] || FileText;
                 return (
                   <li key={`${r.href}-${i}`}>
                     <button
                       onClick={() => go(r.href)}
-                      className="w-full text-left px-3.5 py-2.5 hover:bg-slate-50 transition flex items-start gap-2.5 cursor-pointer"
+                      className="w-full text-left px-3.5 py-2.5 hover:bg-[#F4F9FC] dark:hover:bg-[#143A59] transition flex items-start gap-2.5 cursor-pointer"
                     >
-                      <span className="mt-0.5 h-6 w-6 rounded-md bg-[#EAF4FC] text-[#0066B3] flex items-center justify-center shrink-0">
+                      <span className="mt-0.5 h-6 w-6 rounded-lg bg-[#0077C8]/10 dark:bg-[#0088D8]/20 text-[#0077C8] dark:text-[#38A9EA] flex items-center justify-center shrink-0">
                         <Icon className="h-3.5 w-3.5" />
                       </span>
                       <span className="min-w-0 flex-1">
                         <span className="flex items-center gap-1.5">
-                          <span className="text-xs font-bold text-[#0B3568] truncate">{r.title}</span>
-                          <span className="text-[8.5px] font-black uppercase tracking-wide text-slate-400 border border-slate-200 rounded px-1 py-px shrink-0">
+                          <span className="text-xs font-bold text-[#0B3568] dark:text-[#EAF4FB] truncate">{r.title}</span>
+                          <span className="text-[8.5px] font-black uppercase tracking-wide text-[#64748B] dark:text-[#8FA9BE] border border-[#E2E8F0] dark:border-[rgba(100,180,230,0.20)] rounded px-1 py-px shrink-0">
                             {TYPE_LABEL[r.type] || r.type}
                           </span>
                         </span>
-                        <span className="block text-[10.5px] text-slate-500 truncate">{r.subtitle}</span>
+                        <span className="block text-[10.5px] text-[#64748B] dark:text-[#8FA9BE] truncate">{r.subtitle}</span>
                       </span>
-                      <ArrowRight className="h-3.5 w-3.5 text-slate-300 mt-1 shrink-0" />
+                      <ArrowRight className="h-3.5 w-3.5 text-[#64748B] dark:text-[#8FA9BE] mt-1 shrink-0" />
                     </button>
                   </li>
                 );

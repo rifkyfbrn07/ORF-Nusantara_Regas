@@ -2,6 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
+import { Users, ArrowRight } from 'lucide-react';
 import { UserAvatar } from '@/components/ui/UserAvatar';
 
 interface OperatorStatusRow {
@@ -47,7 +48,7 @@ export function OperatorStatusTable({ data = [] }: OperatorStatusTableProps) {
       shift: 'Pagi',
       lokasi: 'LNG Plant',
       status: 'Hadir',
-      statusClass: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+      statusClass: 'bg-[#22A65A]/15 text-[#22A65A] dark:text-[#4ADE80] border-[#22A65A]/30',
     },
     {
       waktu: '14:00 - 22:00',
@@ -55,7 +56,7 @@ export function OperatorStatusTable({ data = [] }: OperatorStatusTableProps) {
       shift: 'Siang',
       lokasi: 'Compressor',
       status: 'Hadir',
-      statusClass: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+      statusClass: 'bg-[#22A65A]/15 text-[#22A65A] dark:text-[#4ADE80] border-[#22A65A]/30',
     },
     {
       waktu: '22:00 - 06:00',
@@ -63,7 +64,7 @@ export function OperatorStatusTable({ data = [] }: OperatorStatusTableProps) {
       shift: 'Malam',
       lokasi: 'Utilities',
       status: 'Belum Absen',
-      statusClass: 'bg-red-50 text-red-600 border-red-200',
+      statusClass: 'bg-[#EF3340]/15 text-[#EF3340] dark:text-red-400 border-[#EF3340]/30',
     },
     {
       waktu: '06:00 - 14:00',
@@ -71,13 +72,13 @@ export function OperatorStatusTable({ data = [] }: OperatorStatusTableProps) {
       shift: 'Pagi',
       lokasi: 'Loading Jetty',
       status: 'Cuti',
-      statusClass: 'bg-purple-50 text-purple-700 border-purple-200',
+      statusClass: 'bg-purple-500/15 text-purple-600 dark:text-purple-300 border-purple-500/30',
     },
   ];
 
   const rows =
     data.length > 0
-      ? data.slice(0, 4).map((row) => ({
+      ? data.slice(0, 5).map((row) => ({
           waktu: row.shift ? `${row.shift.startTime} - ${row.shift.endTime}` : '08:00 - 16:00',
           operator: row.operator.name,
           shift: row.shift?.name || 'Pagi',
@@ -94,63 +95,68 @@ export function OperatorStatusTable({ data = [] }: OperatorStatusTableProps) {
               : row.statusLabel,
           statusClass:
             row.status === 'HADIR'
-              ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+              ? 'bg-[#22A65A]/15 text-[#22A65A] dark:text-[#4ADE80] border-[#22A65A]/30'
               : row.status === 'TERLAMBAT'
-              ? 'bg-orange-50 text-orange-700 border-orange-200'
+              ? 'bg-[#F58220]/15 text-[#F58220] dark:text-amber-400 border-[#F58220]/30'
               : row.status === 'BELUM_ABSEN'
-              ? 'bg-red-50 text-red-600 border-red-200'
-              : 'bg-purple-50 text-purple-700 border-purple-200',
+              ? 'bg-[#EF3340]/15 text-[#EF3340] dark:text-red-400 border-[#EF3340]/30'
+              : 'bg-purple-500/15 text-purple-600 dark:text-purple-300 border-purple-500/30',
         }))
       : defaultSchedule;
 
   return (
-    <div className="bg-white rounded-xl border border-[#E2E8F0] shadow-xs overflow-hidden flex flex-col justify-between h-full min-h-[250px] max-h-[300px]">
+    <div className="card-command-center p-5 sm:p-6 flex flex-col justify-between h-full space-y-4">
       {/* Header */}
-      <div className="p-3.5 px-4 border-b border-slate-100 flex items-center justify-between shrink-0">
-        <h3 className="text-xs sm:text-sm font-bold text-[#0B3568]">
-          Jadwal Mendatang
-        </h3>
+      <div className="flex items-center justify-between pb-3 border-b border-[#E2E8F0] dark:border-[rgba(120,190,235,0.16)] shrink-0">
+        <div className="flex items-center gap-2.5">
+          <div className="h-8 w-8 rounded-xl bg-[#0077C8]/10 text-[#0077C8] dark:text-[#38BDF8] flex items-center justify-center shrink-0">
+            <Users className="h-4.5 w-4.5" />
+          </div>
+          <h3 className="text-xs sm:text-sm font-black text-[#0B3568] dark:text-[#F5FAFF] uppercase tracking-wider">
+            Jadwal &amp; Kehadiran Operator
+          </h3>
+        </div>
         <Link
           href="/manager/schedules"
-          className="text-[11px] font-semibold text-[#1769AA] hover:underline"
+          className="text-xs font-black text-[#0077C8] dark:text-[#38BDF8] hover:underline flex items-center gap-1"
         >
-          Lihat Semua →
+          Lihat Semua <ArrowRight className="h-3.5 w-3.5" />
         </Link>
       </div>
 
       {/* Desktop Table */}
-      <div className="hidden sm:block overflow-x-auto my-auto">
-        <table className="w-full text-left text-xs text-[#1E293B]">
-          <thead className="text-[10px] uppercase font-bold text-[#64748B] border-b border-slate-100 bg-slate-50/50">
+      <div className="hidden sm:block overflow-x-auto rounded-xl border border-[#E2E8F0] dark:border-[rgba(120,190,235,0.10)]">
+        <table className="w-full text-left text-xs">
+          <thead className="bg-[#F4F9FC] dark:bg-[#0A2035] text-[10px] uppercase font-black text-[#64748B] dark:text-[#BFD2E2] border-b border-[#E2E8F0] dark:border-[rgba(120,190,235,0.10)]">
             <tr>
-              <th scope="col" className="px-4 py-2">Waktu</th>
-              <th scope="col" className="px-4 py-2">Operator</th>
-              <th scope="col" className="px-4 py-2">Shift</th>
-              <th scope="col" className="px-4 py-2">Lokasi</th>
-              <th scope="col" className="px-4 py-2 text-right">Status</th>
+              <th scope="col" className="px-4 py-2.5">Waktu</th>
+              <th scope="col" className="px-4 py-2.5">Operator</th>
+              <th scope="col" className="px-4 py-2.5">Shift</th>
+              <th scope="col" className="px-4 py-2.5">Lokasi</th>
+              <th scope="col" className="px-4 py-2.5 text-right">Status</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100 text-[11px]">
+          <tbody className="divide-y divide-[#E2E8F0] dark:divide-[rgba(120,190,235,0.10)] text-[11.5px] bg-white dark:bg-[#0D263E]">
             {rows.map((r, idx) => (
-              <tr key={idx} className="hover:bg-[#F8FAFC] transition-colors">
-                <td className="px-4 py-2 font-mono text-[#64748B]">
+              <tr key={idx} className="hover:bg-[#F4F9FC] dark:hover:bg-[#12314D] transition-colors">
+                <td className="px-4 py-3 font-mono font-bold text-[#123D70] dark:text-[#AFC4D5]">
                   {r.waktu}
                 </td>
-                <td className="px-4 py-2">
+                <td className="px-4 py-3">
                   <div className="flex items-center gap-2">
-                    <UserAvatar name={r.operator} size={22} className="shrink-0" />
-                    <span className="font-bold text-[#0B3568] truncate max-w-[120px]">{r.operator}</span>
+                    <UserAvatar name={r.operator} size={24} className="shrink-0" />
+                    <span className="font-bold text-[#0B3568] dark:text-[#EDF6FC] truncate max-w-[140px]">{r.operator}</span>
                   </div>
                 </td>
-                <td className="px-4 py-2 font-medium text-[#334155]">
+                <td className="px-4 py-3 font-bold text-[#123D70] dark:text-[#AFC4D5]">
                   {r.shift}
                 </td>
-                <td className="px-4 py-2 text-[#64748B] truncate max-w-[100px]">
+                <td className="px-4 py-3 text-[#64748B] dark:text-[#8FA7BD] truncate max-w-[120px]">
                   {r.lokasi}
                 </td>
-                <td className="px-4 py-2 text-right">
+                <td className="px-4 py-3 text-right">
                   <span
-                    className={`inline-block text-[9px] font-bold px-2 py-0.2 rounded-full border ${r.statusClass}`}
+                    className={`inline-block text-[9.5px] font-black px-2.5 py-0.5 rounded-full border ${r.statusClass}`}
                   >
                     {r.status}
                   </span>
@@ -162,17 +168,17 @@ export function OperatorStatusTable({ data = [] }: OperatorStatusTableProps) {
       </div>
 
       {/* Mobile Stacked Card View */}
-      <div className="sm:hidden divide-y divide-slate-100 p-2 space-y-1.5 overflow-y-auto max-h-[220px]">
+      <div className="sm:hidden divide-y divide-[#E2E8F0] dark:divide-[rgba(120,190,235,0.10)] space-y-2">
         {rows.map((r, idx) => (
-          <div key={idx} className="p-2 rounded-lg bg-slate-50 flex items-center justify-between text-xs">
-            <div className="flex items-center gap-2">
-              <UserAvatar name={r.operator} size={24} />
+          <div key={idx} className="p-3 rounded-xl bg-[#F4F9FC] dark:bg-[#081D31] flex items-center justify-between text-xs border border-[#E2E8F0] dark:border-[rgba(120,190,235,0.10)]">
+            <div className="flex items-center gap-2.5">
+              <UserAvatar name={r.operator} size={28} />
               <div>
-                <p className="font-bold text-[#0B3568]">{r.operator}</p>
-                <p className="text-[10px] text-slate-400 font-mono">{r.shift} · {r.waktu}</p>
+                <p className="font-bold text-[#0B3568] dark:text-[#EDF6FC]">{r.operator}</p>
+                <p className="text-[10px] text-[#64748B] dark:text-[#AFC4D5] font-mono">{r.shift} · {r.waktu}</p>
               </div>
             </div>
-            <span className={`text-[9px] font-bold px-1.5 py-0.2 rounded-full border ${r.statusClass}`}>
+            <span className={`text-[9.5px] font-black px-2 py-0.5 rounded-full border ${r.statusClass}`}>
               {r.status}
             </span>
           </div>

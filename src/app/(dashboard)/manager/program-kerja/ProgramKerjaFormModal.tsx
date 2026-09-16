@@ -21,6 +21,7 @@ interface FormState {
   status: ProgramStatus;
   notes: string;
   deadline: string;
+  picId: string;
   evidenceUrl: string;
   evidenceName: string;
   evidenceMime: string;
@@ -41,6 +42,7 @@ const EMPTY_FORM: FormState = {
   status: 'PLAN',
   notes: '',
   deadline: '',
+picId: '',
   evidenceUrl: '',
   evidenceName: '',
   evidenceMime: '',
@@ -50,12 +52,13 @@ const EMPTY_FORM: FormState = {
 };
 
 interface ProgramKerjaFormModalProps {
+users: { id: string; name: string; username: string; position: string | null }[];
   program: ProgramKerjaDTO | null;
   onClose: () => void;
   onSaved: () => void;
 }
 
-export function ProgramKerjaFormModal({ program, onClose, onSaved }: ProgramKerjaFormModalProps) {
+export function ProgramKerjaFormModal({ program, users, onClose, onSaved }: ProgramKerjaFormModalProps) {
   const [form, setForm] = useState<FormState>(
     program
       ? {
@@ -70,6 +73,7 @@ export function ProgramKerjaFormModal({ program, onClose, onSaved }: ProgramKerj
           status: program.status,
           notes: program.notes ?? '',
           deadline: program.deadline?.slice(0, 10) ?? '',
+          picId: program.pic?.id ?? '',
           evidenceUrl: program.evidenceUrl ?? '',
           evidenceName: program.evidenceName ?? '',
           evidenceMime: program.evidenceMime ?? '',
@@ -113,6 +117,7 @@ export function ProgramKerjaFormModal({ program, onClose, onSaved }: ProgramKerj
         realization: form.realization.trim() || undefined,
                 notes: form.notes.trim() || undefined,
         deadline: form.deadline || null,
+        picId: form.picId || undefined,
         evidenceUrl: form.evidenceUrl || undefined,
         evidenceName: form.evidenceName || undefined,
         evidenceMime: form.evidenceMime || undefined,
@@ -176,6 +181,22 @@ export function ProgramKerjaFormModal({ program, onClose, onSaved }: ProgramKerj
         <div>
           <label className="mb-1 block text-[10px] font-bold uppercase tracking-wide text-slate-500">Deadline</label>
           <input type="date" className="field w-full" value={form.deadline} onChange={(e) => set('deadline', e.target.value)} />
+        </div>
+<div>
+          <label className="mb-1 block text-[10px] font-bold uppercase tracking-wide text-slate-500">PIC</label>
+          <select
+            className="field w-full"
+            value={form.picId}
+            onChange={(e) => set('picId', e.target.value)}
+            aria-label="PIC Program Kerja"
+          >
+            <option value="">Belum ditentukan</option>
+            {users.map((u) => (
+              <option key={u.id} value={u.id}>
+                {u.name}{u.position ? ` — ${u.position}` : ''} ({u.username})
+              </option>
+            ))}
+          </select>
         </div>
 
         <div className="grid gap-3 sm:grid-cols-2">

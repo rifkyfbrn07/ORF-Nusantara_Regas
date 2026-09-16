@@ -22,6 +22,7 @@ interface ImportRowResult {
   row: number;
   ok: boolean;
   message: string;
+  kind?: 'NEW' | 'UPDATED' | 'UNCHANGED' | 'CONFLICT' | 'INVALID';
   date?: string;
   userName?: string;
   shift?: string;
@@ -32,6 +33,22 @@ const TEMPLATE_ROWS = [
   { Tanggal: '2026-09-10', Username: 'budi.santoso', Nama: 'Budi Santoso', 'Employee ID': 'OP-002', Shift: 'Mlm', Status: 'WORK', Catatan: '' },
   { Tanggal: '2026-09-11', Username: 'citra.dewi', Nama: 'Citra Dewi', 'Employee ID': 'OP-003', Shift: 'Off', Status: 'OFF', Catatan: 'Libur rutin' },
 ];
+
+const KIND_BADGE: Record<string, string> = {
+  NEW: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+  UPDATED: 'bg-amber-50 text-amber-700 border-amber-200',
+  UNCHANGED: 'bg-slate-100 text-slate-500 border-slate-200',
+  CONFLICT: 'bg-purple-50 text-purple-700 border-purple-200',
+  INVALID: 'bg-red-50 text-red-700 border-red-200',
+};
+
+const KIND_LABEL: Record<string, string> = {
+  NEW: 'NEW',
+  UPDATED: 'UPDATED',
+  UNCHANGED: 'UNCHANGED',
+  CONFLICT: 'CONFLICT',
+  INVALID: 'INVALID',
+};
 
 function downloadTemplate() {
   const ws = XLSX.utils.json_to_sheet(TEMPLATE_ROWS);
@@ -57,7 +74,7 @@ export function ScheduleImportModal({ open, onClose }: { open: boolean; onClose:
   const [rows, setRows] = useState<ImportRow[]>([]);
   const [fileName, setFileName] = useState<string | null>(null);
   const [preview, setPreview] = useState<ImportRowResult[] | null>(null);
-  const [importResult, setImportResult] = useState<{ created: number; updated: number } | null>(null);
+  const [importResult, setImportResult] = useState<{ created: number; updated: number; skippedConflict: number; skippedInvalid: number } | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -139,7 +156,12 @@ export function ScheduleImportModal({ open, onClose }: { open: boolean; onClose:
         setError(res.error);
         return;
       }
-      setImportResult({ created: res.created, updated: res.updated });
+      setImportResult({
+        created: res.created,
+        updated: res.updated,
+        skippedConflict: res.skippedConflict,
+        skippedInvalid: res.skippedInvalid,
+      });
       router.refresh();
     } finally {
       setLoading(false);
@@ -258,7 +280,7 @@ export function ScheduleImportModal({ open, onClose }: { open: boolean; onClose:
         {importResult && (
           <div className="flex items-start gap-2 text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2.5">
             <CheckCircle2 className="h-4 w-4 shrink-0" />
-            Import selesai: {importResult.created} jadwal baru, {importResult.updated} diperbarui.
+            Import selesai: {importResult.created} jadwal baru, {importResult.updated} diperbarui{importResult.skippedConflict > 0 ? `, ${importResult.skippedConflict} konflik dilewati` : ''}{importResult.skippedInvalid > 0 ? `, ${importResult.skippedInvalid} invalid dilewati` : ''}.
           </div>
         )}
 
@@ -267,6 +289,10 @@ export function ScheduleImportModal({ open, onClose }: { open: boolean; onClose:
           <div className="space-y-2">
             <div className="flex items-center gap-2 text-[11px] font-bold">
               <span className="text-emerald-700 bg-emerald-50 border border-emerald-200 rounded px-1.5 py-0.5">{validCount} valid</span>
+              {preview.some((r) => r.kind === 'NEW') && <span className="bg-emerald-50 border border-emerald-200 text-emerald-700 rounded px-1.5 py-0.5">{preview.filter((r) => r.kind === 'NEW').length} NEW</span>}
+              {preview.some((r) => r.kind === 'UPDATED') && <span className="bg-amber-50 border border-amber-200 text-amber-700 rounded px-1.5 py-0.5">{preview.filter((r) => r.kind === 'UPDATED').length} UPDATED</span>}
+              {preview.some((r) => r.kind === 'UNCHANGED') && <span className="bg-slate-100 border border-slate-200 text-slate-500 rounded px-1.5 py-0.5">{preview.filter((r) => r.kind === 'UNCHANGED').length} UNCHANGED</span>}
+              {preview.some((r) => r.kind === 'CONFLICT') && <span className="bg-purple-50 border border-purple-200 text-purple-700 rounded px-1.5 py-0.5">{preview.filter((r) => r.kind === 'CONFLICT').length} CONFLICT</span>}
               {invalidRows.length > 0 && (
                 <span className="text-red-700 bg-red-50 border border-red-200 rounded px-1.5 py-0.5">{invalidRows.length} error</span>
               )}
@@ -277,6 +303,7 @@ export function ScheduleImportModal({ open, onClose }: { open: boolean; onClose:
                 <thead className="bg-[#EDF4FB] sticky top-0">
                   <tr>
                     <th className="px-2.5 py-1.5 font-black text-slate-500">Baris</th>
+                    <th className="px-2.5 py-1.5 font-black text-slate-500">Klasifikasi</th>
                     <th className="px-2.5 py-1.5 font-black text-slate-500">Tanggal</th>
                     <th className="px-2.5 py-1.5 font-black text-slate-500">Operator</th>
                     <th className="px-2.5 py-1.5 font-black text-slate-500">Shift</th>
@@ -287,6 +314,11 @@ export function ScheduleImportModal({ open, onClose }: { open: boolean; onClose:
                   {preview.slice(0, 100).map((r) => (
                     <tr key={r.row} className={r.ok ? '' : 'bg-red-50/60'}>
                       <td className="px-2.5 py-1.5 font-bold text-slate-400">{r.row}</td>
+                      <td className="px-2.5 py-1.5">
+                        <span className={`inline-flex whitespace-nowrap rounded-full border px-1.5 py-0.5 text-[9px] font-black ${KIND_BADGE[r.kind || (r.ok ? 'NEW' : 'INVALID')]}`}>
+                          {KIND_LABEL[r.kind || (r.ok ? 'NEW' : 'INVALID')]}
+                        </span>
+                      </td>
                       <td className="px-2.5 py-1.5 font-semibold text-slate-700">{r.date || '—'}</td>
                       <td className="px-2.5 py-1.5 font-semibold text-slate-700">{r.userName || r.message}</td>
                       <td className="px-2.5 py-1.5 font-bold text-[#0066B3]">{r.shift || '—'}</td>

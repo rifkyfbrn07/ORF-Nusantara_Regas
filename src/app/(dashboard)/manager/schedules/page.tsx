@@ -8,7 +8,8 @@ import { SchedulePageTools } from './SchedulePageTools';
 import { PageHeader } from '@/components/ui/PageHeader';
 
 export default async function ManagerSchedulesPage() {
-  await requireRole(['MANAGER', 'ADMIN']);
+  const session = await requireRole(['MANAGER', 'ADMIN']);
+  const canEditSchedules = session.role === 'ADMIN';
   const today = formatJakartaDate();
 
   const [schedules, shifts, operators, locations] = await Promise.all([
@@ -27,13 +28,13 @@ export default async function ManagerSchedulesPage() {
         eyebrow="SHIFT PLANNING & DISPATCH"
         title="Manajemen Jadwal Kerja"
         description="Atur rotasi shift 3-regu, penetapan personil per fasilitas ORF Muara Karang, dan alokasi jadwal operasional."
-        action={
+        action={canEditSchedules ? (
           <SchedulePageTools
             operators={operators.map((o) => ({ id: o.id, label: o.name }))}
             shifts={shifts.map((s) => ({ id: s.id, label: `${s.name} (${s.startTime} - ${s.endTime})` }))}
             locations={locations.map((l) => ({ id: l.id, label: l.name }))}
           />
-        }
+        ) : undefined}
       />
 
       <ScheduleManagerClient
@@ -42,6 +43,7 @@ export default async function ManagerSchedulesPage() {
         operators={operators}
         locations={locations}
         today={today}
+        canEdit={canEditSchedules}
       />
     </div>
   );

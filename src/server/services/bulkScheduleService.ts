@@ -1,5 +1,6 @@
+import { createHash } from 'node:crypto';
 import { prisma } from '@/lib/db/prisma';
-import { ScheduleStatus } from '@prisma/client';
+import { ImportDocumentType, ImportStatus, ScheduleStatus } from '@prisma/client';
 import { recordAuditLog } from './auditService';
 import { WORK_PATTERNS, generatePatternShifts, PatternShift } from '@/lib/schedule/workPatterns';
 
@@ -154,6 +155,7 @@ export interface ImportRowResult {
   row: number;
   ok: boolean;
   message: string;
+  kind?: 'NEW' | 'UPDATED' | 'UNCHANGED' | 'CONFLICT' | 'INVALID';
   date?: string;
   userName?: string;
   shift?: string;
@@ -214,7 +216,7 @@ async function resolveUsers(rows: ImportRowInput[]): Promise<Map<string, { id: s
 }
 
 /** Tahap 1: validasi & preview — TIDAK menulis ke database. */
-export async function validateImportRows(rows: ImportRowInput[]): Promise<ImportRowResult[]> {
+export async function _legacyValidateImportRows(rows: ImportRowInput[]): Promise<ImportRowResult[]> {
   const [shiftList, userMap] = await Promise.all([
     prisma.shift.findMany({ where: { isActive: true }, select: { id: true, code: true, name: true } }),
     resolveUsers(rows),
@@ -242,7 +244,7 @@ export async function validateImportRows(rows: ImportRowInput[]): Promise<Import
 }
 
 /** Tahap 2: konfirmasi import — upsert semua baris valid. */
-export async function confirmImportRows(
+export async function _legacyConfirmImportRows(
   rows: ImportRowInput[],
   creatorId: string
 ): Promise<{ results: ImportRowResult[]; created: number; updated: number }> {
@@ -313,4 +315,223 @@ export async function confirmImportRows(
   });
 
   return { results, created, updated };
+}
+// ============================================================================
+// IMPORT EXCEL (v2) — klasifikasi per baris: NEW / UPDATED / UNCHANGED /
+// CONFLICT / INVALID sebelum data disimpan. Preview dipisahkan dari commit;
+// commit mengulang validasi sehingga client tidak bisa melewati preview.
+// ============================================================================
+
+type ResolvedImportRow = {
+  row: number;
+  error?: string;
+  user?: { id: string; name: string };
+  date?: string;
+  shift?: { shiftId: string; status: ScheduleStatus; label: string } | null;
+  note?: string;
+  statusLabel?: string;
+};
+
+function resolveImportRows(
+  rows: ImportRowInput[],
+  shiftList: { id: string; code: string; name: string }[],
+  userMap: Map<string, { id: string; name: string }>
+): ResolvedImportRow[] {
+  return rows.map((r): ResolvedImportRow => {
+    const dateStr = String(r.tanggal || '').trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+      return { row: r.row, error: 'Format tanggal harus YYYY-MM-DD' };
+    }
+    const user =
+      (r.username && userMap.get(`u:${r.username.toLowerCase().trim()}`)) ||
+      (r.employeeId && userMap.get(`e:${r.employeeId.toLowerCase().trim()}`)) ||
+      (!r.username && !r.employeeId && r.nama ? userMap.get(`n:${r.nama.toLowerCase().trim()}`) : null) ||
+      null;
+    if (!user) {
+      return { row: r.row, error: 'User tidak ditemukan (periksa username/nama/employee ID)' };
+    }
+    const requestedStatus = (r.status || '').trim().toUpperCase();
+    const shift = normalizeShift(r.shift, shiftList);
+    if (!shift) {
+      return { row: r.row, error: `Shift tidak dikenal: "${r.shift}" (gunakan Pg / Mlm / Off)` };
+    }
+    // Kolom Status (WORK/OFF) pada file boleh overriding status default shift
+    // (mis. baris "Off" tetap WORK). Validasi agar tidak saling bertentangan.
+    let status = shift.status;
+    if (requestedStatus === 'WORK' || requestedStatus === 'OFF') {
+      status = requestedStatus === 'WORK' ? ScheduleStatus.WORK : ScheduleStatus.OFF;
+    }
+    return {
+      row: r.row,
+      user,
+      date: dateStr,
+      shift: { shiftId: shift.shiftId, status, label: shift.label },
+      note: (r.catatan || '').trim() || undefined,
+    };
+  });
+}
+
+/** Tahap 1: validasi & klasifikasi preview — TIDAK menulis ke database. */
+export async function validateImportRows(rows: ImportRowInput[]): Promise<ImportRowResult[]> {
+  const [shiftList, userMap, existing] = await Promise.all([
+    prisma.shift.findMany({ where: { isActive: true }, select: { id: true, code: true, name: true } }),
+    resolveUsers(rows),
+    prisma.schedule.findMany({
+      select: { id: true, userId: true, date: true, shiftId: true, status: true, notes: true },
+    }),
+  ]);
+
+  const existingByKey = new Map<string, { id: string; shiftId: string; status: ScheduleStatus; notes: string | null }>();
+  for (const s of existing) existingByKey.set(`${s.userId}|${s.date}`, s);
+
+  const resolved = resolveImportRows(rows, shiftList, userMap);
+
+  // Duplikat user+tanggal DI DALAM SATU FILE → CONFLICT (roster ganda tak jelas).
+  const keyCount = new Map<string, number>();
+  for (const item of resolved) {
+    if (!item.user || !item.date) continue;
+    const key = `${item.user.id}|${item.date}`;
+    keyCount.set(key, (keyCount.get(key) || 0) + 1);
+  }
+
+  return resolved.map((item): ImportRowResult => {
+    if (item.error || !item.user || !item.date || !item.shift) {
+      return { row: item.row, ok: false, kind: 'INVALID', message: item.error || 'Baris tidak valid' };
+    }
+    const key = `${item.user.id}|${item.date}`;
+    if ((keyCount.get(key) || 0) > 1) {
+      return {
+        row: item.row,
+        ok: false,
+        kind: 'CONFLICT',
+        message: 'Roster ganda untuk operator & tanggal yang sama pada file ini — satukan barisnya terlebih dahulu.',
+        date: item.date,
+        userName: item.user.name,
+        shift: item.shift.label,
+      };
+    }
+    const existingRow = existingByKey.get(key);
+    if (!existingRow) {
+      return { row: item.row, ok: true, kind: 'NEW', message: 'Jadwal baru', date: item.date, userName: item.user.name, shift: item.shift.label };
+    }
+    const sameShift = existingRow.shiftId === item.shift.shiftId && existingRow.status === item.shift.status;
+    const sameNotes = (existingRow.notes || '') === (item.note || '');
+    if (sameShift && sameNotes) {
+      return { row: item.row, ok: true, kind: 'UNCHANGED', message: 'Tidak ada perubahan', date: item.date, userName: item.user.name, shift: item.shift.label };
+    }
+    return { row: item.row, ok: true, kind: 'UPDATED', message: 'Akan diperbarui', date: item.date, userName: item.user.name, shift: item.shift.label };
+  });
+}
+/** Tahap 2: konfirmasi import — validasi ulang, lalu tulis hanya NEW/UPDATED. */
+export async function confirmImportRows(
+  rows: ImportRowInput[],
+  creatorId: string
+): Promise<{ results: ImportRowResult[]; created: number; updated: number; skippedConflict: number; skippedInvalid: number }> {
+  const [shiftList, userMap, defaultLocation, existing] = await Promise.all([
+    prisma.shift.findMany({ where: { isActive: true }, select: { id: true, code: true, name: true } }),
+    resolveUsers(rows),
+    prisma.location.findFirst({ where: { code: 'ORF-MKG' }, select: { id: true } }),
+    prisma.schedule.findMany({
+      select: { id: true, userId: true, date: true, shiftId: true, status: true, notes: true },
+    }),
+  ]);
+  const locationId = defaultLocation?.id;
+  if (!locationId) throw new Error('Lokasi default ORF Muara Karang tidak ditemukan.');
+
+  const existingByKey = new Map<string, { id: string; shiftId: string; status: ScheduleStatus; notes: string | null }>();
+  for (const s of existing) existingByKey.set(`${s.userId}|${s.date}`, s);
+
+  const resolved = resolveImportRows(rows, shiftList, userMap);
+  const keyCount = new Map<string, number>();
+  for (const item of resolved) {
+    if (!item.user || !item.date) continue;
+    const key = `${item.user.id}|${item.date}`;
+    keyCount.set(key, (keyCount.get(key) || 0) + 1);
+  }
+
+  const results: ImportRowResult[] = [];
+  let created = 0;
+  let updated = 0;
+  let skippedConflict = 0;
+  let skippedInvalid = 0;
+
+  for (const item of resolved) {
+    if (item.error || !item.user || !item.date || !item.shift) {
+      skippedInvalid += 1;
+      results.push({ row: item.row, ok: false, kind: 'INVALID', message: item.error || 'Baris tidak valid' });
+      continue;
+    }
+    const key = `${item.user.id}|${item.date}`;
+    if ((keyCount.get(key) || 0) > 1) {
+      skippedConflict += 1;
+      results.push({
+        row: item.row,
+        ok: false,
+        kind: 'CONFLICT',
+        message: 'Roster ganda untuk operator & tanggal yang sama — dilewati.',
+        date: item.date,
+        userName: item.user.name,
+        shift: item.shift.label,
+      });
+      continue;
+    }
+    const existingRow = existingByKey.get(key);
+    if (existingRow) {
+      const sameShift = existingRow.shiftId === item.shift.shiftId && existingRow.status === item.shift.status;
+      const sameNotes = (existingRow.notes || '') === (item.note || '');
+      if (sameShift && sameNotes) {
+        results.push({ row: item.row, ok: true, kind: 'UNCHANGED', message: 'Tidak ada perubahan', date: item.date, userName: item.user.name, shift: item.shift.label });
+        continue;
+      }
+      await prisma.schedule.update({
+        where: { id: existingRow.id },
+        data: { shiftId: item.shift.shiftId, locationId, status: item.shift.status, notes: item.note || undefined },
+      });
+      results.push({ row: item.row, ok: true, kind: 'UPDATED', message: 'Diperbarui', date: item.date, userName: item.user.name, shift: item.shift.label });
+      updated += 1;
+      // Perbarui cache agar dua baris identik tidak meng-call update dua kali.
+      existingByKey.set(key, { id: existingRow.id, shiftId: item.shift.shiftId, status: item.shift.status, notes: item.note || null });
+      continue;
+    }
+    await prisma.schedule.create({
+      data: {
+        userId: item.user.id,
+        date: item.date,
+        shiftId: item.shift.shiftId,
+        locationId,
+        status: item.shift.status,
+        notes: item.note || undefined,
+      },
+    });
+    results.push({ row: item.row, ok: true, kind: 'NEW', message: 'Dibuat', date: item.date, userName: item.user.name, shift: item.shift.label });
+    created += 1;
+  }
+
+  await prisma.dataImport.create({
+    data: {
+      fileName: `import-jadwal-${new Date().toISOString().slice(0, 10)}.xlsx`,
+      fileHash: createHash('sha256').update(JSON.stringify(rows)).digest('hex'),
+      fileSize: 0,
+      documentType: ImportDocumentType.JADWAL_KERJA,
+      status: ImportStatus.SUCCESS,
+      sheetNames: ['Template Jadwal'],
+      year: new Date().getFullYear(),
+      totalRecords: rows.length,
+      createdCount: created,
+      updatedCount: updated,
+      unchangedCount: results.filter((r) => r.kind === 'UNCHANGED').length,
+      conflictCount: skippedConflict,
+      rejectedCount: skippedInvalid,
+      importedById: creatorId,
+    },
+  });
+
+  await recordAuditLog({
+    userId: creatorId,
+    action: 'IMPORT_SCHEDULES',
+    entity: 'Schedule',
+    metadata: { totalRows: rows.length, created, updated, skippedInvalid, skippedConflict },
+  });
+
+  return { results, created, updated, skippedConflict, skippedInvalid };
 }

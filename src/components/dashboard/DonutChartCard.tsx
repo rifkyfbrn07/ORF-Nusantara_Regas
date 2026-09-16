@@ -63,9 +63,9 @@ export function DonutChartCard({ counts }: DonutChartCardProps) {
   });
 
   return (
-    <div className="bg-white rounded-xl p-4 border border-[#E2E8F0] shadow-xs flex flex-col justify-between h-full min-h-[250px] max-h-[290px]">
+    <div className="bg-surface-1 rounded-xl p-4 border border-surface-border shadow-xs flex flex-col justify-between h-full min-h-[250px] max-h-[290px] card-subtle-hover">
       {/* Header */}
-      <div className="flex items-center justify-between pb-2 border-b border-slate-100 shrink-0">
+      <div className="flex items-center justify-between pb-2 border-b border-surface-border shrink-0">
         <h3 className="text-xs sm:text-sm font-bold text-text-primary">
           Status Tenaga Kerja Hari Ini
         </h3>
@@ -84,7 +84,7 @@ export function DonutChartCard({ counts }: DonutChartCardProps) {
                 cx="65"
                 cy="65"
                 r={radius}
-                stroke="var(--border-app)"
+                stroke="var(--surface-border, #E2E8F0)"
                 strokeWidth={strokeWidth}
                 fill="transparent"
               />
@@ -128,7 +128,7 @@ export function DonutChartCard({ counts }: DonutChartCardProps) {
               onMouseLeave={() => setHoveredIndex(null)}
               className={clsx(
                 'flex items-center justify-between text-[11px] py-0.5 px-1.5 rounded transition-colors cursor-pointer',
-                hoveredIndex === idx ? 'bg-slate-50 font-semibold' : ''
+                hoveredIndex === idx ? 'bg-surface-interactive font-semibold' : ''
               )}
             >
               <div className="flex items-center gap-1.5 min-w-0">

@@ -183,20 +183,23 @@ export async function getProgramKerjaAnnualChart(year: number): Promise<ProgramA
     else if (p.status === ProgramStatus.BELUM_TEREALISASI) belumCount += 1;
     else if (p.status === ProgramStatus.PLAN) planCount += 1;
 
-    const plannedMonths = new Set<number>();
-    const byMonth = new Map<number, number>();
-    for (const m of p.months) {
-      if (m.target !== null) plannedMonths.add(m.month);
-      if (m.realization === null) continue; // sel kosong = tidak ada data (bukan 0)
-      byMonth.set(m.month, Math.max(byMonth.get(m.month) ?? 0, m.realization));
-    }
-    for (const month of plannedMonths) {
-      const agg = monthAgg.get(month)!;
-      agg.plan += 1;
-      const realization = byMonth.get(month);
-      if (realization === undefined) continue;
-      if (realization >= 100) agg.realisasi += 1;
-      else if (realization <= 0) agg.tidakTerealisasi += 1;
+    for (let m = 1; m <= 12; m++) {
+      const mEntries = p.months.filter((x) => x.month === m);
+      const hasPlan = mEntries.some((x) => x.target !== null);
+      const realVals = mEntries.filter((x) => x.realization !== null).map((x) => x.realization!);
+
+      const agg = monthAgg.get(m)!;
+      if (hasPlan) {
+        agg.plan += 1;
+      }
+      if (realVals.length > 0) {
+        const maxVal = Math.max(...realVals);
+        if (maxVal >= 100) {
+          agg.realisasi += 1;
+        } else if (maxVal <= 0 && realVals.every((v) => v === 0)) {
+          agg.tidakTerealisasi += 1;
+        }
+      }
     }
   }
 
@@ -205,9 +208,9 @@ export async function getProgramKerjaAnnualChart(year: number): Promise<ProgramA
     bar: MONTH_SHORT_ID.map((label, i) => ({ month: label, ...(monthAgg.get(i + 1)!) })),
     donut: [
       { name: 'Realisasi', value: realisasiCount, color: '#16A34A' },
-      { name: 'On Progress', value: onProgressCount, color: '#F59E0B' },
+      { name: 'ON PROGRESS', value: onProgressCount, color: '#F59E0B' },
       { name: 'Tidak Terealisasi', value: belumCount, color: '#DC2626' },
-      { name: 'Plan', value: planCount, color: '#94A3B8' },
+      { name: 'PLAN', value: planCount, color: '#0066B3' },
     ],
   };
 }
@@ -285,6 +288,7 @@ export async function createProgramKerja(input: ProgramKerjaCreateInput, actorId
       status: input.status as ProgramStatus,
       notes: input.notes ?? null,
       deadline: input.deadline ? new Date(`${input.deadline}T00:00:00+07:00`) : null,
+      picId: input.picId ?? null,
       evidenceUrl: input.evidenceUrl ?? null,
       evidenceName: input.evidenceName ?? null,
       evidenceMime: input.evidenceMime ?? null,
@@ -343,6 +347,7 @@ export async function updateProgramKerja(input: ProgramKerjaUpdateInput, actorId
       ...(data.status !== undefined ? { status: data.status as ProgramStatus } : {}),
       ...(data.notes !== undefined ? { notes: data.notes ?? null } : {}),
       ...(data.deadline !== undefined ? { deadline: data.deadline ? new Date(`${data.deadline}T00:00:00+07:00`) : null } : {}),
+      ...(data.picId !== undefined ? { picId: data.picId ?? null } : {}),
       ...(data.evidenceUrl !== undefined ? { evidenceUrl: data.evidenceUrl ?? null } : {}),
       ...(data.evidenceName !== undefined ? { evidenceName: data.evidenceName ?? null } : {}),
       ...(data.evidenceMime !== undefined ? { evidenceMime: data.evidenceMime ?? null } : {}),

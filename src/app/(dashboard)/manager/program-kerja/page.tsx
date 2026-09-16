@@ -1,5 +1,6 @@
 import React from 'react';
 import { requireRole } from '@/lib/auth/session';
+import { prisma } from '@/lib/db/prisma';
 import {
   listProgramKerja,
   getProgramKerjaStats,
@@ -18,10 +19,15 @@ export default async function ManagerProgramKerjaPage({ searchParams }: PageProp
   const params = await searchParams;
   const yearParam = typeof params.year === 'string' ? Number(params.year) : NaN;
 
-  const [programs, stats, years] = await Promise.all([
+  const [programs, stats, years, picUsers] = await Promise.all([
     listProgramKerja({ year: Number.isFinite(yearParam) ? yearParam : undefined }),
     getProgramKerjaStats(Number.isFinite(yearParam) ? yearParam : undefined),
     getProgramKerjaYears(),
+    prisma.user.findMany({
+      where: { isActive: true },
+      select: { id: true, name: true, username: true, position: true },
+      orderBy: { name: 'asc' },
+    }),
   ]);
 
   return (
@@ -36,6 +42,7 @@ export default async function ManagerProgramKerjaPage({ searchParams }: PageProp
         programs={programs}
         stats={stats}
         years={years}
+        picUsers={picUsers.map((u) => ({ id: u.id, name: u.name, username: u.username, position: u.position }))}
       />
     </div>
   );

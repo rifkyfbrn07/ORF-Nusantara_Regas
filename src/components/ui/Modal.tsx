@@ -145,7 +145,7 @@ export function Modal({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[70] flex items-center justify-center overflow-hidden bg-slate-950/45 p-2.5 backdrop-blur-[1px] overscroll-contain select-none animate-in fade-in duration-200 sm:p-4"
+      className="fixed inset-0 z-[70] flex items-center justify-center overflow-hidden bg-slate-950/45 dark:bg-[rgba(2,10,18,0.72)] p-2.5 backdrop-blur-[2px] overscroll-contain select-none animate-in fade-in duration-200 sm:p-4"
       role="dialog"
       aria-modal="true"
       aria-labelledby={panelId}
@@ -156,20 +156,20 @@ export function Modal({
         id={panelId}
         ref={panelRef}
         className={clsx(
-          'flex w-full max-w-full flex-col overflow-hidden rounded-xl border border-surface-border bg-surface-3 text-text-secondary shadow-2xl select-text anim-fade-up max-h-[calc(100dvh-1.25rem)] sm:max-h-[min(92dvh,calc(100dvh-2rem))]',
+          'flex w-full max-w-full flex-col overflow-hidden rounded-xl border border-surface-border dark:border-[rgba(120,190,235,0.18)] bg-surface-3 dark:bg-[#0D263E] text-text-secondary dark:text-[#B6C9D9] shadow-2xl select-text anim-fade-up max-h-[calc(100dvh-1.25rem)] sm:max-h-[min(92dvh,calc(100dvh-2rem))]',
           SIZE_CLASS[size]
         )}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Sticky Header — tidak pernah ikut scroll */}
-        <div className="flex items-center justify-between gap-3 px-5 py-4 border-b border-surface-border bg-surface-3 shrink-0">
+        <div className="flex items-center justify-between gap-3 px-5 py-4 border-b border-surface-border dark:border-[rgba(120,190,235,0.18)] bg-surface-3 dark:bg-[#0D263E] shrink-0">
           <div className="min-w-0">
             {eyebrow && (
-              <div className="text-[10px] font-black tracking-wider uppercase text-[#1769AA]">
+              <div className="text-[10px] font-black tracking-wider uppercase text-[#1769AA] dark:text-[#4DB8F5]">
                 {eyebrow}
               </div>
             )}
-            <h3 className="text-sm sm:text-base font-black text-text-primary leading-snug truncate">
+            <h3 className="text-sm sm:text-base font-black text-text-primary dark:text-[#F5FAFF] leading-snug truncate">
               {title}
             </h3>
           </div>
@@ -177,7 +177,7 @@ export function Modal({
             ref={closeButtonRef}
             type="button"
             onClick={onClose}
-            className="p-1.5 rounded-lg text-text-muted hover:bg-surface-1 hover:text-text-primary cursor-pointer shrink-0 transition"
+            className="p-1.5 rounded-lg text-text-muted dark:text-[#8EA7BD] hover:bg-surface-1 dark:hover:bg-[#12314D] hover:text-text-primary dark:hover:text-[#F5FAFF] cursor-pointer shrink-0 transition"
             aria-label="Tutup"
           >
             <X className="h-4 w-4" />
@@ -188,7 +188,7 @@ export function Modal({
         <div
           ref={bodyRef}
           className={clsx(
-            'px-5 py-4 overflow-y-auto grow min-h-0 overscroll-contain text-text-secondary text-xs sm:text-sm [scrollbar-gutter:stable]',
+            'px-5 py-4 overflow-y-auto grow min-h-0 overscroll-contain text-text-secondary dark:text-[#B6C9D9] text-xs sm:text-sm [scrollbar-gutter:stable]',
             bodyClassName
           )}
         >
@@ -197,7 +197,7 @@ export function Modal({
 
         {/* Sticky Footer — tidak pernah ikut scroll */}
         {footer && (
-          <div className="px-5 py-3.5 border-t border-surface-border bg-surface-1 shrink-0 flex items-center justify-end gap-2.5">
+          <div className="px-5 py-3.5 border-t border-surface-border dark:border-[rgba(120,190,235,0.18)] bg-surface-1 dark:bg-[#0A2035] shrink-0 flex items-center justify-end gap-2.5">
             {footer}
           </div>
         )}

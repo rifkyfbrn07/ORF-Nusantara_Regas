@@ -10,7 +10,9 @@ import {
 } from '../services/bulkScheduleService';
 import { sendPersonalNotifications } from '../services/notificationService';
 
-const ROLES = ['MANAGER', 'ADMIN'] as const;
+// Jadwal resmi hanya berubah lewat import/admin. Manager tetap dapat melihat
+// roster dan menyetujui request, tetapi tidak bisa memutasi jadwal langsung.
+const ROLES = ['ADMIN'] as const;
 
 function revalidateSchedules() {
   revalidatePath('/manager/schedules');

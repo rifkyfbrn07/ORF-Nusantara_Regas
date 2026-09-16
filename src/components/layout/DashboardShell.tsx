@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { TopHeader } from '@/components/layout/TopHeader';
 import { MobileNav } from '@/components/layout/MobileNav';
+import { DashboardBackground } from '@/components/layout/DashboardBackground';
 import type { SessionUser } from '@/lib/auth/session';
 
 interface NotificationItem {
@@ -39,7 +40,6 @@ export function DashboardShell({
     setIsMobileDrawerOpen(false);
   }
 
-
   // Lock body scroll when mobile drawer is open
   useEffect(() => {
     if (isMobileDrawerOpen) {
@@ -52,10 +52,12 @@ export function DashboardShell({
     };
   }, [isMobileDrawerOpen]);
 
-
   return (
-    <div className="fieldops-shell min-h-screen flex flex-col bg-surface-0 text-text-primary overflow-x-hidden relative">
-      {/* Desktop Sidebar (Fixed Left, 250px) */}
+    <div className="fieldops-shell min-h-screen flex flex-col bg-surface-0 text-text-primary overflow-x-hidden relative selection:bg-[#0088D8]/20 selection:text-[#0088D8]">
+      {/* Signature Preloader-Aligned Orbital Background */}
+      <DashboardBackground />
+
+      {/* Desktop Sidebar (Fixed Left, 230px) */}
       <div className="hidden md:block">
         <Sidebar user={user} unreadCount={unreadCount} />
       </div>
@@ -71,8 +73,8 @@ export function DashboardShell({
         />
       </div>
 
-      {/* Main Content Area (Offset by 230px on desktop) */}
-      <div className="md:pl-[230px] flex flex-col min-h-screen w-full transition-all duration-200">
+      {/* Main Content Area (Offset by 240px on desktop) */}
+      <div className="md:pl-[240px] flex flex-col min-h-screen w-full relative z-10 transition-all duration-200">
         {/* Top Header */}
         <TopHeader
           user={user}
@@ -82,10 +84,9 @@ export function DashboardShell({
         />
 
         {/* Page Content */}
-        <main className="flex-1 p-3 sm:p-5 lg:p-6 max-w-[1440px] w-full mx-auto dashboard-enter pb-20 md:pb-6">
+        <main className="flex-1 p-3.5 sm:p-5 lg:p-6 max-w-[1440px] w-full mx-auto dashboard-enter pb-20 md:pb-8">
           {children}
         </main>
-
       </div>
 
       {/* Mobile Bottom Navigation Bar */}

@@ -1,13 +1,14 @@
 /* ============================================================================
-   DISTRIBUSI GAS & ORF — DARK MODE (Semantic Surface Hierarchy)
+   DISTRIBUSI GAS & ORF — DARK MODE (Night Operational Control Center)
    ----------------------------------------------------------------------------
-   BODY         #061426   (Level 0)
-   PRIMARY      #0B1E33   (Level 1) — sidebar, tables header
-   SECONDARY    #0F2740   (Level 2) — header, fields, dropdowns
-   CARD         #102B46   (Level 3) — cards, panels, modals
-   INTERACTIVE  #143553   — hover / selected
-   BORDER       rgba(148,163,184,0.16)
-   TEXT PRIMARY #F1F5F9 · SECONDARY #A8BAD0 · MUTED #71859D
+   PAGE         #061525   (Deep Navy Base)
+   SIDEBAR      #081A2B   (Sidebar Marine Navy)
+   HEADER       #0A2034   (Header Layer)
+   CARD         #0D263E   (Card Standard)
+   ELEVATED     #12314D   (Elevated Card Surface)
+   INPUT        #081D31   (Input Fields)
+   BORDER       rgba(120, 190, 235, 0.14)
+   TEXT PRIMARY #F5FAFF · SECONDARY #C5D7E7 · MUTED #8EA7BD
    ============================================================================ */
 
 html.dark body {
@@ -16,11 +17,24 @@ html.dark body {
   background-image: none !important;
 }
 
+/* Sidebar & Header specific dark surfaces */
+html.dark aside,
+html.dark aside > div,
+html.dark aside nav {
+  background-color: #081A2B !important;
+}
+
+/* Hero Command Center in Dark Mode */
+html.dark .command-center-hero {
+  background: linear-gradient(135deg, #0B2034 0%, #0D263E 50%, #081C2D 100%) !important;
+  border-color: rgba(120, 190, 235, 0.14) !important;
+}
+
 /* The verified transparent Regas mark has dark lettering; retain its alpha and
    turn the mark light only on navy surfaces, never adding a background plate. */
 html.dark .regas-logo { filter: brightness(0) invert(1); }
 
-/* Cards / panels / generic white surfaces → card surface */
+/* Cards / panels / generic white surfaces → card surface #0D263E */
 html.dark .bg-white,
 html.dark .login-floating-card,
 html.dark .panel {
@@ -39,15 +53,16 @@ html.dark .bg-\[\#EDF4FB\],
 html.dark .bg-\[\#FBFDFE\],
 html.dark .bg-\[\#F1F5F9\],
 html.dark .bg-\[\#F3F6FA\] {
-  background-color: var(--surface-1) !important;
+  background-color: var(--surface-2) !important;
 }
 html.dark .bg-blue-50,
 html.dark .bg-blue-50\/30,
-html.dark .bg-\[\#EAF4FC\] {
-  background-color: rgba(0, 136, 216, .12) !important;
+html.dark .bg-\[\#EAF4FC\],
+html.dark .bg-\[\#F4F9FC\] {
+  background-color: rgba(0, 119, 200, 0.14) !important;
 }
 
-/* Inputs are their own level in the hierarchy: neither a page nor a card. */
+/* Inputs are their own level in the hierarchy: #081D31 */
 html.dark input:not([type='checkbox']):not([type='radio']):not([type='range']),
 html.dark select,
 html.dark textarea {
@@ -57,7 +72,7 @@ html.dark textarea {
 }
 html.dark input::placeholder,
 html.dark textarea::placeholder {
-  color: #8FA4BB !important;
+  color: #8FA8BF !important;
   opacity: 1;
 }
 
@@ -66,6 +81,16 @@ html.dark .field {
   background-color: var(--surface-2) !important;
   color: var(--text-primary) !important;
   border-color: var(--border-app) !important;
+}
+
+/* Dropdown menu (option) — dark mode terbaca jelas */
+html.dark select.field option {
+  background-color: var(--surface-2);
+  color: var(--text-primary);
+}
+html.dark select.field option:checked {
+  background-color: var(--surface-interactive);
+  color: #FFFFFF;
 }
 
 /* Text hierarchy */
@@ -100,12 +125,15 @@ html.dark .text-\[\#092B57\],
 html.dark .text-\[\#0B3568\],
 html.dark .text-\[\#0F315A\],
 html.dark .text-\[\#132238\],
-html.dark .text-\[\#123B6D\] {
+html.dark .text-\[\#123B6D\],
+html.dark .text-\[\#123D70\],
+html.dark .text-\[\#173F6D\] {
   color: var(--text-primary) !important;
 }
 html.dark .text-\[\#0066B3\],
+html.dark .text-\[\#0077C8\],
 html.dark .text-\[\#1769AA\] {
-  color: #66C8FF !important;
+  color: #38BDF8 !important;
 }
 html.dark .text-\[\#64748B\],
 html.dark .text-\[\#475569\],
@@ -126,21 +154,24 @@ html.dark .border-\[\#DCE5EF\],
 html.dark .border-\[\#CBD7E6\],
 html.dark .border-\[\#EDF2F7\],
 html.dark .border-\[\#E4EBF3\],
+html.dark .border-\[\#E2E8F0\],
 html.dark .border-gray-200,
 html.dark .border-gray-100,
 html.dark .divide-slate-100 > :not([hidden]) ~ :not([hidden]),
-html.dark .divide-\[\#F1F5F9\] > :not([hidden]) ~ :not([hidden]) {
+html.dark .divide-\[\#F1F5F9\] > :not([hidden]) ~ :not([hidden]),
+html.dark .divide-\[\#EDF2F7\] > :not([hidden]) ~ :not([hidden]) {
   border-color: var(--border-app) !important;
 }
 
 /* Hover / interactive surfaces */
 html.dark .hover\:bg-slate-50:hover,
 html.dark .hover\:bg-slate-100:hover,
-html.dark .hover\:bg-\[\#F8FBFE\]:hover {
+html.dark .hover\:bg-\[\#F8FBFE\]:hover,
+html.dark .hover\:bg-\[\#F8FAFC\]:hover {
   background-color: var(--surface-interactive) !important;
 }
 
-/* Sidebar — darker navy primary, subtle right border */
+/* Sidebar — deep navy #091B2C */
 html.dark .sidebar-regas {
   background-color: var(--surface-1) !important;
   color: var(--text-primary) !important;
@@ -155,16 +186,16 @@ html.dark .sidebar-nav-item:hover {
 
 /* Shared tables */
 html.dark .fieldops-shell table thead {
-  background: var(--surface-1) !important;
+  background: var(--surface-2) !important;
   color: var(--text-secondary) !important;
 }
 html.dark .fieldops-shell table tbody tr:hover {
   background: var(--surface-interactive) !important;
 }
 html.dark table tbody tr { border-color: var(--border-app); }
-html.dark table tbody tr:hover { background-color: rgba(20, 52, 81, .72); }
+html.dark table tbody tr:hover { background-color: rgba(16, 46, 72, 0.72); }
 
-/* Modal / dropdown surfaces (fallback for components still using bg-white) */
+/* Modal / dropdown surfaces */
 html.dark .bg-white\/95,
 html.dark .bg-white\/90,
 html.dark .bg-white\/80 {
@@ -186,30 +217,32 @@ html.dark ::-webkit-scrollbar-thumb {
 }
 
 /* Status badges — semantic translucent tones for dark surfaces */
-html.dark .bg-emerald-50 { background-color: rgba(22,163,74,0.14) !important; }
-html.dark .text-emerald-700, html.dark .text-emerald-800, html.dark .text-emerald-600 { color: #6EE7B7 !important; }
-html.dark .border-emerald-200, html.dark .border-emerald-100 { border-color: rgba(22,163,74,0.30) !important; }
-html.dark .bg-amber-50 { background-color: rgba(245,158,11,0.14) !important; }
-html.dark .text-amber-700, html.dark .text-amber-800, html.dark .text-amber-600 { color: #FCD34D !important; }
-html.dark .border-amber-200, html.dark .border-amber-100 { border-color: rgba(245,158,11,0.30) !important; }
-html.dark .bg-red-50 { background-color: rgba(220,38,38,0.14) !important; }
-html.dark .text-red-700, html.dark .text-red-800, html.dark .text-red-600 { color: #FCA5A5 !important; }
-html.dark .border-red-200, html.dark .border-red-100 { border-color: rgba(220,38,38,0.30) !important; }
+html.dark .bg-emerald-50,
+html.dark .bg-emerald-500\/10 { background-color: rgba(34, 166, 90, 0.16) !important; }
+html.dark .text-emerald-700, html.dark .text-emerald-800, html.dark .text-emerald-600, html.dark .text-emerald-400 { color: #4ADE80 !important; }
+html.dark .border-emerald-200, html.dark .border-emerald-100, html.dark .border-emerald-500\/30 { border-color: rgba(34, 166, 90, 0.30) !important; }
+
+html.dark .bg-amber-50,
+html.dark .bg-amber-500\/10 { background-color: rgba(245, 158, 11, 0.16) !important; }
+html.dark .text-amber-700, html.dark .text-amber-800, html.dark .text-amber-600, html.dark .text-amber-400 { color: #FBBF24 !important; }
+html.dark .border-amber-200, html.dark .border-amber-100, html.dark .border-amber-500\/30 { border-color: rgba(245, 158, 11, 0.30) !important; }
+
+html.dark .bg-red-50,
+html.dark .bg-red-500\/10 { background-color: rgba(239, 51, 64, 0.16) !important; }
+html.dark .text-red-700, html.dark .text-red-800, html.dark .text-red-600, html.dark .text-red-400 { color: #F87171 !important; }
+html.dark .border-red-200, html.dark .border-red-100, html.dark .border-red-500\/30 { border-color: rgba(239, 51, 64, 0.30) !important; }
+
+html.dark .bg-blue-500\/10 { background-color: rgba(0, 119, 200, 0.16) !important; }
+html.dark .border-blue-500\/30 { border-color: rgba(0, 119, 200, 0.30) !important; }
+
 html.dark .bg-slate-100 { background-color: var(--surface-interactive) !important; }
 
-/* Enterprise controls and data visualizations share the same readable dark baseline. */
-html.dark button:not(:disabled):focus-visible,
-html.dark a:focus-visible,
-html.dark input:focus-visible,
-html.dark select:focus-visible,
-html.dark textarea:focus-visible {
-  outline: 2px solid #0088D8;
-  outline-offset: 2px;
-}
-html.dark .recharts-cartesian-grid line { stroke: rgba(148, 163, 184, .18) !important; }
+/* Recharts in Dark Mode */
+html.dark .recharts-cartesian-grid line { stroke: rgba(120, 190, 235, 0.12) !important; }
 html.dark .recharts-text, html.dark .recharts-label { fill: var(--text-secondary) !important; }
 html.dark .recharts-tooltip-wrapper .recharts-default-tooltip {
-  background: var(--surface-3) !important;
+  background: var(--surface-elevated) !important;
   border: 1px solid var(--border-app) !important;
   color: var(--text-primary) !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5) !important;
 }

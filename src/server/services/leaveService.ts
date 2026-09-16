@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/db/prisma';
-import { LeaveType, RequestStatus } from '@prisma/client';
+import { LeaveType, RequestStatus, ScheduleStatus } from '@prisma/client';
 import { recordAuditLog } from './auditService';
 import { createNotification, notifyAllManagers } from './notificationService';
 
@@ -110,6 +110,37 @@ export async function reviewLeaveRequest(params: ReviewLeaveParams) {
       reviewerNote: params.reviewerNote || null,
     },
   });
+
+  // ==========================================================================
+  // SISTEM memperbarui jadwal harian resmi secara otomatis ketika cuti/izin
+  // DISETUJUI. Manager TIDAK mengedit jadwal manual — alur ini yang menyusun
+  // ulang roster (WORK → OFF) untuk periode cuti selama belum ada absensi.
+  // Rekap/summary di sisi lain sudah membaca approved leave via
+  // getOperatorWorkStatus (prioritas 1) sehingga status CUTI/IZIN/SAKIT
+  // muncul otomatis di workforce/attendance.
+  // ==========================================================================
+  if (params.status === 'APPROVED' && existing.type) {
+    const dates: string[] = [];
+    for (let d = new Date(`${existing.startDate}T00:00:00+07:00`); d <= new Date(`${existing.endDate}T00:00:00+07:00`); d.setDate(d.getDate() + 1)) {
+      dates.push(d.toLocaleDateString('en-CA', { timeZone: 'Asia/Jakarta' }));
+    }
+    const schedules = await prisma.schedule.findMany({
+      where: { userId: existing.userId, date: { in: dates }, status: ScheduleStatus.WORK },
+      select: { id: true, attendances: { select: { id: true, checkIn: true } } },
+    });
+    const leaveLabel = existing.type === LeaveType.SICK ? 'Sakit' : existing.type === LeaveType.PERMISSION ? 'Izin' : 'Cuti';
+    for (const schedule of schedules) {
+      // Hari yang sudah dihadiri operator TIDAK diubah (absensi tetap berlaku).
+      if (schedule.attendances.some((a) => a.checkIn !== null)) continue;
+      await prisma.schedule.update({
+        where: { id: schedule.id },
+        data: {
+          status: ScheduleStatus.OFF,
+          notes: `${leaveLabel} — disetujui${params.reviewerNote ? ` (${params.reviewerNote})` : ''}`,
+        },
+      });
+    }
+  }
 
   // Record Audit Log
   await recordAuditLog({

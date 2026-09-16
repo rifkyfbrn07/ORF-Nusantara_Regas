@@ -79,6 +79,7 @@ interface ScheduleManagerClientProps {
   operators: OperatorManagerItem[];
   locations: LocationManagerItem[];
   today: string;
+  canEdit: boolean;
 }
 
 export function ScheduleManagerClient({
@@ -87,6 +88,7 @@ export function ScheduleManagerClient({
   operators,
   locations,
   today,
+  canEdit,
 }: ScheduleManagerClientProps) {
   const router = useRouter();
   const [selectedDate, setSelectedDate] = useState(today);
@@ -136,6 +138,7 @@ export function ScheduleManagerClient({
   });
 
   const handleOpenAdd = (defaultShiftId?: string) => {
+    if (!canEdit) return;
     setEditingSchedule(null);
     setFormData({
       userId: operators[0]?.id || '',
@@ -150,6 +153,7 @@ export function ScheduleManagerClient({
   };
 
   const handleOpenEdit = (sched: ScheduleManagerItem) => {
+    if (!canEdit) return;
     setEditingSchedule(sched);
     setFormData({
       userId: sched.userId,
@@ -165,6 +169,7 @@ export function ScheduleManagerClient({
 
   const handleSaveSchedule = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!canEdit) return;
     setLoading(true);
     setError(null);
 
@@ -188,6 +193,7 @@ export function ScheduleManagerClient({
   };
 
   const handleDeleteSchedule = async (id: string, operatorName: string) => {
+    if (!canEdit) return;
     if (!confirm(`Hapus jadwal untuk ${operatorName}?`)) return;
     setLoading(true);
     const res = await deleteScheduleAction(id);
@@ -202,6 +208,7 @@ export function ScheduleManagerClient({
 
   const handleDuplicate = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!canEdit) return;
     setLoading(true);
     setError(null);
     const res = await duplicateScheduleAction(dupSourceDate, dupTargetDate);
@@ -248,7 +255,7 @@ export function ScheduleManagerClient({
         {/* Action Buttons */}
         <div className="flex items-center gap-2 sm:gap-3 shrink-0">
           <button
-            onClick={() => setShowDuplicateModal(true)}
+            onClick={() => setShowDuplicateModal(true)} style={canEdit ? undefined : { display: 'none' }}
             className="px-3.5 py-2 rounded-xl bg-[#F8FAFC] hover:bg-[#F1F5F9] border border-slate-200 text-[#0F315A] text-xs font-bold flex items-center gap-1.5 transition cursor-pointer"
           >
             <Copy className="h-3.5 w-3.5 text-[#0066B3]" />
@@ -256,7 +263,7 @@ export function ScheduleManagerClient({
           </button>
 
           <button
-            onClick={() => handleOpenAdd()}
+            onClick={() => handleOpenAdd()} style={canEdit ? undefined : { display: 'none' }}
             className="px-4 py-2 rounded-xl bg-[#0066B3] hover:bg-[#005596] text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition cursor-pointer"
           >
             <Plus className="h-4 w-4" />
@@ -380,7 +387,7 @@ export function ScheduleManagerClient({
                   </div>
 
                   <button
-                    onClick={() => handleOpenAdd(shift.id)}
+                    onClick={() => handleOpenAdd(shift.id)} style={canEdit ? undefined : { display: 'none' }}
                     className="text-xs font-bold text-[#0066B3] hover:underline flex items-center gap-1 cursor-pointer"
                   >
                     <Plus className="w-3.5 h-3.5" />
@@ -433,14 +440,14 @@ export function ScheduleManagerClient({
                             <button
                               onClick={() => handleOpenEdit(s)}
                               title="Ubah Jadwal"
-                              className="p-1 rounded-lg hover:bg-white hover:text-[#0066B3] text-slate-500 transition cursor-pointer"
+                              className="p-1 rounded-lg hover:bg-white hover:text-[#0066B3] text-slate-500 transition cursor-pointer" style={canEdit ? undefined : { display: 'none' }}
                             >
                               <Edit2 className="w-3.5 h-3.5" />
                             </button>
                             <button
                               onClick={() => handleDeleteSchedule(s.id, s.user.name)}
                               title="Hapus Jadwal"
-                              className="p-1 rounded-lg hover:bg-red-50 hover:text-red-600 text-slate-500 transition cursor-pointer"
+                              className="p-1 rounded-lg hover:bg-red-50 hover:text-red-600 text-slate-500 transition cursor-pointer" style={canEdit ? undefined : { display: 'none' }}
                             >
                               <Trash2 className="w-3.5 h-3.5" />
                             </button>
@@ -514,14 +521,14 @@ export function ScheduleManagerClient({
                           <button
                             onClick={() => handleOpenEdit(s)}
                             title="Ubah Jadwal"
-                            className="p-1.5 rounded-lg bg-slate-100 hover:bg-[#EAF4FC] hover:text-[#0066B3] text-slate-600 transition cursor-pointer"
+                            className="p-1.5 rounded-lg bg-slate-100 hover:bg-[#EAF4FC] hover:text-[#0066B3] text-slate-600 transition cursor-pointer" style={canEdit ? undefined : { display: 'none' }}
                           >
                             <Edit2 className="h-3.5 w-3.5" />
                           </button>
                           <button
                             onClick={() => handleDeleteSchedule(s.id, s.user.name)}
                             title="Hapus Jadwal"
-                            className="p-1.5 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 transition cursor-pointer"
+                            className="p-1.5 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 transition cursor-pointer" style={canEdit ? undefined : { display: 'none' }}
                           >
                             <Trash2 className="h-3.5 w-3.5" />
                           </button>
@@ -573,13 +580,13 @@ export function ScheduleManagerClient({
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => handleOpenEdit(s)}
-                        className="px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 font-bold text-[11px]"
+                        className="px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 font-bold text-[11px]" style={canEdit ? undefined : { display: 'none' }}
                       >
                         Ubah
                       </button>
                       <button
                         onClick={() => handleDeleteSchedule(s.id, s.user.name)}
-                        className="px-2.5 py-1 rounded-lg bg-red-50 text-red-600 font-bold text-[11px]"
+                        className="px-2.5 py-1 rounded-lg bg-red-50 text-red-600 font-bold text-[11px]" style={canEdit ? undefined : { display: 'none' }}
                       >
                         Hapus
                       </button>

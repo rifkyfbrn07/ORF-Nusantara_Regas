@@ -66,7 +66,7 @@ export function ProgramListView({ programs, deletingId, onEdit, onDelete }: Prog
                     <td className="max-w-[300px] px-3 py-3 text-xs font-bold text-[#0B3568]">{p.name}</td>
                     <td className="px-3 py-3 text-[11px] font-semibold text-slate-500">{CATEGORY_LABELS[p.category]}</td>
                     <td className="px-3 py-3 text-[10.5px] font-semibold text-slate-600">{p.deadline ? new Date(p.deadline).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}</td>
-                    <td className="px-3 py-3 text-[11px] font-semibold text-text-secondary">{p.pic?.name || 'Belum ditetapkan'}</td>
+                    <td className="px-3 py-3 text-[11px] font-semibold text-text-secondary">{p.pic?.name || 'Belum ditentukan'}</td>
                     <td className="px-3 py-3 text-[11px] font-bold text-[#0B3568]">{p.progress}%</td>
                     <td className="px-3 py-3"><ProgressCell value={p.progress} target={p.planTarget} /></td>
                     <td className="px-3 py-3"><StatusBadge status={p.status} /></td>
@@ -91,7 +91,7 @@ export function ProgramListView({ programs, deletingId, onEdit, onDelete }: Prog
                 <article key={p.id} className="space-y-2.5 rounded-xl border border-[#DCE5EF] bg-white p-4 shadow-xs">
                   <div className="flex items-start justify-between gap-2"><div className="min-w-0"><div className="text-[9.5px] font-black uppercase tracking-wider text-[#1769AA]">{p.sequence} · {CATEGORY_LABELS[p.category]}</div><div className="mt-0.5 text-xs font-bold leading-snug text-[#0B3568]">{p.name}</div></div><StatusBadge status={p.status} /></div>
                   <ProgressCell value={p.progress} target={p.planTarget} />
-                  <div className="grid grid-cols-2 gap-2 text-[10px] sm:grid-cols-3"><div><span className="font-black uppercase tracking-wide text-slate-400">Deadline</span><div className="font-semibold text-slate-600">{p.deadline ? p.deadline.slice(0, 10) : '—'}</div></div><div><span className="font-black uppercase tracking-wide text-slate-400">PIC</span><div className="font-semibold text-slate-600">{p.pic?.name || 'Belum ditetapkan'}</div></div><div><span className="font-black uppercase tracking-wide text-slate-400">Realisasi</span><div className="font-semibold text-slate-600">{p.progress}%</div></div></div>
+                  <div className="grid grid-cols-2 gap-2 text-[10px] sm:grid-cols-3"><div><span className="font-black uppercase tracking-wide text-slate-400">Deadline</span><div className="font-semibold text-slate-600">{p.deadline ? p.deadline.slice(0, 10) : '—'}</div></div><div><span className="font-black uppercase tracking-wide text-slate-400">PIC</span><div className="font-semibold text-slate-600">{p.pic?.name || 'Belum ditentukan'}</div></div><div><span className="font-black uppercase tracking-wide text-slate-400">Realisasi</span><div className="font-semibold text-slate-600">{p.progress}%</div></div></div>
                   {p.notes && <p className="text-[10.5px] leading-relaxed text-slate-500">{p.notes}</p>}
                   <div className="flex items-center gap-2 border-t border-[#EDF2F7] pt-2">
                     <DriveLink p={p} />
