@@ -5,6 +5,7 @@ import type { Role } from '@prisma/client';
 import {
   uploadEvidenceToBlob,
   isStorageConfigured,
+  buildStorageConfigMessage,
   type BlobEvidenceMetadata,
 } from '../services/vercelBlobService';
 import type { EvidenceCategory } from '../services/evidenceValidation';
@@ -45,7 +46,7 @@ export async function uploadEvidenceFileAction(formData: FormData): Promise<{
     }
 
     if (!isStorageConfigured()) {
-      return { success: false, error: 'Storage evidence belum dikonfigurasi di server.' };
+      return { success: false, error: buildStorageConfigMessage() };
     }
 
     const file = formData.get('file') as File | null;

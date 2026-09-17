@@ -8,14 +8,41 @@ import {
 
 export const EVIDENCE_STORAGE_PROVIDER = 'vercel_blob';
 
+function readEnv(name: string): string | undefined {
+  const value = process.env[name];
+  return value ? value.trim() : undefined;
+}
+
 /**
- * True ketika Vercel Blob terkonfigurasi:
- * - BLOB_READ_WRITE_TOKEN (diinject otomatis oleh Vercel saat Blob Store di-attach), atau
+ * True wanneer Vercel Blob is geconfigureerd:
+ * - BLOB_READ_WRITE_TOKEN (wordt door Vercel automatisch geinjecteerd via
+ *   Project → Storage → Blob Store, voor Production/Preview/Development), of
  * - VERCEL_OIDC_TOKEN + BLOB_STORE_ID (OIDC auth).
- * Token TIDAK pernah dikirim ke browser.
+ * Token wordt NOOIT naar de browser gestuurd.
  */
 export function isStorageConfigured(): boolean {
-  return Boolean(process.env.BLOB_READ_WRITE_TOKEN || process.env.VERCEL_OIDC_TOKEN);
+  return Boolean(readEnv('BLOB_READ_WRITE_TOKEN') || (readEnv('VERCEL_OIDC_TOKEN') && readEnv('BLOB_STORE_ID')));
+}
+
+/**
+ * Retourneert NAMEN van ontbrekende env vars (nooit waarden/token).
+ */
+export function getMissingBlobConfigVars(): string[] {
+  if (isStorageConfigured()) return [];
+  const missing: string[] = [];
+  if (!readEnv('BLOB_READ_WRITE_TOKEN')) {
+    missing.push('BLOB_READ_WRITE_TOKEN (Vercel → Project → Storage → Blob Store)');
+  }
+  if (!readEnv('VERCEL_OIDC_TOKEN')) missing.push('VERCEL_OIDC_TOKEN');
+  if (!readEnv('BLOB_STORE_ID')) missing.push('BLOB_STORE_ID');
+  return missing;
+}
+
+/** Foutmelding - zegt WELKE Blob env var mist, zonder token te tonen. */
+export function buildStorageConfigMessage(): string {
+  const missing = getMissingBlobConfigVars();
+  const detail = missing.length > 0 ? ` Missing: ${missing.join(', ')}.` : '';
+  return `Storage evidence belum dikonfigurasi di server.${detail}`;
 }
 
 export interface BlobEvidenceMetadata {
@@ -46,7 +73,7 @@ export interface EvidenceUploadOptions {
  */
 export async function uploadEvidenceToBlob(options: EvidenceUploadOptions): Promise<BlobEvidenceMetadata> {
   if (!isStorageConfigured()) {
-    throw new Error('Storage evidence belum dikonfigurasi di server.');
+    throw new Error(buildStorageConfigMessage());
   }
   if (!CATEGORY_STORAGE_PREFIX[options.folderCategory]) {
     throw new Error('Kategori bukti tidak valid.');
@@ -89,7 +116,7 @@ export async function uploadEvidenceToBlob(options: EvidenceUploadOptions): Prom
 /** Ambil stream blob private berdasarkan pathname. */
 export async function getEvidenceStream(pathname: string): Promise<GetBlobResult> {
   if (!isStorageConfigured()) {
-    throw new Error('Storage evidence belum dikonfigurasi di server.');
+    throw new Error(buildStorageConfigMessage());
   }
   const result = await get(pathname, { access: 'private' });
   if (!result || result.statusCode !== 200) {

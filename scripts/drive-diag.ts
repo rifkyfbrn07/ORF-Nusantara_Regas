@@ -39,15 +39,18 @@ async function main() {
   console.log('');
   console.log('  BLOB_READ_WRITE_TOKEN       ' + (process.env.BLOB_READ_WRITE_TOKEN ? 'SET ✓' : 'ontbreekt ✗'));
   console.log('  VERCEL_OIDC_TOKEN           ' + (process.env.VERCEL_OIDC_TOKEN ? 'SET ✓' : 'ontbreekt ✗') + '   (alternatief OIDC)');
+  console.log('  BLOB_STORE_ID               ' + (process.env.BLOB_STORE_ID ? 'SET ✓' : 'ontbreekt ✗') + '   (nodig bij OIDC)');
   console.log('');
   if (!blob.isStorageConfigured()) {
-    console.log('  Upload baru zal mislukken tot Blob geconfigureerd is.');
+    console.log('  Upload nieuw evidence zal mislukken tot Vercel Blob geconfigureerd is.');
     console.log('  Fix (Vercel):');
-    console.log('    Vercel → Project → Storage → Create Blob Store, of');
-    console.log('    attach existing Blob store → BLOB_READ_WRITE_TOKEN wordt automatisch geïnjecteerd.');
-    console.log('  Lokale dev: zet BLOB_READ_WRITE_TOKEN in .env (server-only).');
+    console.log('    Vercel → Project → Storage → Blob → store "orf-evidence" →');
+    console.log('      "Manage Store" → Environment Variables → selecteer Production/Preview/Development.');
+    console.log('    Vercel zet dan automatisch BLOB_READ_WRITE_TOKEN als server env.');
+    console.log('  Lokale dev:');
+    console.log('    vercel env pull .env.local   (of kopieer BLOB_READ_WRITE_TOKEN naar .env)');
   } else {
-    console.log('  Blob geconfigureerd — live test: BLOB_LIVE_SMOKE=1 npx tsx scripts/blob-smoke.ts');
+    console.log('  Vercel Blob geconfigureerd ✓ — live test: BLOB_LIVE_SMOKE=1 npx tsx scripts/blob-smoke.ts');
   }
   console.log('====================================================');
   process.exit(blob.isStorageConfigured() ? 0 : 1);
