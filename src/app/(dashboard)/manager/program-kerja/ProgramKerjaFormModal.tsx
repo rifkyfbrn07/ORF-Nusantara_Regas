@@ -84,12 +84,14 @@ export function ProgramKerjaFormModal({ program, users, onClose, onSaved }: Prog
       : EMPTY_FORM
   );
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const set = <K extends keyof FormState>(key: K, value: FormState[K]) => setForm((current) => ({ ...current, [key]: value }));
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
+    if (uploading) return; // jangan double submit saat upload berlangsung
     setError(null);
     if (form.status === 'BELUM_TEREALISASI' && !form.notes.trim()) {
       setError('Program tidak terealisasi wajib disertai catatan alasan.');
@@ -148,7 +150,7 @@ export function ProgramKerjaFormModal({ program, users, onClose, onSaved }: Prog
       footer={
         <div className="flex items-center justify-end gap-2">
           <button type="button" onClick={onClose} className="cursor-pointer rounded-lg border border-[#CBD7E6] px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-50">Batal</button>
-          <button type="submit" form="program-kerja-form" disabled={saving} className="flex cursor-pointer items-center gap-1.5 rounded-lg bg-[#123B6D] px-4 py-2 text-xs font-bold text-white hover:bg-[#0F315A] disabled:opacity-60">
+          <button type="submit" form="program-kerja-form" disabled={saving || uploading} className="flex cursor-pointer items-center gap-1.5 rounded-lg bg-[#123B6D] px-4 py-2 text-xs font-bold text-white hover:bg-[#0F315A] disabled:opacity-60">
             {saving && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
             {program ? 'Simpan Perubahan' : 'Tambah Program'}
           </button>
@@ -269,7 +271,9 @@ export function ProgramKerjaFormModal({ program, users, onClose, onSaved }: Prog
         <FileUploadProof
           label="Bukti / Evidence (wajib saat progress>0 atau status REALISASI/ON_PROGRESS)"
           folderCategory="PROGRAM_KERJA"
-          subCategory={form.category}
+          subCategory={form.name?.trim() || form.category}
+          descriptiveName={form.name?.trim() || form.category}
+          onUploadStateChange={setUploading}
           required={form.progress > 0 || form.status === 'REALISASI' || form.status === 'ON_PROGRESS'}
           initialValue={
             form.driveFileId || form.driveWebViewLink

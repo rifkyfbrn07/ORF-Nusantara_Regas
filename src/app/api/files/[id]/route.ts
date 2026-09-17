@@ -19,16 +19,27 @@ async function findAuthorizedFile(fileId: string, userId: string, role: string):
   if (exchange) return { fileName: exchange.attachmentName, mimeType: exchange.attachmentMime };
 
   const program = await prisma.programKerja.findFirst({
-    where: { driveFileId: fileId },
+    // Authorization server-side: OPERATOR hanya dapat akses evidence program yang berupa PIC-nya.
+    where: { driveFileId: fileId, ...(role === 'OPERATOR' ? { picId: userId } : {}) },
     select: { evidenceName: true, evidenceMime: true },
   });
   if (program) return { fileName: program.evidenceName, mimeType: program.evidenceMime };
 
   const progress = await prisma.programKerjaProgressLog.findFirst({
     where: { driveFileId: fileId },
-    select: { evidenceName: true, evidenceMime: true },
+    select: {
+      evidenceName: true,
+      evidenceMime: true,
+      userId: true,
+      program: { select: { picId: true } },
+    },
   });
-  if (progress) return { fileName: progress.evidenceName, mimeType: progress.evidenceMime };
+  if (progress) {
+    if (role === 'OPERATOR' && progress.userId !== userId && progress.program?.picId !== userId) {
+      return null;
+    }
+    return { fileName: progress.evidenceName, mimeType: progress.evidenceMime };
+  }
 
   const report = await prisma.operationalReport.findFirst({
     where: { driveFileId: fileId, ...(role === 'OPERATOR' ? { uploadedById: userId } : {}) },

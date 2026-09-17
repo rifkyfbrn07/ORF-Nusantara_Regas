@@ -42,12 +42,24 @@ function ProgressBar({ value, target }: { value: number; target: number }) {
   );
 }
 
-function EvidenceLink({ p }: { p: ProgramKerjaDTO }) {
+function EvidenceLink({ p, currentUserId }: { p: ProgramKerjaDTO; currentUserId: string }) {
+  // Authorization konsisten dengan /api/files/[id]: OPERATOR hanya dapat
+  // melihat evidence program yang berupa PIC-nya (server tetap validera).
   if (!p.driveFileId && !p.driveWebViewLink && !p.evidenceUrl) return null;
-  return <EvidenceViewer file={{ fileId: p.driveFileId, fileName: p.evidenceName, mimeType: p.evidenceMime, fileSize: p.evidenceSize, legacyUrl: p.driveWebViewLink || p.evidenceUrl }} label="Lihat Evidence" />;
+  if (p.pic?.id !== currentUserId) {
+    return (
+      <span className="px-1.5 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-[9px] font-black whitespace-nowrap">✓ Bukti tersedia</span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1">
+      <span className="px-1.5 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-[9px] font-black whitespace-nowrap">✓ Bukti tersedia</span>
+      <EvidenceViewer file={{ fileId: p.driveFileId, fileName: p.evidenceName, mimeType: p.evidenceMime, fileSize: p.evidenceSize, legacyUrl: p.driveWebViewLink || p.evidenceUrl }} label="Lihat Bukti" />
+    </span>
+  );
 }
 
-function ProgramCard({ p }: { p: ProgramKerjaDTO }) {
+function ProgramCard({ p, currentUserId }: { p: ProgramKerjaDTO; currentUserId: string }) {
   const [expanded, setExpanded] = useState(false);
   return (
     <article className="space-y-3 rounded-xl border border-[#DCE5EF] bg-white p-4 shadow-xs">
@@ -122,7 +134,7 @@ function ProgramCard({ p }: { p: ProgramKerjaDTO }) {
             </div>
           )}
           <div className="flex items-center gap-2">
-            <EvidenceLink p={p} />
+            <EvidenceLink p={p} currentUserId={currentUserId} />
             <span className="text-[10px] font-semibold text-slate-400">
               Diperbarui {new Date(p.updatedAt).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}
             </span>
@@ -133,7 +145,7 @@ function ProgramCard({ p }: { p: ProgramKerjaDTO }) {
   );
 }
 
-export function ProgramKerjaOperatorClient({ programs }: { programs: ProgramKerjaDTO[] }) {
+export function ProgramKerjaOperatorClient({ programs, currentUserId }: { programs: ProgramKerjaDTO[]; currentUserId: string }) {
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState('all');
 
@@ -198,7 +210,7 @@ export function ProgramKerjaOperatorClient({ programs }: { programs: ProgramKerj
             {group.label}
           </div>
           <div className="grid gap-3 md:grid-cols-2">
-            {group.items.map((p) => <ProgramCard key={p.id} p={p} />)}
+            {group.items.map((p) => <ProgramCard key={p.id} p={p} currentUserId={currentUserId} />)}
           </div>
         </section>
       ))}

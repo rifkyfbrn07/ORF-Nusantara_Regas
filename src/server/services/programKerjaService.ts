@@ -38,6 +38,8 @@ export interface ProgramKerjaDTO {
   evidenceSize: number | null;
   driveFileId: string | null;
   driveWebViewLink: string | null;
+  evidenceUploadedById: string | null;
+  evidenceUploadedAt: string | null;
   pic: { id: string; name: string } | null;
   tasks: { id: string; label: string; isDone: boolean; order: number }[];
   months: ProgramKerjaMonthDTO[];
@@ -98,6 +100,8 @@ function serializeProgram(program: Prisma.ProgramKerjaGetPayload<{ include: { pi
     evidenceSize: program.evidenceSize,
     driveFileId: program.driveFileId,
     driveWebViewLink: program.driveWebViewLink,
+    evidenceUploadedById: program.evidenceUploadedById,
+    evidenceUploadedAt: program.evidenceUploadedAt ? program.evidenceUploadedAt.toISOString() : null,
     pic: program.pic,
     tasks: program.tasks.map((t) => ({ id: t.id, label: t.label, isDone: t.isDone, order: t.order })),
     months: program.months
@@ -295,6 +299,7 @@ export async function createProgramKerja(input: ProgramKerjaCreateInput, actorId
       evidenceSize: input.evidenceSize ?? null,
       driveFileId: input.driveFileId ?? null,
       driveWebViewLink: input.driveWebViewLink ?? null,
+      ...(input.driveFileId ? { evidenceUploadedAt: new Date(), evidenceUploadedById: actorId } : {}),
     },
   });
 
@@ -354,6 +359,7 @@ export async function updateProgramKerja(input: ProgramKerjaUpdateInput, actorId
       ...(data.evidenceSize !== undefined ? { evidenceSize: data.evidenceSize ?? null } : {}),
       ...(data.driveFileId !== undefined ? { driveFileId: data.driveFileId ?? null } : {}),
       ...(data.driveWebViewLink !== undefined ? { driveWebViewLink: data.driveWebViewLink ?? null } : {}),
+      ...(data.driveFileId ? { evidenceUploadedAt: new Date(), evidenceUploadedById: actorId } : {}),
     },
   });
 
@@ -490,21 +496,39 @@ export async function updateProgramProgress(
     }
   }
 
-  await prisma.programKerjaProgressLog.create({
-    data: {
-      programId,
-      oldProgress: program.progress,
-      newProgress: clamped,
-      note: evidence?.note,
-      evidenceUrl: evidence?.evidenceUrl ?? null,
-      evidenceName: evidence?.evidenceName ?? null,
-      evidenceMime: evidence?.evidenceMime ?? null,
-      evidenceSize: evidence?.evidenceSize ?? null,
-      driveFileId: evidence?.driveFileId ?? null,
-      driveWebViewLink: evidence?.driveWebViewLink ?? null,
-      userId: actorId,
-    },
-  });
+  // Log + update program dalam satu transaction — upload gagal tidak boleh
+  // meninggalkan record progress/evidence rusak (rollback atomic).
+  await prisma.$transaction([
+    prisma.programKerjaProgressLog.create({
+      data: {
+        programId,
+        oldProgress: program.progress,
+        newProgress: clamped,
+        note: evidence?.note,
+        evidenceUrl: evidence?.evidenceUrl ?? null,
+        evidenceName: evidence?.evidenceName ?? null,
+        evidenceMime: evidence?.evidenceMime ?? null,
+        evidenceSize: evidence?.evidenceSize ?? null,
+        driveFileId: evidence?.driveFileId ?? null,
+        driveWebViewLink: evidence?.driveWebViewLink ?? null,
+        userId: actorId,
+      },
+    }),
+    prisma.programKerja.update({
+      where: { id: programId },
+      data: {
+        progress: clamped,
+        ...(evidence?.evidenceUrl ? { evidenceUrl: evidence.evidenceUrl } : {}),
+        ...(evidence?.evidenceName ? { evidenceName: evidence.evidenceName } : {}),
+        ...(evidence?.evidenceMime ? { evidenceMime: evidence.evidenceMime } : {}),
+        ...(evidence?.evidenceSize ? { evidenceSize: evidence.evidenceSize } : {}),
+        ...(evidence?.driveFileId ? { driveFileId: evidence.driveFileId } : {}),
+        ...(evidence?.driveWebViewLink ? { driveWebViewLink: evidence.driveWebViewLink } : {}),
+        ...(evidence?.driveFileId ? { evidenceUploadedAt: new Date(), evidenceUploadedById: actorId } : {}),
+        updatedAt: new Date(),
+      },
+    }),
+  ]);
 
   await prisma.programKerja.update({
     where: { id: programId },

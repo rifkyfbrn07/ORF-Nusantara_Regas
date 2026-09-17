@@ -39,6 +39,7 @@ export function OperatorRequestsClient({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
 
   // Proof Viewer Modal State
   const [previewItem, setPreviewItem] = useState<LeaveRequestItem | null>(null);
@@ -58,6 +59,7 @@ export function OperatorRequestsClient({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (uploading) return; // jangan double submit saat upload berlangsung
     setError(null);
 
     // Bukti/surat wajib client-side (server juga validera via zod)
@@ -194,7 +196,7 @@ export function OperatorRequestsClient({
                         onClick={() => setPreviewItem(r)}
                         className="text-xs font-bold text-[#1769AA] hover:text-[#0B3568] hover:underline cursor-pointer"
                       >
-                        Lihat Bukti
+                        Lihat Surat
                       </button>
                     )}
                     <StatusBadge status={r.status} size="md" />
@@ -225,7 +227,7 @@ export function OperatorRequestsClient({
             <button
               form="leave-form"
               type="submit"
-              disabled={loading}
+              disabled={loading || uploading}
               className="px-5 py-2 rounded-xl bg-[#0B3568] hover:bg-[#092B57] text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition disabled:opacity-50 cursor-pointer"
             >
               <Send className="h-3.5 w-3.5" />
@@ -303,6 +305,7 @@ export function OperatorRequestsClient({
             <FileUploadProof
               label="Unggah Berkas Bukti Surat Cuti / Surat Dokter"
               folderCategory="SURAT_CUTI"
+              onUploadStateChange={setUploading}
               onFileUploaded={(meta) => {
                 if (meta) {
                   setFormData({

@@ -29,7 +29,12 @@ function groupByCategory(programs: ProgramKerjaDTO[]): { category: string; label
 
 function DriveLink({ p }: { p: ProgramKerjaDTO }) {
   if (!p.driveFileId && !p.driveWebViewLink && !p.evidenceUrl) return null;
-  return <EvidenceViewer file={{ fileId: p.driveFileId, fileName: p.evidenceName, mimeType: p.evidenceMime, fileSize: p.evidenceSize, legacyUrl: p.driveWebViewLink || p.evidenceUrl }} label="Bukti" className="inline-flex items-center gap-1 rounded-md border border-[#CBD7E6] px-1.5 py-0.5 text-[9.5px] font-bold text-[#0066B3] hover:bg-[#EAF4FC]" />;
+  return (
+    <span className="inline-flex items-center gap-1">
+      <span className="px-1.5 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-[9px] font-black whitespace-nowrap">✓ Bukti tersedia</span>
+      <EvidenceViewer file={{ fileId: p.driveFileId, fileName: p.evidenceName, mimeType: p.evidenceMime, fileSize: p.evidenceSize, legacyUrl: p.driveWebViewLink || p.evidenceUrl }} label="Lihat Bukti" className="inline-flex items-center gap-1 rounded-md border border-[#CBD7E6] px-1.5 py-0.5 text-[9.5px] font-bold text-[#0066B3] hover:bg-[#EAF4FC]" />
+    </span>
+  );
 }
 export function ProgramListView({ programs, deletingId, onEdit, onDelete }: ProgramListViewProps) {
   const groups = groupByCategory(programs);

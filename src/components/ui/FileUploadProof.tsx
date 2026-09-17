@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { UploadCloud, CheckCircle2, AlertCircle, Loader2, X, FileText } from 'lucide-react';
 import { uploadProofFileAction } from '@/server/actions/driveUploadActions';
 import { DriveFileMetadata } from '@/server/services/googleDriveService';
@@ -10,6 +10,8 @@ interface FileUploadProofProps {
   folderCategory: 'SURAT_CUTI' | 'LAPORAN' | 'SHIFT_EXCHANGE' | 'PROGRAM_KERJA';
   departmentName?: string;
   subCategory?: string;
+  /** Tambahan untuk nama file di Drive (eg. nama program kerja). Server-side only. */
+  descriptiveName?: string;
   initialValue?: {
     attachmentUrl?: string | null;
     attachmentName?: string | null;
@@ -24,7 +26,27 @@ interface FileUploadProofProps {
     driveFileId?: string;
     driveWebViewLink?: string;
   } | null) => void;
+  /** Notify parent form untuk disable submit saat upload berlangsung — jangan double submit. */
+  onUploadStateChange?: (uploading: boolean) => void;
   required?: boolean;
+}
+
+interface PendingPreview {
+  name: string;
+  size: number;
+  objectUrl: string | null;
+  isImage: boolean;
+  mime: string;
+}
+
+const VALID_MIMES = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+const MAX_SIZE = 10 * 1024 * 1024;
+
+function formatBytes(bytes?: number) {
+  if (!bytes) return '';
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 export function FileUploadProof({
@@ -32,19 +54,23 @@ export function FileUploadProof({
   folderCategory,
   departmentName,
   subCategory,
+  descriptiveName,
   initialValue,
   onFileUploaded,
+  onUploadStateChange,
   required = false,
 }: FileUploadProofProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [preview, setPreview] = useState<PendingPreview | null>(null);
   const [uploadedFile, setUploadedFile] = useState<DriveFileMetadata | {
     fileName: string;
     webViewLink: string;
     isDriveStorage?: boolean;
     fileSize?: number;
+    mimeType?: string;
   } | null>(
     initialValue?.attachmentUrl || initialValue?.driveWebViewLink
       ? {
@@ -55,20 +81,37 @@ export function FileUploadProof({
       : null
   );
 
-  const handleUpload = async (file: File) => {
-    // Basic client validation
-    const validMimes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
-    if (!validMimes.includes(file.type)) {
-      setUploadError('Format tidak didukung. Harap pilih berkas PDF, PNG, atau JPG.');
+  // Revoke lokal object URL saat preview ganti atau component unmount.
+  useEffect(() => {
+    return () => {
+      if (preview?.objectUrl) URL.revokeObjectURL(preview.objectUrl);
+    };
+  }, [preview]);
+const handleUpload = async (file: File) => {
+    // Jangan start upload dobel / upload saat sedang berlangsung
+    if (isUploading) return;
+
+    const mime = (file.type || '').toLowerCase();
+    if (!VALID_MIMES.includes(mime)) {
+      setUploadError('Format tidak didukung. Harap pilih berkas PDF, JPG, JPEG, PNG, atau WEBP.');
       return;
     }
-    if (file.size > 10 * 1024 * 1024) {
-      setUploadError('Ukuran berkas melebihi batas 10 MB.');
+    if (file.size > MAX_SIZE) {
+      setUploadError(`Ukuran berkas melebihi batas 10 MB (${formatBytes(file.size)}).`);
       return;
     }
 
+    // Preview gambar lokal (local object URL — file belum diupload ke server).
+    let objectUrl: string | null = null;
+    try {
+      objectUrl = mime.startsWith('image/') ? URL.createObjectURL(file) : null;
+    } catch {
+      objectUrl = null;
+    }
+    setPreview({ name: file.name, size: file.size, mime, objectUrl, isImage: mime.startsWith('image/') });
     setIsUploading(true);
     setUploadError(null);
+    onUploadStateChange?.(true);
 
     try {
       const formData = new FormData();
@@ -76,6 +119,7 @@ export function FileUploadProof({
       formData.append('folderCategory', folderCategory);
       if (departmentName) formData.append('departmentName', departmentName);
       if (subCategory) formData.append('subCategory', subCategory);
+      if (descriptiveName) formData.append('descriptiveName', descriptiveName);
 
       const res = await uploadProofFileAction(formData);
 
@@ -98,6 +142,7 @@ export function FileUploadProof({
       onFileUploaded(null);
     } finally {
       setIsUploading(false);
+      onUploadStateChange?.(false);
     }
   };
 
@@ -117,17 +162,12 @@ export function FileUploadProof({
 
   const handleClear = (e: React.MouseEvent) => {
     e.stopPropagation();
+    if (preview?.objectUrl) URL.revokeObjectURL(preview.objectUrl);
+    setPreview(null);
     setUploadedFile(null);
     setUploadError(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
     onFileUploaded(null);
-  };
-
-  const formatBytes = (bytes?: number) => {
-    if (!bytes) return '';
-    if (bytes < 1024) return `${bytes} B`;
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
 
   return (
@@ -136,7 +176,7 @@ export function FileUploadProof({
         <label className="text-xs font-bold text-slate-700">
           {label} {required && <span className="text-red-500">*</span>}
         </label>
-        <span className="text-[10px] font-semibold text-slate-400">PDF, JPG, PNG (Maks 10MB)</span>
+        <span className="text-[10px] font-semibold text-slate-400">PDF, JPG, PNG, WEBP (Maks 10MB)</span>
       </div>
 
       <input
@@ -146,9 +186,8 @@ export function FileUploadProof({
         onChange={handleFileChange}
         className="hidden"
       />
-
-      {/* Upload Box */}
-      {!uploadedFile && !isUploading && (
+{/* Upload Box — dropzone hidden saat preview/upload/success */}
+      {!uploadedFile && !isUploading && !preview && (
         <div
           onClick={() => fileInputRef.current?.click()}
           onDragOver={(e) => {
@@ -157,10 +196,13 @@ export function FileUploadProof({
           }}
           onDragLeave={() => setIsDragging(false)}
           onDrop={handleDrop}
-          className={`border-2 border-dashed rounded-xl p-4 text-center cursor-pointer transition-all flex flex-col items-center justify-center gap-1.5 ${
-            isDragging
-              ? 'border-[#0B3568] bg-[#0B3568]/5 scale-[0.99]'
-              : 'border-slate-200 hover:border-[#1769AA] hover:bg-slate-50/70 bg-white'
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') fileInputRef.current?.click();
+          }}
+          className={`flex items-center justify-between rounded-xl border-2 border-dashed px-4 py-3 text-left cursor-pointer transition ${
+            isDragging ? 'border-[#0088D8] bg-blue-50/60' : 'border-[#1769AA]/40 hover:border-[#1769AA]/70 bg-slate-50/70 bg-white'
           }`}
         >
           <div className="p-2 rounded-full bg-[#0B3568]/10 text-[#0B3568]">
@@ -171,7 +213,7 @@ export function FileUploadProof({
               Tarik &amp; letakkan berkas di sini, atau <span className="text-[#1769AA] underline">Pilih File</span>
             </p>
             <p className="text-[10px] text-slate-500 mt-0.5">
-              Otomatis diunggah &amp; diarsipkan ke struktur Google Drive ORF
+              Otomatis diunggah &amp; diarsipkan ke folder Google Drive ORF
             </p>
             {required && (
               <p className="text-[10px] font-bold text-rose-500 mt-1 flex items-center gap-1">
@@ -182,13 +224,29 @@ export function FileUploadProof({
         </div>
       )}
 
+      {/* File Preview (nama, ukuran, thumbnail gambar / ikon PDF) — terlihat saat preview tersedia */}
+      {preview && (isUploading || uploadedFile || uploadError) && (
+        <div className="flex items-center gap-2.5 rounded-xl border border-slate-200 bg-slate-50/60 p-2.5">
+          {preview.isImage && preview.objectUrl ? (
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img src={preview.objectUrl} alt="Preview" className="h-14 w-14 shrink-0 rounded-lg object-contain border border-[#DCE5EF]" />
+          ) : (
+            <div className="h-10 w-10 shrink-0 rounded-lg bg-[#0B3568]/10 p-2 text-[#0B3568]"><FileText className="h-6 w-6" /></div>
+          )}
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-xs font-bold text-slate-800">{preview.name}</p>
+            <p className="text-[10px] text-slate-500">{formatBytes(preview.size)} · {preview.isImage ? 'Image' : 'PDF / Dokumen'}</p>
+          </div>
+        </div>
+      )}
+
       {/* Uploading State */}
       {isUploading && (
         <div className="border border-blue-200 bg-blue-50/70 rounded-xl p-4 flex items-center justify-center gap-3">
           <Loader2 className="h-5 w-5 animate-spin text-[#1769AA]" />
           <div className="text-left">
             <p className="text-xs font-bold text-[#0B3568]">Mengupload ke Google Drive...</p>
-            <p className="text-[10px] text-blue-600 font-medium">Memverifikasi berkas &amp; membuat direktori</p>
+            <p className="text-[10px] text-blue-600 font-medium">Memverifikasi berkas &amp; folder tujuan ({preview?.name || '...'})</p>
           </div>
         </div>
       )}
@@ -208,7 +266,7 @@ export function FileUploadProof({
                 </span>
               </div>
               <p className="text-[10px] text-emerald-700 font-medium flex items-center gap-2">
-                <span>Upload berhasil</span>
+                <span>Upload berhasil — Bukti tersedia</span>
                 {uploadedFile.fileSize && <span>• {formatBytes(uploadedFile.fileSize)}</span>}
                 {uploadedFile.isDriveStorage && (
                   <span className="px-1.5 py-0.2 rounded bg-emerald-200/70 text-emerald-900 font-bold text-[9px]">
@@ -233,10 +291,15 @@ export function FileUploadProof({
       )}
 
       {/* Error Message */}
-      {uploadError && (
-        <div className="p-2.5 bg-rose-50 border border-rose-200 rounded-xl flex items-center gap-2 text-rose-700 text-xs font-medium animate-in fade-in duration-150">
-          <AlertCircle className="h-4 w-4 shrink-0 text-rose-600" />
-          <span className="leading-snug">{uploadError}</span>
+      {uploadError && !isUploading && (
+        <div className="flex items-start justify-between gap-2 p-2.5 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 text-xs font-medium animate-in fade-in duration-150">
+          <div className="flex items-center gap-2 min-w-0">
+            <AlertCircle className="h-4 w-4 shrink-0 text-rose-600" />
+            <span className="leading-snug">{uploadError}</span>
+          </div>
+          <button type="button" onClick={handleClear} className="p-1 rounded-md text-rose-500 hover:text-rose-700 cursor-pointer" title="Tutup">
+            <X className="h-3.5 w-3.5" />
+          </button>
         </div>
       )}
     </div>

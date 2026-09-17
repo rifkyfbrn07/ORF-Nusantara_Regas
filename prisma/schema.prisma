@@ -172,6 +172,7 @@ model User {
   notifications          Notification[]
   auditLogs              AuditLog[]
   picPrograms            ProgramKerja[]      @relation("ProgramKerjaPic")
+  uploadedProgramKerjaEvidence ProgramKerja[] @relation("ProgramKerjaEvidenceUploaders")
   programProgressLogs    ProgramKerjaProgressLog[] @relation("ProgramKerjaProgressActors")
   createdAnnouncements   Announcement[]      @relation("CreatedAnnouncements")
   uploadedReports        OperationalReport[] @relation("UploadedReports")
@@ -423,6 +424,9 @@ model ProgramKerja {
   evidenceSize    Int?
   driveFileId     String?
   driveWebViewLink String?
+  evidenceUploadedAt  DateTime?
+  evidenceUploadedById String?
+  evidenceUploadedBy  User?                  @relation("ProgramKerjaEvidenceUploaders", fields: [evidenceUploadedById], references: [id], onDelete: SetNull)
   tasks           ProgramKerjaTask[]
   months          ProgramKerjaMonth[]
   progressLogs    ProgramKerjaProgressLog[]
@@ -434,6 +438,7 @@ model ProgramKerja {
   @@index([category])
   @@index([status])
   @@index([picId])
+  @@index([evidenceUploadedById])
 }
 
 model ProgramKerjaTask {

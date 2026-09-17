@@ -105,6 +105,7 @@ export function ManagerRequestsClient({
   const router = useRouter();
   const [tab, setTab] = useState<'leave' | 'shift'>(defaultTab);
   const [loading, setLoading] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
@@ -213,6 +214,7 @@ export function ManagerRequestsClient({
 
   const handleApplyOnBehalfSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (uploading) return; // jangan double submit saat upload berlangsung
     if (!selectedEmployee) {
       setError('Pilih karyawan terlebih dahulu.');
       return;
@@ -785,7 +787,7 @@ export function ManagerRequestsClient({
               <button
                 form="apply-on-behalf-form"
                 type="submit"
-                disabled={loading || !selectedEmployee}
+                disabled={loading || uploading || !selectedEmployee}
                 className="px-5 py-2 rounded-xl bg-[#0B3568] hover:bg-[#092B57] text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition disabled:opacity-50 cursor-pointer"
               >
                 <Send className="h-3.5 w-3.5" />
@@ -947,6 +949,7 @@ export function ManagerRequestsClient({
                 folderCategory="SURAT_CUTI"
                 departmentName={selectedEmployee?.department?.name || 'Operations'}
                 subCategory={selectedEmployee?.name || 'Operator'}
+                onUploadStateChange={setUploading}
                 onFileUploaded={(meta) => {
                   if (meta) {
                     setApplyForm({
