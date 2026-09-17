@@ -59,6 +59,12 @@ export function Modal({
   const panelId = useId();
   const [mounted, setMounted] = useState(false);
 
+  // Keep latest onClose in a ref so useEffect does not need onClose in its dependency array
+  const onCloseRef = useRef(onClose);
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  });
+
   useEffect(() => {
     const timer = window.setTimeout(() => setMounted(true), 0);
     return () => window.clearTimeout(timer);
@@ -71,7 +77,7 @@ export function Modal({
 
     const handleKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        onClose();
+        onCloseRef.current();
       }
       if (e.key !== 'Tab' || !panelRef.current) return;
 
@@ -106,7 +112,11 @@ export function Modal({
     }
     openModalCount += 1;
 
-    const focusTimer = window.setTimeout(() => closeButtonRef.current?.focus(), 0);
+    const focusTimer = window.setTimeout(() => {
+      if (!panelRef.current?.contains(document.activeElement)) {
+        closeButtonRef.current?.focus();
+      }
+    }, 0);
 
     return () => {
       window.clearTimeout(focusTimer);
@@ -119,7 +129,7 @@ export function Modal({
       }
       restoreFocusRef.current?.focus();
     };
-  }, [open, onClose]);
+  }, [open]);
 
   useEffect(() => {
     if (open && bodyRef.current) {
@@ -132,7 +142,10 @@ export function Modal({
   const errorSeen = useRef(false);
   useEffect(() => {
     const body = bodyRef.current;
-    if (!open || !body) return;
+    if (!open || !body) {
+      errorSeen.current = false;
+      return;
+    }
     const alert = body.querySelector('[role="alert"], [aria-invalid="true"]');
     const hasError = Boolean(alert);
     if (hasError && !errorSeen.current && alert instanceof HTMLElement) {
@@ -150,7 +163,7 @@ export function Modal({
       aria-modal="true"
       aria-labelledby={panelId}
       aria-label={title}
-      onClick={closeOnBackdrop ? onClose : undefined}
+      onClick={closeOnBackdrop ? () => onCloseRef.current?.() : undefined}
     >
       <div
         id={panelId}
@@ -176,7 +189,7 @@ export function Modal({
           <button
             ref={closeButtonRef}
             type="button"
-            onClick={onClose}
+            onClick={() => onCloseRef.current?.()}
             className="p-1.5 rounded-lg text-text-muted dark:text-[#8EA7BD] hover:bg-surface-1 dark:hover:bg-[#12314D] hover:text-text-primary dark:hover:text-[#F5FAFF] cursor-pointer shrink-0 transition"
             aria-label="Tutup"
           >
