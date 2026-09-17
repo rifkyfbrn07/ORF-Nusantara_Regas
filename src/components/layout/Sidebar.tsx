@@ -28,7 +28,6 @@ import { SessionUser } from '@/lib/auth/session';
 interface SidebarProps {
   user: SessionUser;
   unreadCount?: number;
-  personnelCount?: number;
   isMobileDrawer?: boolean;
   isOpen?: boolean;
   onCloseMobile?: () => void;
@@ -50,7 +49,6 @@ interface NavSection {
 export function Sidebar({
   user,
   unreadCount = 0,
-  personnelCount = 19,
   isMobileDrawer = false,
   isOpen = false,
   onCloseMobile,
@@ -329,45 +327,6 @@ export function Sidebar({
             </nav>
           </div>
         ))}
-      </div>
-
-      {/* 3. OPERATION STATUS CONSOLE CARD (Bottom Panel) */}
-      <div className="p-3 relative z-10 shrink-0 border-t border-[#E2E8F0] dark:border-[rgba(120,190,235,0.14)] bg-[#FFFFFF] dark:bg-[#081A2B]">
-        <div className="bg-[#F4F9FC] dark:bg-[#0D263E] rounded-2xl border border-[#E2E8F0] dark:border-[rgba(120,190,235,0.14)] p-3 shadow-xs relative overflow-hidden">
-          {/* Card Title */}
-          <div className="text-[9.5px] font-black uppercase tracking-wider text-[#64748B] dark:text-[#8EA7BD] mb-2 px-1">
-            OPERATION STATUS
-          </div>
-
-          <div className="space-y-1.5">
-            {/* OCC Ready */}
-            <div className="flex items-center justify-between px-2 py-1.5 rounded-lg bg-white/80 dark:bg-[#12314D]/80 border border-[#E2E8F0]/80 dark:border-[rgba(120,190,235,0.12)] text-[11px] font-bold text-[#0B3568] dark:text-[#E7F1FA]">
-              <span className="flex items-center gap-1.5">
-                <span className="h-2 w-2 rounded-full bg-[#69BE28] shadow-[0_0_8px_#69BE28]" />
-                OCC READY
-              </span>
-              <ChevronRight className="w-3 h-3 text-[#64748B] dark:text-[#7895AD]" />
-            </div>
-
-            {/* ORF Active */}
-            <div className="flex items-center justify-between px-2 py-1.5 rounded-lg bg-white/80 dark:bg-[#12314D]/80 border border-[#E2E8F0]/80 dark:border-[rgba(120,190,235,0.12)] text-[11px] font-bold text-[#0B3568] dark:text-[#E7F1FA]">
-              <span className="flex items-center gap-1.5">
-                <span className="h-2 w-2 rounded-full bg-[#69BE28] shadow-[0_0_8px_#69BE28]" />
-                ORF ACTIVE
-              </span>
-              <ChevronRight className="w-3 h-3 text-[#64748B] dark:text-[#7895AD]" />
-            </div>
-
-            {/* Personnel Count */}
-            <div className="flex items-center justify-between px-2 py-1.5 rounded-lg bg-white/80 dark:bg-[#12314D]/80 border border-[#E2E8F0]/80 dark:border-[rgba(120,190,235,0.12)] text-[11px] font-bold text-[#0B3568] dark:text-[#E7F1FA]">
-              <span className="flex items-center gap-1.5">
-                <span className="h-2 w-2 rounded-full bg-[#69BE28] shadow-[0_0_8px_#69BE28]" />
-                {personnelCount} PERSONNEL
-              </span>
-              <ChevronRight className="w-3 h-3 text-[#64748B] dark:text-[#7895AD]" />
-            </div>
-          </div>
-        </div>
       </div>
 
       {/* Decorative Bottom-Left Ribbon Accent */}
