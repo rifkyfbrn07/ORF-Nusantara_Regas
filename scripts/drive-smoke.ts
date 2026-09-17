@@ -7,8 +7,11 @@
 
 import {
   buildDriveFileName,
+  buildGoogleDriveConfigErrorMessage,
   deleteDriveFile,
+  getMissingGoogleDriveConfigVars,
   getStoredFileContent,
+  isGoogleDriveConfigured,
   resolveTargetFolderId,
   sanitizeFileName,
   sniffFileMime,
@@ -169,6 +172,22 @@ async function main() {
 
   console.log('\n[4] Foutafhandeling (G)');
   expectError('G: validatie fail → throw vóór metadata', () => validateProofFile('bug.gif', 'image/gif', 10, Buffer.from('GIF89a')));
+
+  console.log('\n[4b] Config-detectie (nooit secrets lekken)');
+  const missingVars = getMissingGoogleDriveConfigVars();
+  const configMsg = buildGoogleDriveConfigErrorMessage();
+  check(
+    'isGoogleDriveConfigured() consistent met missing-vars',
+    isGoogleDriveConfigured() === (missingVars.length === 0),
+    `configured=${isGoogleDriveConfigured()} missing=${missingVars.length}`
+  );
+  check('missing-vars retourneert alleen NAMEN', missingVars.every((name) => !name.includes('-----')), missingVars.join(', '));
+  check('config-foutmelding begint admin-vriendelijk', configMsg.startsWith('Google Drive belum dikonfigurasi di environment server.'), configMsg);
+  check(
+    'config-foutmelding bevat geen private key/client secret/token',
+    !configMsg.includes('-----BEGIN') && !configMsg.includes('PRIVATE KEY-----') && !configMsg.includes('access_token') && !configMsg.includes('refresh_token'),
+    configMsg
+  );
 
   await liveTests();
 

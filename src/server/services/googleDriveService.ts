@@ -125,7 +125,6 @@ export function slugify(value: string | null | undefined, fallback = 'dokumen'):
   const slug = (value || '')
     .toLowerCase()
     .normalize('NFKD')
-    // eslint-disable-next-line no-control-regex
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '')
     .replace(/-{2,}/g, '-');
@@ -204,25 +203,110 @@ export function validateProofFile(
 }
 
 /**
- * Get Google Drive Access Token using Service Account JWT or OAuth2 Refresh Token
+ * Read environment variable — trimmed, undefined if leeg.
+ */
+function readEnv(name: string): string | undefined {
+  const value = process.env[name];
+  return value ? value.trim() : undefined;
+}
+
+/**
+ * Private key van Vercel env bevat vaak escaped newlines (\\n).
+ * Normalize ALTIJD: "\\n" → werkelijke newline. Nooit hardcoden.
+ */
+function getRawPrivateKey(): string | undefined {
+  const key = readEnv('GOOGLE_DRIVE_PRIVATE_KEY') || readEnv('GOOGLE_PRIVATE_KEY');
+  return key ? key.replace(/\\n/g, '\n') : undefined;
+}
+
+interface GoogleDriveCredentialSet {
+  mode: 'service_account' | 'refresh_token';
+  serviceAccountEmail?: string;
+  privateKey?: string;
+  projectId?: string;
+  clientId?: string;
+  clientSecret?: string;
+  refreshToken?: string;
+}
+
+/**
+ * Resolve welke credential-set geconfigureerd is (server-side ONLY).
+ *   A. Service Account: GOOGLE_DRIVE_CLIENT_EMAIL + GOOGLE_DRIVE_PRIVATE_KEY
+ *      (legacy: GOOGLE_SERVICE_ACCOUNT_EMAIL / GOOGLE_PRIVATE_KEY)
+ *   B. OAuth2:          GOOGLE_CLIENT_ID + GOOGLE_CLIENT_SECRET + GOOGLE_REFRESH_TOKEN
+ */
+function getGoogleDriveCredentialSet(): GoogleDriveCredentialSet | null {
+  const clientId = readEnv('GOOGLE_CLIENT_ID');
+  const clientSecret = readEnv('GOOGLE_CLIENT_SECRET');
+  const refreshToken = readEnv('GOOGLE_REFRESH_TOKEN');
+  if (clientId && clientSecret && refreshToken) {
+    return { mode: 'refresh_token', clientId, clientSecret, refreshToken };
+  }
+  const serviceAccountEmail = readEnv('GOOGLE_DRIVE_CLIENT_EMAIL') || readEnv('GOOGLE_SERVICE_ACCOUNT_EMAIL');
+  const privateKey = getRawPrivateKey();
+  if (serviceAccountEmail && privateKey) {
+    return {
+      mode: 'service_account',
+      serviceAccountEmail,
+      privateKey,
+      projectId: readEnv('GOOGLE_DRIVE_PROJECT_ID'),
+    };
+  }
+  return null;
+}
+
+/** True wanneer vereiste server-side Google Drive credentials aanwezig zijn. */
+export function isGoogleDriveConfigured(): boolean {
+  return getGoogleDriveCredentialSet() !== null;
+}
+
+/** Retourneert NAMEN van missende env vars — nooit waarden. */
+export function getMissingGoogleDriveConfigVars(): string[] {
+  if (isGoogleDriveConfigured()) return [];
+  const oauth = {
+    clientId: readEnv('GOOGLE_CLIENT_ID'),
+    clientSecret: readEnv('GOOGLE_CLIENT_SECRET'),
+    refreshToken: readEnv('GOOGLE_REFRESH_TOKEN'),
+  };
+  if (oauth.clientId || oauth.clientSecret || oauth.refreshToken) {
+    const missing: string[] = [];
+    if (!oauth.clientId) missing.push('GOOGLE_CLIENT_ID');
+    if (!oauth.clientSecret) missing.push('GOOGLE_CLIENT_SECRET');
+    if (!oauth.refreshToken) missing.push('GOOGLE_REFRESH_TOKEN');
+    return missing;
+  }
+  const missing: string[] = [];
+  if (!readEnv('GOOGLE_DRIVE_CLIENT_EMAIL') && !readEnv('GOOGLE_SERVICE_ACCOUNT_EMAIL')) {
+    missing.push('GOOGLE_DRIVE_CLIENT_EMAIL (of GOOGLE_SERVICE_ACCOUNT_EMAIL)');
+  }
+  if (!getRawPrivateKey()) missing.push('GOOGLE_DRIVE_PRIVATE_KEY (of GOOGLE_PRIVATE_KEY)');
+  return missing;
+}
+
+/** Admin-friendly foutmelding — nooit secret values. */
+export function buildGoogleDriveConfigErrorMessage(): string {
+  const missing = getMissingGoogleDriveConfigVars();
+  const detail = missing.length > 0 ? ` Missing: ${missing.join(', ')}.` : '';
+  return `Google Drive belum dikonfigurasi di environment server.${detail}`;
+}
+
+/**
+ * Get Google Drive Access Token using Service Account JWT or OAuth2 Refresh Token.
+ * Server-side ONLY — token wordt nooit naar de client gestuurd.
  */
 async function getGoogleDriveAccessToken(): Promise<string | null> {
-  const serviceAccountEmail = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
-  const privateKey = process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n');
-  const clientId = process.env.GOOGLE_CLIENT_ID;
-  const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
-  const refreshToken = process.env.GOOGLE_REFRESH_TOKEN;
+  const creds = getGoogleDriveCredentialSet();
+  if (!creds) return null;
 
-  // 1. OAuth2 Refresh Token flow
-  if (clientId && clientSecret && refreshToken) {
+  if (creds.mode === 'refresh_token') {
     try {
       const response = await fetch('https://oauth2.googleapis.com/token', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: new URLSearchParams({
-          client_id: clientId,
-          client_secret: clientSecret,
-          refresh_token: refreshToken,
+          client_id: creds.clientId!,
+          client_secret: creds.clientSecret!,
+          refresh_token: creds.refreshToken!,
           grant_type: 'refresh_token',
         }),
       });
@@ -233,63 +317,69 @@ async function getGoogleDriveAccessToken(): Promise<string | null> {
     } catch (err) {
       console.warn('[GoogleDriveService] Failed to obtain token via refresh_token:', err);
     }
+    return null;
   }
 
-  // 2. Service Account JWT flow
-  if (serviceAccountEmail && privateKey) {
-    try {
-      const now = Math.floor(Date.now() / 1000);
-      const header = { alg: 'RS256', typ: 'JWT' };
-      const claimSet = {
-        iss: serviceAccountEmail,
-        scope: 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive',
-        aud: 'https://oauth2.googleapis.com/token',
-        exp: now + 3600,
-        iat: now,
-      };
+  if (creds.serviceAccountEmail && creds.privateKey) {
+    return exchangeServiceAccountJwt(creds.serviceAccountEmail, creds.privateKey);
+  }
+  return null;
+}
 
-      // Base64Url encode
-      const base64Url = (obj: object) =>
-        Buffer.from(JSON.stringify(obj))
-          .toString('base64')
-          .replace(/=/g, '')
-          .replace(/\+/g, '-')
-          .replace(/\//g, '_');
+/**
+ * Exchange service-account JWT (signed with private key) voor een Drive access token.
+ * Private key wordt server-side gelezen uit env — nooit gecommit of naar client gestuurd.
+ */
+async function exchangeServiceAccountJwt(serviceAccountEmail: string, privateKey: string): Promise<string | null> {
+  try {
+    const now = Math.floor(Date.now() / 1000);
+    const header = { alg: 'RS256', typ: 'JWT' };
+    const claimSet = {
+      iss: serviceAccountEmail,
+      scope: 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive',
+      aud: 'https://oauth2.googleapis.com/token',
+      exp: now + 3600,
+      iat: now,
+    };
 
-      const unsignedToken = `${base64Url(header)}.${base64Url(claimSet)}`;
-
-      // Sign with crypto
-      const crypto = await import('crypto');
-      const sign = crypto.createSign('RSA-SHA256');
-      sign.update(unsignedToken);
-      sign.end();
-      const signature = sign
-        .sign(privateKey)
+    const base64Url = (obj: object) =>
+      Buffer.from(JSON.stringify(obj))
         .toString('base64')
         .replace(/=/g, '')
         .replace(/\+/g, '-')
         .replace(/\//g, '_');
 
-      const jwt = `${unsignedToken}.${signature}`;
+    const unsignedToken = `${base64Url(header)}.${base64Url(claimSet)}`;
 
-      const res = await fetch('https://oauth2.googleapis.com/token', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams({
-          grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
-          assertion: jwt,
-        }),
-      });
+    const crypto = await import('crypto');
+    const sign = crypto.createSign('RSA-SHA256');
+    sign.update(unsignedToken);
+    sign.end();
+    const signature = sign
+      .sign(privateKey)
+      .toString('base64')
+      .replace(/=/g, '')
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_');
 
-      if (res.ok) {
-        const data = await res.json();
-        return data.access_token;
-      }
-    } catch (err) {
-      console.warn('[GoogleDriveService] Failed to obtain token via Service Account:', err);
+    const jwt = `${unsignedToken}.${signature}`;
+
+    const res = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+        assertion: jwt,
+      }),
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      return data.access_token;
     }
+  } catch (err) {
+    console.warn('[GoogleDriveService] Failed to obtain token via Service Account:', err);
   }
-
   return null;
 }
 
@@ -417,13 +507,26 @@ export async function uploadFileToStorage(options: UploadFileOptions): Promise<D
         };
       }
     } catch (driveErr) {
-      console.warn('[GoogleDriveService] Upload to Google Drive API failed, falling back to local storage:', driveErr);
+      if (process.env.NODE_ENV === 'production') {
+        throw new Error(
+          `Upload ke Google Drive gagal. ${driveErr instanceof Error ? driveErr.message : String(driveErr)}`
+        );
+      }
+      console.warn('[GoogleDriveService] Upload to Google Drive API failed (dev local fallback):', driveErr);
     }
   }
 
-  // A filesystem is not durable on Vercel. Keep the fallback strictly local for development.
-  if (process.env.NODE_ENV === 'production') {
-    throw new Error('Google Drive belum dikonfigurasi. Unggahan bukti memerlukan penyimpanan persisten.');
+  // Google Drive is de intended persistent storage — géén stille fallback naar
+  // tijdelijk/filesystem storage in productie/Vercel.
+  if (!accessToken) {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error(isGoogleDriveConfigured()
+        ? 'Google Drive authenticatie gagal. Controleer GOOGLE_DRIVE_CLIENT_EMAIL / GOOGLE_DRIVE_PRIVATE_KEY (of OAuth refresh token flow).'
+        : buildGoogleDriveConfigErrorMessage());
+    }
+    console.warn(`[GoogleDriveService] ${buildGoogleDriveConfigErrorMessage()} — LOCAL-DEV fallback wordt gebruikt (niet voor productie).`);
+  } else if (process.env.NODE_ENV === 'production') {
+    throw new Error('Google Drive upload gagal: file niet bevestigd in Drive.');
   }
 
   // Local development fallback only.
@@ -579,4 +682,25 @@ export async function deleteDriveFile(fileId: string): Promise<boolean> {
     headers: { Authorization: `Bearer ${accessToken}` },
   });
   return res.ok || res.status === 404;
+}
+
+/**
+ * Rollback safety-net: indien metadata-write in DB faalt NA een succesvolle Drive
+ * upload, verwijder de zojuist geüploade Drive file — tenzij deze inmiddels
+ * gerefereerd wordt door een bestaand record (edit-flow). Never een fake
+ * "success" evidence-record achterlaten.
+ */
+export async function rollbackDriveFileIfUnreferenced(driveFileId: string): Promise<{ deleted: boolean; referenced: boolean }> {
+  const { prisma } = await import('@/lib/db/prisma');
+  const [leave, exchange, program, progressLog, report] = await Promise.all([
+    prisma.leaveRequest.count({ where: { driveFileId } }),
+    prisma.shiftExchange.count({ where: { driveFileId } }),
+    prisma.programKerja.count({ where: { driveFileId } }),
+    prisma.programKerjaProgressLog.count({ where: { driveFileId } }),
+    prisma.operationalReport.count({ where: { driveFileId } }),
+  ]);
+  const referenced = leave + exchange + program + progressLog + report > 0;
+  if (referenced) return { deleted: false, referenced: true };
+  const deleted = await deleteDriveFile(driveFileId).catch(() => false);
+  return { deleted, referenced: false };
 }

@@ -447,14 +447,23 @@ export function ManagerRequestsClient({
                           {/* Bukti Surat Cuti Column */}
                           <td className="px-5 py-3.5 text-center">
                             {hasProof ? (
-                              <button
-                                type="button"
-                                onClick={() => setPreviewItem(r)}
-                                className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-2.5 py-1 rounded-full transition cursor-pointer"
-                              >
-                                <Paperclip className="h-3 w-3" />
-                                <span>✓ Bukti tersedia</span>
-                              </button>
+                              <span className="inline-flex items-center gap-1.5">
+                                <button
+                                  type="button"
+                                  onClick={() => setPreviewItem(r)}
+                                  className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-2.5 py-1 rounded-full transition cursor-pointer"
+                                >
+                                  <Paperclip className="h-3 w-3" />
+                                  <span>✓ Bukti tersedia</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setPreviewItem(r)}
+                                  className="text-[11px] font-bold text-[#1769AA] hover:text-[#0B3568] hover:underline cursor-pointer"
+                                >
+                                  Lihat Surat
+                                </button>
+                              </span>
                             ) : (
                               <span className="text-[10px] text-slate-400 font-medium">
                                 Belum ada bukti

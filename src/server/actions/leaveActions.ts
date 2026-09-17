@@ -2,16 +2,22 @@
 
 import { requireAuth, requireRole } from '@/lib/auth/session';
 import { submitLeaveRequest, reviewLeaveRequest, searchEmployeesForLeave } from '../services/leaveService';
+import { rollbackDriveFileIfUnreferenced } from '../services/googleDriveService';
 import { leaveRequestSchema, reviewLeaveSchema, LeaveRequestInput } from '@/lib/validation';
 import { revalidatePath } from 'next/cache';
 
 export async function submitLeaveAction(input: LeaveRequestInput) {
+  let driveFileIdForRollback: string | undefined;
   try {
     const currentUser = await requireAuth();
     const parse = leaveRequestSchema.safeParse(input);
     if (!parse.success) {
       return { success: false, error: parse.error.issues[0]?.message };
     }
+
+    // If DB write below fails, we can roll back the just-uploaded Drive file
+    // (only when it's not referenced by an existing record).
+    driveFileIdForRollback = parse.data.driveFileId || undefined;
 
     let finalUserId = currentUser.id;
 
@@ -43,6 +49,11 @@ export async function submitLeaveAction(input: LeaveRequestInput) {
 
     return { success: true, request };
   } catch (error: unknown) {
+    // Rollback: nooit een vals record achterlaten als metadata-write faalde
+    // na een succesvolle Drive upload.
+    if (driveFileIdForRollback) {
+      await rollbackDriveFileIfUnreferenced(driveFileIdForRollback).catch(() => {});
+    }
     return { success: false, error: error instanceof Error ? error.message : 'Gagal mengajukan permohonan cuti/izin.' };
   }
 }

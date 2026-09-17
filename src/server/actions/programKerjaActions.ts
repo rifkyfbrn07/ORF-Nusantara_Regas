@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { requireRole } from '@/lib/auth/session';
+import { rollbackDriveFileIfUnreferenced } from '../services/googleDriveService';
 import {
   createProgramKerja,
   updateProgramKerja,
@@ -28,27 +29,35 @@ function revalidateProgramKerja() {
 }
 
 export async function createProgramKerjaAction(input: ProgramKerjaCreateInput) {
+  let driveFileIdForRollback: string | undefined;
   try {
     const user = await requireRole([...ALLOWED_ROLES]);
     const parse = programKerjaCreateSchema.safeParse(input);
     if (!parse.success) return { success: false as const, error: parse.error.issues[0]?.message || 'Data tidak valid' };
+    driveFileIdForRollback = parse.data.driveFileId || undefined;
     const program = await createProgramKerja(parse.data, user.id);
     revalidateProgramKerja();
     return { success: true as const, program };
   } catch (error: unknown) {
+    // Rollback Drive file wanneer metadata-write faalde na succesvolle upload
+    // (alleen wanneer file nog nergens gerefereerd wordt).
+    if (driveFileIdForRollback) await rollbackDriveFileIfUnreferenced(driveFileIdForRollback).catch(() => {});
     return { success: false as const, error: error instanceof Error ? error.message : 'Gagal membuat program' };
   }
 }
 
 export async function updateProgramKerjaAction(input: ProgramKerjaUpdateInput) {
+  let driveFileIdForRollback: string | undefined;
   try {
     const user = await requireRole([...ALLOWED_ROLES]);
     const parse = programKerjaUpdateSchema.safeParse(input);
     if (!parse.success) return { success: false as const, error: parse.error.issues[0]?.message || 'Data tidak valid' };
+    driveFileIdForRollback = parse.data.driveFileId || undefined;
     const program = await updateProgramKerja(parse.data, user.id);
     revalidateProgramKerja();
     return { success: true as const, program };
   } catch (error: unknown) {
+    if (driveFileIdForRollback) await rollbackDriveFileIfUnreferenced(driveFileIdForRollback).catch(() => {});
     return { success: false as const, error: error instanceof Error ? error.message : 'Gagal memperbarui program' };
   }
 }
@@ -105,10 +114,12 @@ export async function updatePicProgressAction(input: {
   driveFileId?: string;
   driveWebViewLink?: string;
 }) {
+  let driveFileIdForRollback: string | undefined;
   try {
     const user = await requireRole(['ADMIN', 'MANAGER']);
     const parsedProgress = programKerjaProgressSchema.safeParse(input.progress);
     if (!parsedProgress.success) return { success: false as const, error: parsedProgress.error.issues[0]?.message || 'Progress harus 0–100%.' };
+    driveFileIdForRollback = input.driveFileId || undefined;
     const result = await updateProgramProgress(input.programId, parsedProgress.data, user.id, user.role, {
       note: input.note,
       evidenceUrl: input.evidenceUrl,
@@ -121,6 +132,7 @@ export async function updatePicProgressAction(input: {
     revalidateProgramKerja();
     return { success: true as const, progress: result.progress };
   } catch (error: unknown) {
+    if (driveFileIdForRollback) await rollbackDriveFileIfUnreferenced(driveFileIdForRollback).catch(() => {});
     return { success: false as const, error: error instanceof Error ? error.message : 'Gagal memperbarui progress.' };
   }
 }
