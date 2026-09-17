@@ -31,6 +31,8 @@ export async function submitShiftExchangeAction(input: ShiftExchangeInput) {
       attachmentSize: parse.data.attachmentSize,
       driveFileId: parse.data.driveFileId,
       driveWebViewLink: parse.data.driveWebViewLink,
+      storageProvider: parse.data.storageProvider,
+      storagePath: parse.data.storagePath,
     });
 
     revalidatePath('/operator/shift-exchange');

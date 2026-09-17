@@ -38,6 +38,8 @@ export interface ProgramKerjaDTO {
   evidenceSize: number | null;
   driveFileId: string | null;
   driveWebViewLink: string | null;
+  storageProvider: string | null;
+  storagePath: string | null;
   evidenceUploadedById: string | null;
   evidenceUploadedAt: string | null;
   pic: { id: string; name: string } | null;
@@ -100,6 +102,8 @@ function serializeProgram(program: Prisma.ProgramKerjaGetPayload<{ include: { pi
     evidenceSize: program.evidenceSize,
     driveFileId: program.driveFileId,
     driveWebViewLink: program.driveWebViewLink,
+    storageProvider: program.storageProvider,
+    storagePath: program.storagePath,
     evidenceUploadedById: program.evidenceUploadedById,
     evidenceUploadedAt: program.evidenceUploadedAt ? program.evidenceUploadedAt.toISOString() : null,
     pic: program.pic,
@@ -299,7 +303,9 @@ export async function createProgramKerja(input: ProgramKerjaCreateInput, actorId
       evidenceSize: input.evidenceSize ?? null,
       driveFileId: input.driveFileId ?? null,
       driveWebViewLink: input.driveWebViewLink ?? null,
-      ...(input.driveFileId ? { evidenceUploadedAt: new Date(), evidenceUploadedById: actorId } : {}),
+      storageProvider: input.storageProvider ?? null,
+      storagePath: input.storagePath ?? null,
+      ...(input.driveFileId || input.storagePath ? { evidenceUploadedAt: new Date(), evidenceUploadedById: actorId } : {}),
     },
   });
 
@@ -317,6 +323,8 @@ export async function createProgramKerja(input: ProgramKerjaCreateInput, actorId
         evidenceSize: input.evidenceSize ?? null,
         driveFileId: input.driveFileId ?? null,
         driveWebViewLink: input.driveWebViewLink ?? null,
+        storageProvider: input.storageProvider ?? null,
+        storagePath: input.storagePath ?? null,
         userId: actorId,
       },
     });
@@ -359,7 +367,9 @@ export async function updateProgramKerja(input: ProgramKerjaUpdateInput, actorId
       ...(data.evidenceSize !== undefined ? { evidenceSize: data.evidenceSize ?? null } : {}),
       ...(data.driveFileId !== undefined ? { driveFileId: data.driveFileId ?? null } : {}),
       ...(data.driveWebViewLink !== undefined ? { driveWebViewLink: data.driveWebViewLink ?? null } : {}),
-      ...(data.driveFileId ? { evidenceUploadedAt: new Date(), evidenceUploadedById: actorId } : {}),
+      ...(data.storageProvider !== undefined ? { storageProvider: data.storageProvider ?? null } : {}),
+      ...(data.storagePath !== undefined ? { storagePath: data.storagePath ?? null } : {}),
+      ...(data.driveFileId || data.storagePath ? { evidenceUploadedAt: new Date(), evidenceUploadedById: actorId } : {}),
     },
   });
 
@@ -379,6 +389,8 @@ export async function updateProgramKerja(input: ProgramKerjaUpdateInput, actorId
         evidenceSize: data.evidenceSize ?? null,
         driveFileId: data.driveFileId ?? null,
         driveWebViewLink: data.driveWebViewLink ?? null,
+        storageProvider: data.storageProvider ?? null,
+        storagePath: data.storagePath ?? null,
         userId: actorId,
       },
     });
@@ -480,7 +492,7 @@ export async function updateProgramProgress(
   progress: number,
   actorId: string,
   actorRole: string,
-  evidence?: { evidenceUrl?: string; evidenceName?: string; evidenceMime?: string; evidenceSize?: number; driveFileId?: string; driveWebViewLink?: string; note?: string }
+  evidence?: { evidenceUrl?: string; evidenceName?: string; evidenceMime?: string; evidenceSize?: number; driveFileId?: string; driveWebViewLink?: string; storageProvider?: string; storagePath?: string; note?: string }
 ) {
   const program = await prisma.programKerja.findUnique({ where: { id: programId }, select: { id: true, progress: true } });
   if (!program) throw new Error('Program Kerja tidak ditemukan.');
@@ -490,7 +502,7 @@ export async function updateProgramProgress(
 
   // Evidence wajib saat progress meningkat (bukti/evidence)
   if (clamped > program.progress) {
-    const hasEvidence = Boolean(evidence?.evidenceUrl || evidence?.driveWebViewLink || evidence?.driveFileId);
+    const hasEvidence = Boolean(evidence?.evidenceUrl || evidence?.driveWebViewLink || evidence?.driveFileId || evidence?.storagePath);
     if (!hasEvidence) {
       throw new Error('Bukti/evidence wajib dilampirkan untuk memperbarui progress program.');
     }
@@ -511,6 +523,8 @@ export async function updateProgramProgress(
         evidenceSize: evidence?.evidenceSize ?? null,
         driveFileId: evidence?.driveFileId ?? null,
         driveWebViewLink: evidence?.driveWebViewLink ?? null,
+        storageProvider: evidence?.storageProvider ?? null,
+        storagePath: evidence?.storagePath ?? null,
         userId: actorId,
       },
     }),
@@ -524,24 +538,13 @@ export async function updateProgramProgress(
         ...(evidence?.evidenceSize ? { evidenceSize: evidence.evidenceSize } : {}),
         ...(evidence?.driveFileId ? { driveFileId: evidence.driveFileId } : {}),
         ...(evidence?.driveWebViewLink ? { driveWebViewLink: evidence.driveWebViewLink } : {}),
-        ...(evidence?.driveFileId ? { evidenceUploadedAt: new Date(), evidenceUploadedById: actorId } : {}),
+        ...(evidence?.storageProvider ? { storageProvider: evidence.storageProvider } : {}),
+        ...(evidence?.storagePath ? { storagePath: evidence.storagePath } : {}),
+        ...(evidence?.driveFileId || evidence?.storagePath ? { evidenceUploadedAt: new Date(), evidenceUploadedById: actorId } : {}),
         updatedAt: new Date(),
       },
     }),
   ]);
-
-  await prisma.programKerja.update({
-    where: { id: programId },
-    data: {
-      progress: clamped,
-      ...(evidence?.evidenceUrl ? { evidenceUrl: evidence.evidenceUrl } : {}),
-      ...(evidence?.evidenceName ? { evidenceName: evidence.evidenceName } : {}),
-      ...(evidence?.evidenceMime ? { evidenceMime: evidence.evidenceMime } : {}),
-      ...(evidence?.evidenceSize ? { evidenceSize: evidence.evidenceSize } : {}),
-      ...(evidence?.driveFileId ? { driveFileId: evidence.driveFileId } : {}),
-      ...(evidence?.driveWebViewLink ? { driveWebViewLink: evidence.driveWebViewLink } : {}),
-    },
-  });
 
   await recordAuditLog({
     userId: actorId,

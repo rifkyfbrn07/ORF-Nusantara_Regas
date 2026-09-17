@@ -65,6 +65,8 @@ export interface OperationalReportItem {
   attachmentSize?: number | null;
   driveFileId?: string | null;
   driveWebViewLink?: string | null;
+  storageProvider?: string | null;
+  storagePath?: string | null;
   createdAt: Date | string;
   department?: { id: string; name: string; code: string } | null;
   uploadedBy: { id: string; name: string; employeeId?: string; position?: string };
@@ -126,6 +128,8 @@ export function ReportsClient({
     attachmentSize: undefined as number | undefined,
     driveFileId: '',
     driveWebViewLink: '',
+    storageProvider: '',
+    storagePath: '',
   });
 
   const handleApplyFilter = (e: React.FormEvent) => {
@@ -150,6 +154,8 @@ export function ReportsClient({
       attachmentSize: form.attachmentSize || undefined,
       driveFileId: form.driveFileId || undefined,
       driveWebViewLink: form.driveWebViewLink || undefined,
+      storageProvider: form.storageProvider || undefined,
+      storagePath: form.storagePath || undefined,
     });
 
     setLoading(false);
@@ -171,6 +177,8 @@ export function ReportsClient({
         attachmentSize: undefined,
         driveFileId: '',
         driveWebViewLink: '',
+        storageProvider: '',
+        storagePath: '',
       });
       router.refresh();
     }
@@ -460,7 +468,7 @@ export function ReportsClient({
                     </tr>
                   ) : (
                     initialOperationalReports.map((item) => {
-                      const hasProof = Boolean(item.attachmentUrl || item.driveWebViewLink || item.driveFileId);
+                      const hasProof = Boolean(item.attachmentUrl || item.driveWebViewLink || item.driveFileId || item.storagePath);
                       return (
                         <tr key={item.id} className="hover:bg-slate-50/70 transition">
                           <td className="px-5 py-3.5">
@@ -660,6 +668,8 @@ export function ReportsClient({
                       attachmentSize: meta.attachmentSize,
                       driveFileId: meta.driveFileId || '',
                       driveWebViewLink: meta.driveWebViewLink || '',
+                      storageProvider: meta.storageProvider || '',
+                      storagePath: meta.storagePath || ''
                     });
                   } else {
                     setForm({
@@ -670,6 +680,8 @@ export function ReportsClient({
                       attachmentSize: undefined,
                       driveFileId: '',
                       driveWebViewLink: '',
+                      storageProvider: '',
+                      storagePath: '',
                     });
                   }
                 }}

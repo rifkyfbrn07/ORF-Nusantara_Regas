@@ -52,11 +52,13 @@ export const leaveRequestSchema = z.object({
   attachmentSize: z.number().optional(),
   driveFileId: z.string().optional(),
   driveWebViewLink: z.string().optional(),
+  storageProvider: z.string().optional(),
+  storagePath: z.string().optional(),
 })
   .refine(
     (v) => {
       // Bukti/surat wajib untuk semua jenis pengajuan (Cuti, Izin, Sakit)
-      const hasProof = Boolean(v.attachmentUrl || v.driveWebViewLink || v.driveFileId);
+      const hasProof = Boolean(v.attachmentUrl || v.driveWebViewLink || v.driveFileId || v.storagePath);
       return hasProof;
     },
     { message: 'Bukti surat wajib dilampirkan untuk pengajuan ini.', path: ['attachmentUrl'] }
@@ -82,6 +84,8 @@ export const operationalReportSchema = z.object({
   attachmentSize: z.number().optional(),
   driveFileId: z.string().optional(),
   driveWebViewLink: z.string().optional(),
+  storageProvider: z.string().optional(),
+  storagePath: z.string().optional(),
 });
 
 export type OperationalReportInput = z.infer<typeof operationalReportSchema>;
@@ -97,11 +101,13 @@ export const shiftExchangeSchema = z.object({
   attachmentSize: z.number().optional(),
   driveFileId: z.string().optional(),
   driveWebViewLink: z.string().optional(),
+  storageProvider: z.string().optional(),
+  storagePath: z.string().optional(),
 })
   .refine(
     (v) => {
       // Bukti/surat persetujuan wajib untuk mengajukan penukaran hari OFF
-      const hasProof = Boolean(v.attachmentUrl || v.driveWebViewLink || v.driveFileId);
+      const hasProof = Boolean(v.attachmentUrl || v.driveWebViewLink || v.driveFileId || v.storagePath);
       return hasProof;
     },
     { message: 'Bukti surat wajib dilampirkan untuk mengajukan tukar hari OFF.', path: ['attachmentUrl'] }
@@ -290,6 +296,8 @@ export const programKerjaBaseSchema = z.object({
   evidenceSize: z.number().optional(),
   driveFileId: z.string().optional(),
   driveWebViewLink: z.string().optional(),
+  storageProvider: z.string().optional(),
+  storagePath: z.string().optional(),
 });
 
 export const programKerjaCreateSchema = programKerjaBaseSchema.refine(
@@ -297,7 +305,7 @@ export const programKerjaCreateSchema = programKerjaBaseSchema.refine(
     // Bukti/evidence wajib ketika progress > 0 atau status REALISASI/ON_PROGRESS
     const needsEvidence = v.progress > 0 || v.status === 'REALISASI' || v.status === 'ON_PROGRESS';
     if (!needsEvidence) return true;
-    return Boolean(v.evidenceUrl || v.driveWebViewLink || v.driveFileId);
+    return Boolean(v.evidenceUrl || v.driveWebViewLink || v.driveFileId || v.storagePath);
   },
   { message: 'Bukti/evidence wajib dilampirkan untuk program dengan progress atau realisasi.', path: ['evidenceUrl'] }
 );

@@ -28,6 +28,8 @@ interface FormState {
   evidenceSize?: number;
   driveFileId: string;
   driveWebViewLink: string;
+  storageProvider: string;
+  storagePath: string;
 }
 
 const EMPTY_FORM: FormState = {
@@ -49,6 +51,8 @@ picId: '',
   evidenceSize: undefined,
   driveFileId: '',
   driveWebViewLink: '',
+  storageProvider: '',
+  storagePath: '',
 };
 
 interface ProgramKerjaFormModalProps {
@@ -80,6 +84,8 @@ export function ProgramKerjaFormModal({ program, users, onClose, onSaved }: Prog
           evidenceSize: program.evidenceSize ?? undefined,
           driveFileId: program.driveFileId ?? '',
           driveWebViewLink: program.driveWebViewLink ?? '',
+          storageProvider: program.storageProvider ?? '',
+          storagePath: program.storagePath ?? ''
         }
       : EMPTY_FORM
   );
@@ -107,7 +113,7 @@ export function ProgramKerjaFormModal({ program, users, onClose, onSaved }: Prog
     }
     // Bukti/evidence wajib saat progress > 0 atau status realisasi/on-progress
     const needsEvidence = form.progress > 0 || form.status === 'REALISASI' || form.status === 'ON_PROGRESS';
-    if (needsEvidence && !form.driveFileId && !form.driveWebViewLink && !form.evidenceUrl) {
+    if (needsEvidence && !form.driveFileId && !form.driveWebViewLink && !form.evidenceUrl && !form.storagePath) {
       setError('Bukti/evidence wajib dilampirkan untuk program dengan progress atau realisasi.');
       return;
     }
@@ -295,6 +301,8 @@ export function ProgramKerjaFormModal({ program, users, onClose, onSaved }: Prog
                 evidenceSize: meta.attachmentSize,
                 driveFileId: meta.driveFileId || '',
                 driveWebViewLink: meta.driveWebViewLink || '',
+                storageProvider: meta.storageProvider || '',
+                storagePath: meta.storagePath || ''
               }));
             } else {
               setForm((f) => ({
@@ -305,6 +313,8 @@ export function ProgramKerjaFormModal({ program, users, onClose, onSaved }: Prog
                 evidenceSize: undefined,
                 driveFileId: '',
                 driveWebViewLink: '',
+                storageProvider: '',
+                storagePath: '',
               }));
             }
           }}

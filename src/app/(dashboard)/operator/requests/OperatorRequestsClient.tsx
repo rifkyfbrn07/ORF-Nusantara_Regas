@@ -21,6 +21,8 @@ export interface LeaveRequestItem {
   attachmentSize?: number | null;
   driveFileId?: string | null;
   driveWebViewLink?: string | null;
+  storageProvider?: string | null;
+  storagePath?: string | null;
   reviewerNote?: string | null;
   reviewedBy?: { name: string } | null;
 }
@@ -55,6 +57,8 @@ export function OperatorRequestsClient({
     attachmentSize: undefined as number | undefined,
     driveFileId: '',
     driveWebViewLink: '',
+    storageProvider: '',
+    storagePath: '',
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -63,7 +67,7 @@ export function OperatorRequestsClient({
     setError(null);
 
     // Bukti/surat wajib client-side (server juga validera via zod)
-    const hasProof = Boolean(formData.attachmentUrl || formData.driveWebViewLink || formData.driveFileId);
+    const hasProof = Boolean(formData.attachmentUrl || formData.driveWebViewLink || formData.driveFileId || formData.storagePath);
     if (!hasProof) {
       setError('Bukti surat wajib dilampirkan untuk pengajuan ini.');
       return;
@@ -82,6 +86,8 @@ export function OperatorRequestsClient({
       attachmentSize: formData.attachmentSize || undefined,
       driveFileId: formData.driveFileId || undefined,
       driveWebViewLink: formData.driveWebViewLink || undefined,
+      storageProvider: formData.storageProvider || undefined,
+      storagePath: formData.storagePath || undefined,
     });
     setLoading(false);
 
@@ -101,6 +107,8 @@ export function OperatorRequestsClient({
         attachmentSize: undefined,
         driveFileId: '',
         driveWebViewLink: '',
+        storageProvider: '',
+        storagePath: '',
       });
       router.refresh();
     }
@@ -146,7 +154,7 @@ export function OperatorRequestsClient({
             </div>
           ) : (
             initialRequests.map((r) => {
-              const hasProof = Boolean(r.attachmentUrl || r.driveWebViewLink || r.driveFileId);
+              const hasProof = Boolean(r.attachmentUrl || r.driveWebViewLink || r.driveFileId || r.storagePath);
               return (
                 <div
                   key={r.id}
@@ -316,6 +324,8 @@ export function OperatorRequestsClient({
                     attachmentSize: meta.attachmentSize,
                     driveFileId: meta.driveFileId || '',
                     driveWebViewLink: meta.driveWebViewLink || '',
+                    storageProvider: meta.storageProvider || '',
+                    storagePath: meta.storagePath || ''
                   });
                 } else {
                   setFormData({
@@ -326,6 +336,8 @@ export function OperatorRequestsClient({
                     attachmentSize: undefined,
                     driveFileId: '',
                     driveWebViewLink: '',
+                    storageProvider: '',
+                    storagePath: '',
                   });
                 }
               }}

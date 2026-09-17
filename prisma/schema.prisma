@@ -247,6 +247,8 @@ model LeaveRequest {
   attachmentSize   Int?
   driveFileId      String?
   driveWebViewLink String?
+  storageProvider  String?
+  storagePath      String?
   uploadedAt       DateTime?
   status           RequestStatus @default(PENDING)
   reviewedById     String?
@@ -279,6 +281,8 @@ model ShiftExchange {
   attachmentSize      Int?
   driveFileId         String?
   driveWebViewLink    String?
+  storageProvider     String?
+  storagePath         String?
   uploadedAt          DateTime?
   targetAcceptedAt    DateTime?
   status              RequestStatus @default(PENDING)
@@ -427,6 +431,8 @@ model ProgramKerja {
   evidenceUploadedAt  DateTime?
   evidenceUploadedById String?
   evidenceUploadedBy  User?                  @relation("ProgramKerjaEvidenceUploaders", fields: [evidenceUploadedById], references: [id], onDelete: SetNull)
+  storageProvider String?
+  storagePath     String?
   tasks           ProgramKerjaTask[]
   months          ProgramKerjaMonth[]
   progressLogs    ProgramKerjaProgressLog[]
@@ -469,6 +475,8 @@ model ProgramKerjaProgressLog {
   evidenceSize      Int?
   driveFileId       String?
   driveWebViewLink  String?
+  storageProvider   String?
+  storagePath       String?
   userId            String
   user              User         @relation("ProgramKerjaProgressActors", fields: [userId], references: [id], onDelete: Cascade)
   createdAt         DateTime     @default(now())
@@ -547,6 +555,8 @@ model OperationalReport {
   attachmentSize   Int?
   driveFileId      String?
   driveWebViewLink String?
+  storageProvider  String?
+  storagePath      String?
   uploadedById     String
   uploadedBy       User        @relation("UploadedReports", fields: [uploadedById], references: [id], onDelete: Cascade)
   createdAt        DateTime    @default(now())

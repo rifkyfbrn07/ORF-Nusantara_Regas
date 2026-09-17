@@ -1,13 +1,13 @@
 import { NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/auth/session';
+import { isStorageConfigured } from '@/server/services/vercelBlobService';
 import { isGoogleDriveConfigured, resolveTargetFolderId } from '@/server/services/googleDriveService';
 
 export const dynamic = 'force-dynamic';
 
 /**
  * GET /api/admin/storage-status — server-side diagnostic (ADMIN only).
- * Retourneert alleen booleans/config status. NOOIT geheimen:
- * geen private key, client secret, access token of refresh token.
+ * Retourneert alleen booleans/config status. NOOIT geheimen.
  */
 export async function GET() {
   try {
@@ -17,7 +17,9 @@ export async function GET() {
   }
 
   return NextResponse.json({
-    googleDriveConfigured: isGoogleDriveConfigured(),
+    // Vercel Blob adalah persistent storage utama untuk evidence baru.
+    blobStorageConfigured: isStorageConfigured(),
+    googleDriveConfigured: isGoogleDriveConfigured(), // legacy / historical records
     cutiFolderConfigured: Boolean(resolveTargetFolderId('SURAT_CUTI')),
     programKerjaFolderConfigured: Boolean(resolveTargetFolderId('PROGRAM_KERJA')),
   });

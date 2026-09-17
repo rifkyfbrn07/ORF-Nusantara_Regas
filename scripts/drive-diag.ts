@@ -1,6 +1,6 @@
 /**
- * Drive diagnostic (local = admin endpoint /api/admin/storage-status).
- * Toont ALLEEN config-status / namen — nooit secrets (geen private key).
+ * Storage diagnostic (lokaal equivalent van /api/admin/storage-status).
+ * Toont ALLEEN config-status — nooit secrets (token, private key).
  *
  *   npx tsx scripts/drive-diag.ts
  */
@@ -25,39 +25,32 @@ function loadDotEnv(): void {
 
 async function main() {
   loadDotEnv();
-  const { isGoogleDriveConfigured, getMissingGoogleDriveConfigVars, resolveTargetFolderId } = await import('../src/server/services/googleDriveService');
-
-  const ou = (key: string) => (process.env[key]?.trim() ? 'SET ✓' : 'ontbreekt ✗');
-  const missing = getMissingGoogleDriveConfigVars();
+  const blob = await import('../src/server/services/vercelBlobService');
+  const gd = await import('../src/server/services/googleDriveService');
 
   console.log('====================================================');
-  console.log('GOOGLE DRIVE — STORAGE STATUS (server-side only)');
+  console.log('STORAGE STATUS — EVIDENCE (server-side only)');
   console.log('====================================================');
   console.log('');
-  if (isGoogleDriveConfigured()) {
-    console.log('  googleDriveConfigured:      true  ✓');
-  } else {
-    console.log('  googleDriveConfigured:      false ✗');
-  }
-  console.log('  cutiFolderConfigured:       ' + (resolveTargetFolderId('SURAT_CUTI') ? 'true' : 'false'));
-  console.log('  programKerjaFolderConfigured: ' + (resolveTargetFolderId('PROGRAM_KERJA') ? 'true' : 'false'));
+  console.log('  blobStorageConfigured:      ' + (blob.isStorageConfigured() ? 'true  ✓' : 'false ✗'));
+  console.log('  googleDriveConfigured:      ' + (gd.isGoogleDriveConfigured() ? 'true  ✓' : 'false ✗') + '   (legacy/historical saja)');
+  console.log('  cutiFolderConfigured:       ' + (gd.resolveTargetFolderId('SURAT_CUTI') ? 'true' : 'false'));
+  console.log('  programKerjaFolderConfigured: ' + (gd.resolveTargetFolderId('PROGRAM_KERJA') ? 'true' : 'false'));
   console.log('');
-  console.log('  GOOGLE_DRIVE_CLIENT_EMAIL    ' + ou('GOOGLE_DRIVE_CLIENT_EMAIL') + '   (of GOOGLE_SERVICE_ACCOUNT_EMAIL ' + ou('GOOGLE_SERVICE_ACCOUNT_EMAIL') + ')');
-  console.log('  GOOGLE_DRIVE_PRIVATE_KEY     ' + ou('GOOGLE_DRIVE_PRIVATE_KEY') + '   (of GOOGLE_PRIVATE_KEY ' + ou('GOOGLE_PRIVATE_KEY') + ')');
-  console.log('  GOOGLE_DRIVE_PROJECT_ID      ' + ou('GOOGLE_DRIVE_PROJECT_ID') + '   (optioneel)');
+  console.log('  BLOB_READ_WRITE_TOKEN       ' + (process.env.BLOB_READ_WRITE_TOKEN ? 'SET ✓' : 'ontbreekt ✗'));
+  console.log('  VERCEL_OIDC_TOKEN           ' + (process.env.VERCEL_OIDC_TOKEN ? 'SET ✓' : 'ontbreekt ✗') + '   (alternatief OIDC)');
   console.log('');
-  if (missing.length > 0) {
-    console.log('  MISSING: ' + missing.join(', '));
-    console.log('');
-    console.log('  Fix: volg de stappen in scripts/setup-google-drive-env.ts');
-    console.log('      1) Google Cloud Console → Service Account → download JSON');
-    console.log('      2) npx tsx scripts/setup-google-drive-env.ts path/to/service-account.json');
-    console.log('      3) deel de twee Drive folders met de service-account email (Editor)');
+  if (!blob.isStorageConfigured()) {
+    console.log('  Upload baru zal mislukken tot Blob geconfigureerd is.');
+    console.log('  Fix (Vercel):');
+    console.log('    Vercel → Project → Storage → Create Blob Store, of');
+    console.log('    attach existing Blob store → BLOB_READ_WRITE_TOKEN wordt automatisch geïnjecteerd.');
+    console.log('  Lokale dev: zet BLOB_READ_WRITE_TOKEN in .env (server-only).');
   } else {
-    console.log('  Alles aanwezig — test live: DRIVE_LIVE_SMOKE=1 npx tsx scripts/drive-smoke.ts');
+    console.log('  Blob geconfigureerd — live test: BLOB_LIVE_SMOKE=1 npx tsx scripts/blob-smoke.ts');
   }
   console.log('====================================================');
-  process.exit(missing.length > 0 ? 1 : 0);
+  process.exit(blob.isStorageConfigured() ? 0 : 1);
 }
 
 void main();

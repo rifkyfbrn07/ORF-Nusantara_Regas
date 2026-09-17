@@ -39,6 +39,8 @@ export interface ManagerLeaveRequestItem {
   attachmentSize?: number | null;
   driveFileId?: string | null;
   driveWebViewLink?: string | null;
+  storageProvider?: string | null;
+  storagePath?: string | null;
   reviewerNote?: string | null;
   user: {
     id?: string;
@@ -142,6 +144,8 @@ export function ManagerRequestsClient({
     attachmentSize: undefined as number | undefined,
     driveFileId: '',
     driveWebViewLink: '',
+    storageProvider: '',
+    storagePath: '',
   });
 
   // Debounced search for employee selection in on-behalf modal
@@ -235,6 +239,8 @@ export function ManagerRequestsClient({
       attachmentSize: applyForm.attachmentSize || undefined,
       driveFileId: applyForm.driveFileId || undefined,
       driveWebViewLink: applyForm.driveWebViewLink || undefined,
+      storageProvider: applyForm.storageProvider || undefined,
+      storagePath: applyForm.storagePath || undefined,
     });
 
     setLoading(false);
@@ -257,6 +263,8 @@ export function ManagerRequestsClient({
         attachmentSize: undefined,
         driveFileId: '',
         driveWebViewLink: '',
+        storageProvider: '',
+        storagePath: '',
       });
       router.refresh();
     }
@@ -417,7 +425,7 @@ export function ManagerRequestsClient({
                     </tr>
                   ) : (
                     filteredLeaveRequests.map((r) => {
-                      const hasProof = Boolean(r.attachmentUrl || r.driveWebViewLink || r.driveFileId);
+                      const hasProof = Boolean(r.attachmentUrl || r.driveWebViewLink || r.driveFileId || r.storagePath);
                       return (
                         <tr key={r.id} className="hover:bg-slate-50/70 transition">
                           <td className="px-5 py-3.5">
@@ -969,6 +977,8 @@ export function ManagerRequestsClient({
                       attachmentSize: meta.attachmentSize,
                       driveFileId: meta.driveFileId || '',
                       driveWebViewLink: meta.driveWebViewLink || '',
+                      storageProvider: meta.storageProvider || '',
+                      storagePath: meta.storagePath || ''
                     });
                   } else {
                     setApplyForm({
@@ -979,6 +989,8 @@ export function ManagerRequestsClient({
                       attachmentSize: undefined,
                       driveFileId: '',
                       driveWebViewLink: '',
+                      storageProvider: '',
+                      storagePath: '',
                     });
                   }
                 }}

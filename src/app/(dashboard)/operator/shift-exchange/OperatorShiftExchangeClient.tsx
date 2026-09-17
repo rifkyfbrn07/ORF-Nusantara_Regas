@@ -23,6 +23,8 @@ export interface ShiftExchangeItem {
   attachmentName?: string | null;
   driveFileId?: string | null;
   driveWebViewLink?: string | null;
+  storageProvider?: string | null;
+  storagePath?: string | null;
   targetAcceptedAt?: string | Date | null;
   requester: { id?: string; name: string; employeeId?: string | null };
   targetUser: { id?: string; name: string; employeeId?: string | null };
@@ -125,6 +127,8 @@ export function OperatorShiftExchangeClient({
   const [attachmentSize, setAttachmentSize] = useState<number | undefined>(undefined);
   const [driveFileId, setDriveFileId] = useState('');
   const [driveWebViewLink, setDriveWebViewLink] = useState('');
+  const [storageProvider, setStorageProvider] = useState('');
+  const [storagePath, setStoragePath] = useState('');
 const openModal = () => {
     setError(null);
     setSuccess(null);
@@ -146,6 +150,8 @@ const openModal = () => {
     setAttachmentSize(undefined);
     setDriveFileId('');
     setDriveWebViewLink('');
+    setStorageProvider('');
+    setStoragePath('');
   };
 
   const monthPrev = () => {
@@ -214,7 +220,7 @@ const handleSubmit = async (e: React.FormEvent) => {
     if (!selectedPartner) { setError('Pilih operator pengganti.'); return; }
     if (!selectedPartnerOff) { setError('Pilih hari OFF operator pengganti.'); return; }
     if (!reason.trim()) { setError('Alasan tukar hari OFF wajib diisi.'); return; }
-    const hasProof = Boolean(attachmentUrl || driveWebViewLink || driveFileId);
+    const hasProof = Boolean(attachmentUrl || driveWebViewLink || driveFileId || storagePath);
     if (!hasProof) { setError('Bukti surat wajib dilampirkan untuk mengajukan tukar hari OFF.'); return; }
 
     setLoading(true);
@@ -230,6 +236,8 @@ const handleSubmit = async (e: React.FormEvent) => {
       attachmentSize: attachmentSize || undefined,
       driveFileId: driveFileId || undefined,
       driveWebViewLink: driveWebViewLink || undefined,
+      storageProvider: storageProvider || undefined,
+      storagePath: storagePath || undefined,
     });
     setLoading(false);
     if (!res.success) {
@@ -637,6 +645,8 @@ const handleSubmit = async (e: React.FormEvent) => {
                 setAttachmentSize(meta?.attachmentSize || undefined);
                 setDriveFileId(meta?.driveFileId || '');
                 setDriveWebViewLink(meta?.driveWebViewLink || '');
+                setStorageProvider(meta?.storageProvider || '');
+                setStoragePath(meta?.storagePath || '');
               }}
             />
           </div>

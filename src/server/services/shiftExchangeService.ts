@@ -16,6 +16,8 @@ export interface SubmitShiftExchangeParams {
   attachmentSize?: number;
   driveFileId?: string;
   driveWebViewLink?: string;
+  storageProvider?: string;
+  storagePath?: string;
 }
 
 export interface ReviewShiftExchangeParams {
@@ -176,7 +178,9 @@ export async function submitShiftExchange(params: SubmitShiftExchangeParams) {
       attachmentSize: params.attachmentSize || null,
       driveFileId: params.driveFileId || null,
       driveWebViewLink: params.driveWebViewLink || params.attachmentUrl || null,
-      uploadedAt: params.attachmentUrl || params.driveFileId ? new Date() : null,
+      storageProvider: params.storageProvider || null,
+      storagePath: params.storagePath || null,
+      uploadedAt: params.attachmentUrl || params.driveFileId || params.storagePath ? new Date() : null,
       status: RequestStatus.PENDING,
     },
     include: {

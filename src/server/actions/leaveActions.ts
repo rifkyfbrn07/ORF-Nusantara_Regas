@@ -2,12 +2,12 @@
 
 import { requireAuth, requireRole } from '@/lib/auth/session';
 import { submitLeaveRequest, reviewLeaveRequest, searchEmployeesForLeave } from '../services/leaveService';
-import { rollbackDriveFileIfUnreferenced } from '../services/googleDriveService';
+import { rollbackBlobIfUnreferenced } from '../services/vercelBlobService';
 import { leaveRequestSchema, reviewLeaveSchema, LeaveRequestInput } from '@/lib/validation';
 import { revalidatePath } from 'next/cache';
 
 export async function submitLeaveAction(input: LeaveRequestInput) {
-  let driveFileIdForRollback: string | undefined;
+  let storagePathForRollback: string | undefined;
   try {
     const currentUser = await requireAuth();
     const parse = leaveRequestSchema.safeParse(input);
@@ -15,9 +15,9 @@ export async function submitLeaveAction(input: LeaveRequestInput) {
       return { success: false, error: parse.error.issues[0]?.message };
     }
 
-    // If DB write below fails, we can roll back the just-uploaded Drive file
+    // If DB write below fails, we can roll back the just-uploaded blob
     // (only when it's not referenced by an existing record).
-    driveFileIdForRollback = parse.data.driveFileId || undefined;
+    storagePathForRollback = parse.data.storagePath || undefined;
 
     let finalUserId = currentUser.id;
 
@@ -41,6 +41,8 @@ export async function submitLeaveAction(input: LeaveRequestInput) {
       attachmentSize: parse.data.attachmentSize,
       driveFileId: parse.data.driveFileId,
       driveWebViewLink: parse.data.driveWebViewLink,
+      storageProvider: parse.data.storageProvider,
+      storagePath: parse.data.storagePath,
     });
 
     revalidatePath('/operator/requests');
@@ -50,9 +52,9 @@ export async function submitLeaveAction(input: LeaveRequestInput) {
     return { success: true, request };
   } catch (error: unknown) {
     // Rollback: nooit een vals record achterlaten als metadata-write faalde
-    // na een succesvolle Drive upload.
-    if (driveFileIdForRollback) {
-      await rollbackDriveFileIfUnreferenced(driveFileIdForRollback).catch(() => {});
+    // na een succesvolle blob upload.
+    if (storagePathForRollback) {
+      await rollbackBlobIfUnreferenced(storagePathForRollback).catch(() => {});
     }
     return { success: false, error: error instanceof Error ? error.message : 'Gagal mengajukan permohonan cuti/izin.' };
   }

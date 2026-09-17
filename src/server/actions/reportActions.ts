@@ -29,6 +29,8 @@ export async function createOperationalReportAction(input: OperationalReportInpu
       attachmentSize: parse.data.attachmentSize,
       driveFileId: parse.data.driveFileId,
       driveWebViewLink: parse.data.driveWebViewLink,
+      storageProvider: parse.data.storageProvider,
+      storagePath: parse.data.storagePath,
       uploadedById: user.id,
     });
 

@@ -13,6 +13,8 @@ export interface CreateOperationalReportParams {
   attachmentSize?: number;
   driveFileId?: string;
   driveWebViewLink?: string;
+  storageProvider?: string;
+  storagePath?: string;
   uploadedById: string;
 }
 
@@ -30,6 +32,8 @@ export async function createOperationalReport(params: CreateOperationalReportPar
       attachmentSize: params.attachmentSize || null,
       driveFileId: params.driveFileId || null,
       driveWebViewLink: params.driveWebViewLink || params.attachmentUrl || null,
+      storageProvider: params.storageProvider || null,
+      storagePath: params.storagePath || null,
       uploadedById: params.uploadedById,
     },
     include: {
