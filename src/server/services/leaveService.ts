@@ -1,7 +1,9 @@
 import { prisma } from '@/lib/db/prisma';
 import { LeaveType, RequestStatus, ScheduleStatus } from '@prisma/client';
 import { recordAuditLog } from './auditService';
-import { createNotification, notifyAllManagers } from './notificationService';
+import { createNotification, notifyAllManagersAndAdmins } from './notificationService';
+import { deleteEvidenceForRejectedRecord } from './evidenceCleanupService';
+
 
 export interface SubmitLeaveParams {
   userId: string;
@@ -87,7 +89,7 @@ export async function submitLeaveRequest(params: SubmitLeaveParams) {
   });
 
   // Notify Managers
-  await notifyAllManagers(
+  await notifyAllManagersAndAdmins(
     'LEAVE_STATUS',
     `Pengajuan ${params.type}: ${user.name}`,
     `Operator ${user.name} (${user.employeeId}) mengajukan ${params.type} untuk periode ${params.startDate} s/d ${params.endDate}.${request.driveFileId ? ' Bukti surat tersedia.' : ''}`,
@@ -98,86 +100,100 @@ export async function submitLeaveRequest(params: SubmitLeaveParams) {
 }
 
 export async function reviewLeaveRequest(params: ReviewLeaveParams) {
-  const existing = await prisma.leaveRequest.findUnique({
-    where: { id: params.requestId },
-    include: { user: true },
-  });
-
-  if (!existing) throw new Error('Pengajuan cuti/izin tidak ditemukan.');
-
-  const updated = await prisma.leaveRequest.update({
-    where: { id: params.requestId },
-    data: {
-      status: params.status === 'APPROVED' ? RequestStatus.APPROVED : RequestStatus.REJECTED,
-      reviewedById: params.managerId,
-      reviewedAt: new Date(),
-      reviewerNote: params.reviewerNote || null,
-    },
-  });
-
-  // ==========================================================================
-  // SISTEM memperbarui jadwal harian resmi secara otomatis ketika cuti/izin
-  // DISETUJUI. Manager TIDAK mengedit jadwal manual — alur ini yang menyusun
-  // ulang roster (WORK → OFF) untuk periode cuti selama belum ada absensi.
-  // Rekap/summary di sisi lain sudah membaca approved leave via
-  // getOperatorWorkStatus (prioritas 1) sehingga status CUTI/IZIN/SAKIT
-  // muncul otomatis di workforce/attendance.
-  // ==========================================================================
-  if (params.status === 'APPROVED' && existing.type) {
-    const dates: string[] = [];
-    for (let d = new Date(`${existing.startDate}T00:00:00+07:00`); d <= new Date(`${existing.endDate}T00:00:00+07:00`); d.setDate(d.getDate() + 1)) {
-      dates.push(d.toLocaleDateString('en-CA', { timeZone: 'Asia/Jakarta' }));
-    }
-    const schedules = await prisma.schedule.findMany({
-      where: { userId: existing.userId, date: { in: dates }, status: ScheduleStatus.WORK },
-      select: { id: true, attendances: { select: { id: true, checkIn: true } } },
+  const result = await prisma.$transaction(async (tx) => {
+    const existing = await tx.leaveRequest.findUnique({
+      where: { id: params.requestId },
+      include: { user: true },
     });
-    const leaveLabel = existing.type === LeaveType.SICK ? 'Sakit' : existing.type === LeaveType.PERMISSION ? 'Izin' : 'Cuti';
-    for (const schedule of schedules) {
-      // Hari yang sudah dihadiri operator TIDAK diubah (absensi tetap berlaku).
-      if (schedule.attendances.some((a) => a.checkIn !== null)) continue;
-      await prisma.schedule.update({
-        where: { id: schedule.id },
-        data: {
-          status: ScheduleStatus.OFF,
-          notes: `${leaveLabel} — disetujui${params.reviewerNote ? ` (${params.reviewerNote})` : ''}`,
-        },
+
+    if (!existing) throw new Error('Pengajuan cuti/izin niet gevonden.');
+
+    // FINAL-STATE GUARD — nooit herverwerken (PENDING → APPROVED → REJECTED etc.).
+    if (existing.status !== RequestStatus.PENDING) {
+      throw new Error('Pengajuan cuti/izin heeft al een definitieve status — herverwerking niet toegestaan.');
+    }
+
+    // Conditional write: alleen een PENDING request kan verwerkt worden (concurrency-safe).
+    const updatedStatus = params.status === 'APPROVED' ? RequestStatus.APPROVED : RequestStatus.REJECTED;
+    const guarded = await tx.leaveRequest.updateMany({
+      where: { id: params.requestId, status: RequestStatus.PENDING },
+      data: {
+        status: updatedStatus,
+        reviewedById: params.managerId,
+        reviewedAt: new Date(),
+        reviewerNote: params.reviewerNote || null,
+      },
+    });
+    if (guarded.count === 0) {
+      throw new Error('Pengajuan cuti/izin is inmiddels door iemand anders verwerkt (definitieve status).');
+    }
+    const updated = await tx.leaveRequest.findUniqueOrThrow({ where: { id: params.requestId } });
+
+    // SISTEM update de officiële dagelijkse rooster automatisch wanneer cuti/izin
+    // DISETUJUI: WORK → OFF voor de leave-periode (zolang er geen check-in is).
+    if (params.status === 'APPROVED' && existing.type) {
+      const dates: string[] = [];
+      for (let d = new Date(`${existing.startDate}T00:00:00+07:00`); d <= new Date(`${existing.endDate}T00:00:00+07:00`); d.setDate(d.getDate() + 1)) {
+        dates.push(d.toLocaleDateString('en-CA', { timeZone: 'Asia/Jakarta' }));
+      }
+      const schedules = await tx.schedule.findMany({
+        where: { userId: existing.userId, date: { in: dates }, status: ScheduleStatus.WORK },
+        select: { id: true, attendances: { select: { id: true, checkIn: true } } },
       });
+      const leaveLabel = existing.type === LeaveType.SICK ? 'Sakit' : existing.type === LeaveType.PERMISSION ? 'Izin' : 'Cuti';
+      for (const schedule of schedules) {
+        // Dagen die de operator al heeft gewerkt worden NIET gewijzigd (absentie blijft geldig).
+        if (schedule.attendances.some((a) => a.checkIn !== null)) continue;
+        await tx.schedule.update({
+          where: { id: schedule.id },
+          data: {
+            status: ScheduleStatus.OFF,
+            notes: `${leaveLabel} — disetujui${params.reviewerNote ? ` (${params.reviewerNote})` : ''}`,
+          },
+        });
+      }
+    }
+
+    // Audit (binnen dezelfde transaction — nooit token/credential in metadata).
+    await recordAuditLog({
+      userId: params.managerId,
+      action: params.status === 'APPROVED' ? 'APPROVE_LEAVE' : 'REJECT_LEAVE',
+      entity: 'LeaveRequest',
+      entityId: updated.id,
+      metadata: {
+        operatorId: existing.userId,
+        operatorName: existing.user.name,
+        type: existing.type,
+        startDate: existing.startDate,
+        endDate: existing.endDate,
+        decision: params.status,
+        reviewerNote: params.reviewerNote,
+      },
+    }, tx);
+
+    // Notify Operator (binnen dezelfde transaction).
+    const decisionText = params.status === 'APPROVED' ? 'Disetujui' : 'Ditolak';
+    await createNotification({
+      userId: existing.userId,
+      type: 'LEAVE_STATUS',
+      title: `Pengajuan ${existing.type} ${decisionText}`,
+      message: `Permohonan ${existing.type} Anda voor tanggal ${existing.startDate} s/d ${existing.endDate} is ${decisionText.toLowerCase()} door Manager/Admin. ${params.reviewerNote ? `Catatan: ${params.reviewerNote}` : ''}`,
+      link: '/operator/requests',
+    }, tx);
+
+    return { request: updated, status: updatedStatus };
+  });
+
+  if (result.status === RequestStatus.REJECTED) {
+    // REJECTED → evidence opruimen (blob + metadata), request BLIJFT bewaard (historie).
+    try {
+      await deleteEvidenceForRejectedRecord('LeaveRequest', params.requestId, params.managerId);
+    } catch (error) {
+      console.error('[LeaveRequest] evidence cleanup after reject failed:', error);
     }
   }
-
-  // Record Audit Log
-  await recordAuditLog({
-    userId: params.managerId,
-    action: params.status === 'APPROVED' ? 'APPROVE_LEAVE' : 'REJECT_LEAVE',
-    entity: 'LeaveRequest',
-    entityId: updated.id,
-    metadata: {
-      operatorId: existing.userId,
-      operatorName: existing.user.name,
-      type: existing.type,
-      startDate: existing.startDate,
-      endDate: existing.endDate,
-      decision: params.status,
-      reviewerNote: params.reviewerNote,
-    },
-  });
-
-  // Notify Operator
-  const decisionText = params.status === 'APPROVED' ? 'Disetujui' : 'Ditolak';
-  await createNotification({
-    userId: existing.userId,
-    type: 'LEAVE_STATUS',
-    title: `Pengajuan ${existing.type} ${decisionText}`,
-    message: `Permohonan ${existing.type} Anda untuk tanggal ${existing.startDate} s/d ${existing.endDate} telah ${decisionText.toLowerCase()} oleh Manager. ${
-      params.reviewerNote ? `Catatan: ${params.reviewerNote}` : ''
-    }`,
-    link: '/operator/requests',
-  });
-
-  return updated;
+  return result.request;
 }
-
 export async function getOperatorLeaveRequests(userId: string) {
   return prisma.leaveRequest.findMany({
     where: { userId },

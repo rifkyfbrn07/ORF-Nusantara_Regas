@@ -8,6 +8,7 @@ import {
   buildStorageConfigMessage,
   type BlobEvidenceMetadata,
 } from '../services/vercelBlobService';
+import { recordAuditLog } from '../services/auditService';
 import type { EvidenceCategory } from '../services/evidenceValidation';
 
 const ALLOWED_CATEGORIES = new Set<string>(['SURAT_CUTI', 'LAPORAN', 'SHIFT_EXCHANGE', 'PROGRAM_KERJA']);
@@ -65,6 +66,21 @@ export async function uploadEvidenceFileAction(formData: FormData): Promise<{
       uploaderUsername: user.username,
       descriptiveName: (formData.get('descriptiveName') as string) || undefined,
       subCategory: (formData.get('subCategory') as string) || user.name || 'Staff',
+    });
+
+    // Audit: evidence uploaded (nooit tokens/credentials in metadata).
+    await recordAuditLog({
+      userId: user.id,
+      action: 'EVIDENCE_UPLOADED',
+      entity: 'EvidenceFile',
+      entityId: result.storagePath,
+      metadata: {
+        category: folderCategory,
+        fileName: result.fileName,
+        mimeType: result.mimeType,
+        fileSize: result.fileSize,
+        storageProvider: result.storageProvider,
+      },
     });
 
     return { success: true, file: result };

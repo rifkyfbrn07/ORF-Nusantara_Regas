@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth/session';
 import { prisma } from '@/lib/db/prisma';
 import { getEvidenceStream } from '@/server/services/vercelBlobService';
+import { recordAuditLog } from '@/server/services/auditService';
 
 type FileRecord = {
   fileName: string | null;
@@ -35,8 +36,12 @@ async function findAuthorizedFile(fileId: string, userId: string, role: string):
   });
   if (exchange) return toFileRecord(exchange.attachmentName, exchange.attachmentMime, exchange);
 
+  // Program Kerja: OPERATOR heeft READ-ONLY toegang tot ALLE program kerja
+  // (business rule — zie /operator/program-kerja). Authorization is dus gebaseerd
+  // op die leestoegang, NIET op PIC-ownership. Anders zou een operator met
+  // geldige toegang tot het programma een valse 404 FILE_NOT_FOUND krijgen.
   const program = await prisma.programKerja.findFirst({
-    where: { OR: fileOrPath, ...(role === 'OPERATOR' ? { picId: userId } : {}) },
+    where: { OR: fileOrPath },
     select: { evidenceName: true, evidenceMime: true, storageProvider: true, storagePath: true, driveFileId: true },
   });
   if (program) return toFileRecord(program.evidenceName, program.evidenceMime, program);
@@ -92,6 +97,15 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   if (!record) return NextResponse.json({ error: 'FILE_NOT_FOUND' }, { status: 404 });
 
   const download = request.nextUrl.searchParams.get('download') === '1';
+
+  // Audit: evidence viewed/downloaded (nooit tokens/credentials in metadata).
+  void recordAuditLog({
+    userId: session.id,
+    action: download ? 'EVIDENCE_DOWNLOADED' : 'EVIDENCE_VIEWED',
+    entity: 'EvidenceFile',
+    entityId: id,
+    metadata: { fileName: record.fileName, mimeType: record.mimeType, inline: !download },
+  });
 
   try {
     // Storage baru: Vercel Blob (private). Token tidak pernah ke browser.

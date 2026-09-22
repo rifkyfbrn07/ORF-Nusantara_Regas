@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useTransition } from 'react';
+import React, { useState, useTransition, useEffect } from 'react';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import {
@@ -47,12 +47,79 @@ export default function SettingsClient({ stats: initialStats }: SettingsClientPr
   const [isPinging, startTransition] = useTransition();
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
+  // --- Storage Cleanup (evidence Vercel Blob) ---
+  const [storageScan, setStorageScan] = useState<{
+    totalActive: number;
+    totalOrphan: number;
+    rejectedLeftover: number;
+    failedCleanup: number;
+    orphanFiles: string[];
+  } | null>(null);
+  const [isScanning, setScanning] = useState(false);
+  const [isCleaning, setCleaning] = useState(false);
+  const [cleanupResult, setCleanupResult] = useState<string | null>(null);
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+
+  const handleScanStorage = async () => {
+    setScanning(true);
+    setCleanupResult(null);
+    try {
+      const res = await fetch('/api/admin/storage/cleanup', { cache: 'no-store' });
+      const data = await res.json();
+      if (!res.ok || !data.ok) throw new Error(data.error || 'Scan gagal');
+      setStorageScan(data.scan);
+      toast.success('Scan storage voltooid');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Scan storage gagal');
+    } finally {
+      setScanning(false);
+    }
+  };
+
+  const handleRunCleanup = async () => {
+    setCleaning(true);
+    setConfirmDeleteOpen(false);
+    setCleanupResult(null);
+    try {
+      const res = await fetch('/api/admin/storage/cleanup?confirm=1', { method: 'DELETE', cache: 'no-store' });
+      const data = await res.json();
+      if (!res.ok || !data.ok) throw new Error(data.error || 'Cleanup gagal');
+      setCleanupResult(data.result?.summary || 'Cleanup voltooid');
+      setStorageScan(null);
+      toast.success('Cleanup orphan files voltooid');
+      void handleScanStorage();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Cleanup gagal');
+    } finally {
+      setCleaning(false);
+    }
+  };
+
   const handleCopy = (text: string, key: string) => {
     navigator.clipboard.writeText(text);
     setCopiedKey(key);
     toast.success('Disalin ke papan klip');
     setTimeout(() => setCopiedKey(null), 2000);
   };
+
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const res = await fetch('/api/admin/storage/cleanup', { cache: 'no-store' });
+        const data = await res.json();
+        if (!cancelled && res.ok && data.ok) {
+          setStorageScan(data.scan);
+        }
+      } catch {
+        /* silent — button "Scan Storage" blijft beschikbaar */
+      }
+    };
+    void load();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const handleRefreshPing = () => {
     startTransition(async () => {
@@ -300,6 +367,82 @@ export default function SettingsClient({ stats: initialStats }: SettingsClientPr
             </div>
           </div>
         </div>
+      </div>
+
+      {/* 3. STORAGE CLEANUP — evidence Vercel Blob */}
+      <div className="p-5 rounded-2xl bg-white border border-slate-200/80 shadow-xs space-y-4">
+        <div className="border-b border-slate-100 pb-3">
+          <h2 className="text-sm font-black text-[#0F315A] flex items-center gap-2">
+            <FileText className="h-4 w-4 text-[#0066B3]" />
+            Storage Cleanup (Evidence Vercel Blob)
+          </h2>
+          <p className="text-xs text-slate-500 mt-0.5">
+            Scan orphan evidence en verwijder alleen files die geen database-referentie (meer) hebben.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div className="p-3 rounded-xl bg-slate-50/70 border border-slate-200/70 flex items-center justify-between">
+            <span className="text-[11px] font-bold text-slate-700">Active Evidence</span>
+            <span className="text-base font-black text-[#0066B3] font-mono">{storageScan ? storageScan.totalActive : '—'}</span>
+          </div>
+          <div className="p-3 rounded-xl bg-amber-50/60 border border-amber-200/70 flex items-center justify-between">
+            <span className="text-[11px] font-bold text-amber-800">Orphan Evidence</span>
+            <span className="text-base font-black text-amber-800 font-mono">{storageScan ? storageScan.totalOrphan : '—'}</span>
+          </div>
+          <div className="p-3 rounded-xl bg-[#F8FAFC] border border-slate-200/70 flex items-center justify-between">
+            <span className="text-[11px] font-bold text-slate-700">Rejected Leftover</span>
+            <span className="text-base font-black text-slate-800 font-mono">{storageScan ? storageScan.rejectedLeftover : '—'}</span>
+          </div>
+          <div className="p-3 rounded-xl bg-rose-50/50 border border-rose-200/60 flex items-center justify-between">
+            <span className="text-[11px] font-bold text-rose-700">Failed Cleanup</span>
+            <span className="text-base font-black text-rose-700 font-mono">{storageScan ? storageScan.failedCleanup : '—'}</span>
+          </div>
+        </div>
+
+        {cleanupResult && (
+          <p className="px-3 py-2 rounded-lg bg-emerald-50 border border-emerald-200 text-xs text-emerald-800 font-mono break-words">
+            {cleanupResult}
+          </p>
+        )}
+
+        <div className="flex flex-wrap items-center gap-2.5">
+          <button
+            type="button"
+            onClick={handleScanStorage}
+            disabled={isScanning || isCleaning}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-[#0066B3] bg-white border border-[#CBD7E6] rounded-xl hover:bg-[#EAF4FC] transition cursor-pointer disabled:opacity-50"
+          >
+            <RefreshCw className={`h-4 w-4 ${isScanning ? 'animate-spin' : ''}`} />
+            Scan Storage
+          </button>
+          <button
+            type="button"
+            onClick={() => setConfirmDeleteOpen(true)}
+            disabled={isScanning || isCleaning || !storageScan || storageScan.totalOrphan === 0}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 rounded-xl transition cursor-pointer disabled:opacity-40"
+          >
+            <AlertTriangle className="h-4 w-4" />
+            Cleanup Orphan Files
+          </button>
+        </div>
+
+        {confirmDeleteOpen && (
+          <div className="p-4 rounded-xl bg-rose-50/50 border border-rose-200 space-y-2">
+            <p className="text-xs font-bold text-rose-700">Confirmation diperlukan</p>
+            <p className="text-[11px] text-rose-700/90 leading-relaxed">
+              Er worden alleen files verwijderd die geen database-referentie hebben. Deze actie kan niet ongedaan worden gemaakt.
+            </p>
+            <div className="flex items-center gap-2">
+              <button type="button" onClick={handleRunCleanup} disabled={isCleaning} className="px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold cursor-pointer disabled:opacity-50">
+                {isCleaning ? 'Bezig...' : 'Ja, cleanup uitvoeren'}
+              </button>
+              <button type="button" onClick={() => setConfirmDeleteOpen(false)} disabled={isCleaning} className="px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-bold text-slate-600 cursor-pointer disabled:opacity-50">
+                Annuleren
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* 3. QUICK NAVIGATION & SHORTCUTS */}

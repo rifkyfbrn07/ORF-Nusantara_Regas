@@ -42,15 +42,10 @@ function ProgressBar({ value, target }: { value: number; target: number }) {
   );
 }
 
-function EvidenceLink({ p, currentUserId }: { p: ProgramKerjaDTO; currentUserId: string }) {
-  // Authorization konsisten dengan /api/files/[id]: OPERATOR hanya dapat
-  // melihat evidence program yang berupa PIC-nya (server tetap validera).
+function EvidenceLink({ p }: { p: ProgramKerjaDTO }) {
+  // Authorization: OPERATOR heeft READ-ONLY toegang tot ALLE program kerja →
+  // evidence mag bekeken worden (server valideert /api/files/[id] nogmaals).
   if (!p.driveFileId && !p.driveWebViewLink && !p.evidenceUrl) return null;
-  if (p.pic?.id !== currentUserId) {
-    return (
-      <span className="px-1.5 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-[9px] font-black whitespace-nowrap">✓ Bukti tersedia</span>
-    );
-  }
   return (
     <span className="inline-flex items-center gap-1">
       <span className="px-1.5 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-[9px] font-black whitespace-nowrap">✓ Bukti tersedia</span>
@@ -59,7 +54,7 @@ function EvidenceLink({ p, currentUserId }: { p: ProgramKerjaDTO; currentUserId:
   );
 }
 
-function ProgramCard({ p, currentUserId }: { p: ProgramKerjaDTO; currentUserId: string }) {
+function ProgramCard({ p }: { p: ProgramKerjaDTO }) {
   const [expanded, setExpanded] = useState(false);
   return (
     <article className="space-y-3 rounded-xl border border-[#DCE5EF] bg-white p-4 shadow-xs">
@@ -134,7 +129,7 @@ function ProgramCard({ p, currentUserId }: { p: ProgramKerjaDTO; currentUserId: 
             </div>
           )}
           <div className="flex items-center gap-2">
-            <EvidenceLink p={p} currentUserId={currentUserId} />
+            <EvidenceLink p={p} />
             <span className="text-[10px] font-semibold text-slate-400">
               Diperbarui {new Date(p.updatedAt).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}
             </span>
@@ -145,7 +140,7 @@ function ProgramCard({ p, currentUserId }: { p: ProgramKerjaDTO; currentUserId: 
   );
 }
 
-export function ProgramKerjaOperatorClient({ programs, currentUserId }: { programs: ProgramKerjaDTO[]; currentUserId: string }) {
+export function ProgramKerjaOperatorClient({ programs }: { programs: ProgramKerjaDTO[] }) {
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState('all');
 
@@ -210,7 +205,7 @@ export function ProgramKerjaOperatorClient({ programs, currentUserId }: { progra
             {group.label}
           </div>
           <div className="grid gap-3 md:grid-cols-2">
-            {group.items.map((p) => <ProgramCard key={p.id} p={p} currentUserId={currentUserId} />)}
+            {group.items.map((p) => <ProgramCard key={p.id} p={p} />)}
           </div>
         </section>
       ))}

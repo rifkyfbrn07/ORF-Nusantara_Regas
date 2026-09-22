@@ -250,6 +250,9 @@ model LeaveRequest {
   storageProvider  String?
   storagePath      String?
   uploadedAt       DateTime?
+  /** Cleanup evidence na REJECTED: null | CLEANED | FAILED | PENDING_RETRY */
+  evidenceCleanupStatus String?
+  evidenceCleanupAt   DateTime?
   status           RequestStatus @default(PENDING)
   reviewedById     String?
   reviewedBy       User?         @relation("ManagerReviewedLeaves", fields: [reviewedById], references: [id])
@@ -285,6 +288,13 @@ model ShiftExchange {
   storagePath         String?
   uploadedAt          DateTime?
   targetAcceptedAt    DateTime?
+  /** Operator B confirmation: PENDING | ACCEPTED | REJECTED — gescheiden van manager approval. */
+  confirmationStatus  String          @default("PENDING")
+  /** Manager/Admin final approval: PENDING | APPROVED | REJECTED. */
+  approvalStatus      String          @default("PENDING")
+  /** Cleanup evidence na REJECTED: null | CLEANED | FAILED | PENDING_RETRY */
+  evidenceCleanupStatus String?
+  evidenceCleanupAt   DateTime?
   status              RequestStatus @default(PENDING)
   reviewedById        String?
   reviewedBy          User?         @relation("ManagerReviewedExchanges", fields: [reviewedById], references: [id])

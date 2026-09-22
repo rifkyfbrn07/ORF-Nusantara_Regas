@@ -1,5 +1,20 @@
 import { prisma } from '@/lib/db/prisma';
-import { NotificationType } from '@prisma/client';
+import { NotificationType, Prisma, PrismaClient, Role } from '@prisma/client';
+
+/**
+ * Client DB yang digunakan om notificatie te schrijven. Kan de globale
+ * PrismaClient zijn OF een transaction-client (Prisma.TransactionClient)
+ * zodat notificaties onderdeel zijn van dezelfde atomic database transaction
+ * (bijv. bij tukar hari OFF approval / cuti review).
+ */
+export type DbClient = PrismaClient | Prisma.TransactionClient;
+
+export const PENDING_CONFIRMATION = 'PENDING';
+export const ACCEPTED_CONFIRMATION = 'ACCEPTED';
+export const REJECTED_CONFIRMATION = 'REJECTED';
+export const PENDING_APPROVAL = 'PENDING';
+export const APPROVED_APPROVAL = 'APPROVED';
+export const REJECTED_APPROVAL = 'REJECTED';
 
 export interface CreateNotificationParams {
   userId: string;
@@ -9,8 +24,8 @@ export interface CreateNotificationParams {
   link?: string;
 }
 
-export async function createNotification(params: CreateNotificationParams) {
-  return prisma.notification.create({
+export async function createNotification(params: CreateNotificationParams, client: DbClient = prisma) {
+  return client.notification.create({
     data: {
       userId: params.userId,
       type: params.type,
@@ -22,24 +37,35 @@ export async function createNotification(params: CreateNotificationParams) {
   });
 }
 
-export async function notifyAllManagers(type: NotificationType, title: string, message: string, link?: string) {
-  const managers = await prisma.user.findMany({
-    where: { role: 'MANAGER', isActive: true },
+/** Notify alle actieve users met een van de opgegeven rollen (ADMIN/MANAGER/OPERATOR). */
+export async function notifyAllRole(
+  roles: Role[],
+  type: NotificationType,
+  title: string,
+  message: string,
+  link?: string,
+  client: DbClient = prisma
+) {
+  if (roles.length === 0) return;
+  // Elke user heeft precies één rol → geen duplicate notifications mogelijk,
+  // ook niet als ADMIN én MANAGER samen in `roles` zitten.
+  const users = await client.user.findMany({
+    where: { role: { in: roles }, isActive: true },
     select: { id: true },
   });
-
-  if (managers.length === 0) return;
-
-  return prisma.notification.createMany({
-    data: managers.map((m) => ({
-      userId: m.id,
-      type,
-      title,
-      message,
-      link,
-      isRead: false,
-    })),
+  if (users.length === 0) return;
+  return client.notification.createMany({
+    data: users.map((u) => ({ userId: u.id, type, title, message, link, isRead: false })),
   });
+}
+
+export async function notifyAllManagers(type: NotificationType, title: string, message: string, link?: string, client: DbClient = prisma) {
+  return notifyAllRole(['MANAGER'], type, title, message, link, client);
+}
+
+/** Notify alle managers én admins (bijv. nieuwe cuti/izin pengajuan). */
+export async function notifyAllManagersAndAdmins(type: NotificationType, title: string, message: string, link?: string, client: DbClient = prisma) {
+  return notifyAllRole(['MANAGER', 'ADMIN'], type, title, message, link, client);
 }
 
 export async function getUserNotifications(userId: string, limit = 20) {

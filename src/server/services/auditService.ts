@@ -1,4 +1,7 @@
 import { prisma } from '@/lib/db/prisma';
+import { Prisma, PrismaClient } from '@prisma/client';
+
+export type AuditDbClient = PrismaClient | Prisma.TransactionClient;
 
 export interface CreateAuditLogParams {
   userId?: string | null;
@@ -9,9 +12,9 @@ export interface CreateAuditLogParams {
   ipAddress?: string;
 }
 
-export async function recordAuditLog(params: CreateAuditLogParams) {
+export async function recordAuditLog(params: CreateAuditLogParams, client: AuditDbClient = prisma) {
   try {
-    return await prisma.auditLog.create({
+    return await client.auditLog.create({
       data: {
         userId: params.userId,
         action: params.action,

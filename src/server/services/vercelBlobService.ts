@@ -26,15 +26,18 @@ export function isStorageConfigured(): boolean {
 
 /**
  * Retourneert NAMEN van ontbrekende env vars (nooit waarden/token).
+ * Alleen BLOB_READ_WRITE_TOKEN is echt vereist: Vercel injecteert deze automatisch
+ * wanneer er een Blob Store aan het project is gekoppeld (Production/Preview/
+ * Development). VERCEL_OIDC_TOKEN en BLOB_STORE_ID zijn optionele fallback /
+ * worden door de Vercel runtime zelf verstrekt — die hoeven NIET handmatig
+ * geconfigureerd te worden.
  */
 export function getMissingBlobConfigVars(): string[] {
   if (isStorageConfigured()) return [];
   const missing: string[] = [];
   if (!readEnv('BLOB_READ_WRITE_TOKEN')) {
-    missing.push('BLOB_READ_WRITE_TOKEN (Vercel → Project → Storage → Blob Store)');
+    missing.push('BLOB_READ_WRITE_TOKEN (Vercel → Project → Storage → Blob Store, koppel de store ook aan Development voor lokale env)');
   }
-  if (!readEnv('VERCEL_OIDC_TOKEN')) missing.push('VERCEL_OIDC_TOKEN');
-  if (!readEnv('BLOB_STORE_ID')) missing.push('BLOB_STORE_ID');
   return missing;
 }
 

@@ -5,7 +5,7 @@ import { ProgramKerjaOperatorClient } from './ProgramKerjaOperatorClient';
 import { PageHeader } from '@/components/ui/PageHeader';
 
 export default async function OperatorProgramKerjaPage() {
-  const session = await requireAuth();
+  await requireAuth();
   const programs = await listProgramKerja({});
 
   return (
@@ -15,7 +15,7 @@ export default async function OperatorProgramKerjaPage() {
         title="Program Kerja"
         description="Seluruh program kerja Distribusi Gas & ORF — kategori, target, progress, deadline, status, checklist, catatan, dan evidence. Operator dapat melihat (read-only)."
       />
-      <ProgramKerjaOperatorClient programs={programs} currentUserId={session.id} />
+      <ProgramKerjaOperatorClient programs={programs} />
     </div>
   );
 }
