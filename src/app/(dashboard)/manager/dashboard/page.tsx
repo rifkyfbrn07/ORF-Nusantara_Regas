@@ -1,5 +1,6 @@
 import React from 'react';
 import { requireRole } from '@/lib/auth/session';
+import { prisma } from '@/lib/db/prisma';
 import { getManpowerStatusSummary } from '@/server/services/workStatusService';
 import { getCurrentShiftCoverage } from '@/server/services/coverageService';
 import { formatJakartaDate } from '@/lib/time';
@@ -17,12 +18,42 @@ export default async function ManagerDashboardPage() {
   const manager = await requireRole(['MANAGER', 'ADMIN']);
   const todayStr = formatJakartaDate();
 
-  const [manpowerSummary, currentShiftCoverage] = await Promise.all([
+  const [manpowerSummary, currentShiftCoverage, userRoleCounts, todaySchedules] = await Promise.all([
     getManpowerStatusSummary(todayStr),
     getCurrentShiftCoverage(todayStr),
+    prisma.user.groupBy({
+      by: ['role'],
+      where: { isActive: true },
+      _count: { _all: true },
+    }),
+    prisma.schedule.findMany({
+      where: { date: todayStr },
+      select: { status: true, shift: { select: { code: true, name: true } } },
+    }),
   ]);
 
   const { counts, operatorStatuses } = manpowerSummary;
+
+  const roleMap = new Map(userRoleCounts.map((r) => [r.role, r._count._all]));
+  const operatorCount = roleMap.get('OPERATOR') ?? 0;
+  const managerCount = roleMap.get('MANAGER') ?? 0;
+  const adminCount = roleMap.get('ADMIN') ?? 0;
+  const totalActiveUsers = operatorCount + managerCount + adminCount;
+
+  // Pembagian shift hari ini (data nyata dari table schedule).
+  let pagiCount = 0;
+  let malamCount = 0;
+  let offCount = 0;
+  for (const s of todaySchedules) {
+    const code = (s.shift?.code || '').toLowerCase();
+    const name = (s.shift?.name || '').toLowerCase();
+    if (code.includes('pagi') || name.includes('pagi')) pagiCount += 1;
+    else if (code.includes('malam') || name.includes('malam')) malamCount += 1;
+    else offCount += 1;
+  }
+
+  // Operator yang status operasionalnya bukan OFF/ABSENT hari ini.
+  const activeToday = operatorCount - counts.off - counts.absent;
 
   const serializableOperatorStatuses = operatorStatuses.map((os) => ({
     ...os,
@@ -43,12 +74,6 @@ export default async function ManagerDashboardPage() {
     timeZone: 'Asia/Jakarta',
   });
 
-  const totalOps = counts.totalOperators || 48;
-  const hadirCount = counts.hadir || 42;
-  const pagiCount = Math.round(hadirCount * 0.55);
-  const malamCount = Math.round(hadirCount * 0.45);
-  const offCount = counts.off || 4;
-
   return (
     <div className="space-y-6 max-w-[1440px] mx-auto w-full dashboard-enter">
       {/* 1. Hero Command Center Greeting */}
@@ -61,16 +86,16 @@ export default async function ManagerDashboardPage() {
       {/* 2. Primary Command Center Row 1 (Workforce Overview, Operational Pulse, Facility Status) */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
         <WorkforceOverviewCard
-          totalUsers={totalOps}
-          operatorCount={counts.kerja || 42}
-          managerCount={counts.cuti || 2}
-          adminCount={counts.izin || 1}
-          activeUsers={hadirCount}
-          inactiveUsers={offCount}
+          totalUsers={totalActiveUsers}
+          operatorCount={operatorCount}
+          managerCount={managerCount}
+          adminCount={adminCount}
+          activeUsers={activeToday}
+          inactiveUsers={counts.off + counts.absent}
         />
 
         <OperationalPulseCard
-          totalToday={totalOps}
+          totalToday={counts.totalOperators}
           pagiCount={pagiCount}
           malamCount={malamCount}
           offCount={offCount}
@@ -90,7 +115,7 @@ export default async function ManagerDashboardPage() {
         <div className="lg:col-span-8 min-w-0">
           <TodayScheduleCard
             dateLabel={dateLabel}
-            totalJadwal={totalOps}
+            totalJadwal={counts.totalOperators}
             shiftPagi={pagiCount}
             shiftMalam={malamCount}
             offCount={offCount}

@@ -19,7 +19,7 @@ function revalidateSchedules() {
   revalidatePath('/manager/jadwal-operator');
   revalidatePath('/manager/dashboard');
   revalidatePath('/manager/workforce');
-  revalidatePath('/operator/schedule');
+  revalidatePath('/operator/dashboard');
   revalidatePath('/operator/jadwal-saya');
   revalidatePath('/admin/dashboard');
 }

@@ -31,9 +31,9 @@ export function TodayScheduleCard({
   viewAllHref = '/manager/schedules',
 }: TodayScheduleCardProps) {
   const defaultRows: ScheduleDetailRow[] = [
-    { waktu: '06:00 - 14:00', shift: 'Pagi', jumlahOperator: shiftPagi || 5, status: 'Normal' },
-    { waktu: '14:00 - 22:00', shift: 'Malam', jumlahOperator: Math.ceil(shiftMalam / 2) || 4, status: 'Normal' },
-    { waktu: '22:00 - 06:00', shift: 'Malam', jumlahOperator: Math.floor(shiftMalam / 2) || 4, status: 'Normal' },
+    { waktu: '07:00 - 19:00', shift: 'Pagi', jumlahOperator: shiftPagi, status: 'Normal' },
+    { waktu: '19:00 - 07:00', shift: 'Malam', jumlahOperator: shiftMalam, status: 'Normal' },
+    { waktu: '00:00 - 24:00', shift: 'OFF', jumlahOperator: offCount, status: 'Libur' },
   ];
 
   const rows = scheduleRows.length > 0 ? scheduleRows : defaultRows;

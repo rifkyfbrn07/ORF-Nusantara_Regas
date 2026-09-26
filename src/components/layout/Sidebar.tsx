@@ -158,9 +158,7 @@ export function Sidebar({
     {
       title: 'OPERATIONS',
       items: [
-        { label: 'Jadwal Saya', href: '/operator/schedule', icon: CalendarDays, hasSub: true },
-        { label: 'Roster Bulanan', href: '/operator/jadwal-saya', icon: CalendarClock, hasSub: true },
-        { label: 'Roster Operator', href: '/operator/roster', icon: Users, hasSub: true },
+        { label: 'Jadwal Saya', href: '/operator/jadwal-saya', icon: CalendarDays, hasSub: true },
         { label: 'Absensi Saya', href: '/operator/attendance', icon: Clock },
         { label: 'Pergantian Shift', href: '/operator/shift-exchange', icon: ArrowLeftRight },
       ],

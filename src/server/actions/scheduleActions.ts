@@ -20,8 +20,9 @@ export async function createScheduleAction(input: ScheduleInput) {
 
     revalidatePath('/manager/schedules');
     revalidatePath('/manager/dashboard');
-    revalidatePath('/operator/schedule');
+    revalidatePath('/operator/jadwal-saya');
     revalidatePath('/operator/dashboard');
+    revalidatePath('/admin/dashboard');
 
     return { success: true, schedule };
   } catch (error: unknown) {
@@ -40,8 +41,9 @@ export async function updateScheduleAction(id: string, input: Partial<ScheduleIn
 
     revalidatePath('/manager/schedules');
     revalidatePath('/manager/dashboard');
-    revalidatePath('/operator/schedule');
+    revalidatePath('/operator/jadwal-saya');
     revalidatePath('/operator/dashboard');
+    revalidatePath('/admin/dashboard');
 
     return { success: true, schedule };
   } catch (error: unknown) {

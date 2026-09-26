@@ -524,9 +524,8 @@ export function WorkforceControlCenterClient({
                 className="text-xs bg-[#F8FAFC] border border-slate-200 rounded-xl px-3 py-2 font-semibold text-[#0F172A] focus:outline-none focus:ring-2 focus:ring-[#0066B3]/20"
               >
                 <option value="ALL">Semua Shift</option>
-                <option value="Pagi">Shift Pagi (06:00 - 14:00)</option>
-                <option value="Siang">Shift Siang (14:00 - 22:00)</option>
-                <option value="Malam">Shift Malam (22:00 - 06:00)</option>
+                <option value="Pagi">Shift Pagi (07:00 - 19:00)</option>
+                <option value="Malam">Shift Malam (19:00 - 07:00)</option>
                 <option value="OFF">Non-Shift / OFF</option>
               </select>
 

@@ -123,7 +123,10 @@ export async function reviewShiftExchangeAction(input: { exchangeId: string; sta
     revalidatePath('/manager/requests');
     revalidatePath('/manager/schedules');
     revalidatePath('/operator/shift-exchange');
-    revalidatePath('/operator/schedule');
+    revalidatePath('/operator/jadwal-saya');
+    revalidatePath('/manager/jadwal-operator');
+    revalidatePath('/manager/dashboard');
+    revalidatePath('/admin/dashboard');
 
     return { success: true, exchange: updated };
   } catch (error: unknown) {

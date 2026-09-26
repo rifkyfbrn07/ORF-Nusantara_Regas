@@ -76,7 +76,7 @@ export async function createOrUpdateSchedule(params: CreateScheduleParams) {
     type: 'SHIFT_REMINDER',
     title: 'Pembaruan Jadwal Kerja',
     message: `Jadwal kerja Anda pada tanggal ${params.date} telah diperbarui: ${schedule.shift.name} (${schedule.shift.startTime} - ${schedule.shift.endTime}).`,
-    link: '/operator/schedule',
+    link: '/operator/jadwal-saya',
   });
 
   return schedule;

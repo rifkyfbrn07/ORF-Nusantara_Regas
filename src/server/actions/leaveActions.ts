@@ -89,6 +89,9 @@ export async function reviewLeaveAction(input: { requestId: string; status: 'APP
     revalidatePath('/manager/dashboard');
     revalidatePath('/operator/requests');
     revalidatePath('/operator/dashboard');
+    revalidatePath('/operator/jadwal-saya');
+    revalidatePath('/manager/jadwal-operator');
+    revalidatePath('/admin/dashboard');
 
     return { success: true, request: updated };
   } catch (error: unknown) {

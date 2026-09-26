@@ -1,5 +1,6 @@
 import React from 'react';
 import { requireAuth } from '@/lib/auth/session';
+import { getFinalScheduleStates } from '@/server/services/workStatisticsService';
 import { getRosterMonth } from '@/server/services/rosterService';
 import { JadwalSayaClient } from './JadwalSayaClient';
 
@@ -28,6 +29,9 @@ export default async function OperatorJadwalSayaPage({ searchParams }: PageProps
     1, 12, now.getMonth() + 1
   );
 
+  // Data jadwal FINAL (menggabungkan schedule + cuti/izin/sakit APPROVED).
+  const days = await getFinalScheduleStates(user.id, year, month);
+
   const data = await getRosterMonth({
     year,
     month,
@@ -36,5 +40,5 @@ export default async function OperatorJadwalSayaPage({ searchParams }: PageProps
     includeTodayStatus: true,
   });
 
-  return <JadwalSayaClient data={data} operatorName={user.name} operatorPosition={user.position} />;
+  return <JadwalSayaClient data={data} days={days} operatorName={user.name} operatorPosition={user.position} />;
 }

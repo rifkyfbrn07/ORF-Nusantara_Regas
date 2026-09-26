@@ -2,12 +2,13 @@ import React from 'react';
 import Link from 'next/link';
 import { Calendar, Bell, ChevronRight, Megaphone, MapPin, Clock3 } from 'lucide-react';
 import { requireAuth } from '@/lib/auth/session';
-import { getOperatorSchedules } from '@/server/services/scheduleService';
 import { getUserNotifications } from '@/server/services/notificationService';
 import { getActiveAnnouncements } from '@/server/services/announcementService';
+import { getOperatorYearlyWorkStatistics, getFinalScheduleStates } from '@/server/services/workStatisticsService';
+import { getProgramKerjaAnnualChart } from '@/server/services/programKerjaService';
 import { formatIndonesianDate, formatJakartaDate, getJakartaNow } from '@/lib/time';
 import { UserAvatar } from '@/components/ui/UserAvatar';
-import { StatusBadge } from '@/components/ui/StatusBadge';
+import { OperatorDashboardCharts } from './OperatorDashboardCharts';
 
 function getGreeting() {
   const hour = getJakartaNow().getHours();
@@ -17,29 +18,29 @@ function getGreeting() {
   return 'Selamat malam';
 }
 
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+
 export default async function OperatorDashboardPage() {
   const user = await requireAuth();
   const today = formatJakartaDate();
-  const schedules = await getOperatorSchedules(user.id, today, 31);
-  const [{ notifications }, announcements] = await Promise.all([
+  const year = Number(today.slice(0, 4));
+  const month = Number(today.slice(5, 7));
+
+  const [yearlyStats, monthDays, programChart, { notifications }, announcements] = await Promise.all([
+    getOperatorYearlyWorkStatistics(user.id, year),
+    getFinalScheduleStates(user.id, year, month),
+    getProgramKerjaAnnualChart(year),
     getUserNotifications(user.id, 3),
     getActiveAnnouncements(user.id),
   ]);
-  const todaySchedule = schedules.find((schedule) => schedule.date === today);
-  const workSchedules = schedules.filter((schedule) => schedule.status === 'WORK');
-  const pagi = workSchedules.filter(
-    (schedule) =>
-      schedule.shift.code.toLowerCase().includes('pagi') || schedule.shift.name.toLowerCase().includes('pagi')
-  ).length;
-  const malam = workSchedules.filter(
-    (schedule) =>
-      schedule.shift.code.toLowerCase().includes('malam') || schedule.shift.name.toLowerCase().includes('malam')
-  ).length;
-  const off = schedules.filter((schedule) => schedule.status === 'OFF').length;
+
+  const monthStats = yearlyStats.perMonth[month - 1] ?? { work: 0, pagi: 0, malam: 0, off: 0, cuti: 0, izin: 0, sakit: 0, noData: 0, month };
+  const todaySchedule = monthDays.find((day) => day.date === today) ?? null;
+  const nextDays = monthDays.filter((day) => day.date >= today).slice(0, 10);
 
   return (
     <div className="mx-auto w-full max-w-5xl space-y-6 dashboard-enter">
-      {/* 1. HERO GREETING (Pertamina OCC Identity) */}
+      {/* 1. HERO GREETING */}
       <section className="relative overflow-hidden rounded-2xl border border-[rgba(15,62,105,0.12)] dark:border-[#1E456A] bg-gradient-to-br from-white via-[#F8FBFE] to-[#EDF5FD] dark:from-[#102B45] dark:via-[#0E263E] dark:to-[#0A1D31] p-5 shadow-[0_4px_20px_rgba(0,102,179,0.06)] sm:p-6">
         <div className="absolute -top-24 -right-16 w-80 h-80 rounded-full border border-[#0088D8]/10 dark:border-[#0088D8]/15 pointer-events-none" />
         <div className="absolute -top-12 -right-4 w-56 h-56 rounded-full border border-[#69BE28]/10 dark:border-[#69BE28]/15 pointer-events-none" />
@@ -78,7 +79,7 @@ export default async function OperatorDashboardPage() {
         </div>
       </section>
 
-      {/* 2. SCHEDULE ATTENDANCE SUMMARY */}
+      {/* 2. RINGKASAN BULAN INI (jadwal final) */}
       <section className="rounded-2xl border border-[rgba(15,62,105,0.10)] dark:border-[#1E456A] bg-white dark:bg-[#102B45] p-5 shadow-[0_2px_12px_rgba(15,49,90,0.03)] card-subtle-hover">
         <div className="flex items-start gap-3">
           <div className="rounded-xl bg-[#0088D8]/10 text-[#0088D8] dark:text-[#38BDF8] p-2.5">
@@ -86,31 +87,27 @@ export default async function OperatorDashboardPage() {
           </div>
           <div className="flex-1">
             <p className="text-[10px] font-black uppercase tracking-wider text-[#0066B3] dark:text-[#38BDF8]">
-              SCHEDULE ATTENDANCE SUMMARY
+              RINGKASAN JADWAL — BULAN INI
             </p>
             <h2 className="mt-1 text-lg font-black text-[#092B57] dark:text-[#F8FAFC]">
-              Ringkasan Kehadiran Berdasarkan Jadwal
+              Ringkasan Berdasarkan Jadwal Final
             </h2>
             <p className="mt-1 text-xs leading-relaxed text-text-muted">
-              Check-in/check-out belum menjadi sumber actual attendance penuh. Angka di bawah membaca jadwal kerja Anda.
+              Dihitung dari jadwal resmi (Cuti/Izin yang disetujui sudah diperhitungkan), bukan asumsi.
             </p>
-            <div className="mt-4 grid grid-cols-3 gap-2.5 sm:max-w-md">
-              <div className="rounded-xl bg-[#F8FAFC] dark:bg-[#0D2339] border border-[#EDF2F7] dark:border-[#1A3F63] p-3 shadow-2xs">
-                <p className="text-[10px] font-bold text-text-muted uppercase">Pagi</p>
-                <p className="mt-1 text-xl font-black text-[#0088D8] dark:text-[#38BDF8]">{pagi}</p>
-              </div>
-              <div className="rounded-xl bg-[#F8FAFC] dark:bg-[#0D2339] border border-[#EDF2F7] dark:border-[#1A3F63] p-3 shadow-2xs">
-                <p className="text-[10px] font-bold text-text-muted uppercase">Malam</p>
-                <p className="mt-1 text-xl font-black text-[#123B6D] dark:text-[#93C5FD]">{malam}</p>
-              </div>
-              <div className="rounded-xl bg-[#F8FAFC] dark:bg-[#0D2339] border border-[#EDF2F7] dark:border-[#1A3F63] p-3 shadow-2xs">
-                <p className="text-[10px] font-bold text-text-muted uppercase">OFF</p>
-                <p className="mt-1 text-xl font-black text-[#E5242A] dark:text-red-400">{off}</p>
-              </div>
+            <div className="mt-4 grid grid-cols-3 gap-2.5 sm:max-w-3xl sm:grid-cols-6">
+              <MiniStat label="Pagi" value={monthStats.pagi} color="text-[#0088D8]" />
+              <MiniStat label="Malam" value={monthStats.malam} color="text-[#123B6D] dark:text-[#93C5FD]" />
+              <MiniStat label="Hari Kerja" value={monthStats.work} color="text-emerald-600 dark:text-emerald-400" />
+              <MiniStat label="OFF" value={monthStats.off} color="text-[#E5242A] dark:text-red-400" />
+              <MiniStat label="Cuti" value={monthStats.cuti} color="text-amber-600 dark:text-amber-400" />
+              <MiniStat label="Izin/Sakit" value={monthStats.izin + monthStats.sakit} color="text-slate-500" />
             </div>
           </div>
         </div>
       </section>
+
+
 
       {/* 3. JADWAL SAYA */}
       <section className="rounded-2xl border border-[rgba(15,62,105,0.10)] dark:border-[rgba(148,163,184,0.16)] bg-white dark:bg-[#102B45] p-5 shadow-[0_2px_12px_rgba(15,49,90,0.03)] card-subtle-hover">
@@ -121,8 +118,8 @@ export default async function OperatorDashboardPage() {
             </div>
             <h3 className="text-sm font-black text-[#092B57] dark:text-[#F8FAFC]">Jadwal Saya</h3>
           </div>
-          <Link href="/operator/schedule" className="flex items-center gap-0.5 text-xs font-bold text-[#0088D8] dark:text-[#38BDF8] hover:underline">
-            Lihat Kalender <ChevronRight className="h-3.5 w-3.5" />
+          <Link href="/operator/jadwal-saya" className="flex items-center gap-0.5 text-xs font-bold text-[#0088D8] dark:text-[#38BDF8] hover:underline">
+            Buka Jadwal Saya <ChevronRight className="h-3.5 w-3.5" />
           </Link>
         </div>
 
@@ -131,42 +128,71 @@ export default async function OperatorDashboardPage() {
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <p className="text-[10px] font-black uppercase tracking-wider text-text-muted">JADWAL HARI INI</p>
-                <p className="mt-1 text-lg font-black text-[#092B57] dark:text-[#F8FAFC]">{todaySchedule.shift.name}</p>
-                <p className="text-xs text-text-muted font-mono">{todaySchedule.shift.startTime} — {todaySchedule.shift.endTime} WIB</p>
+                <p className="mt-1 text-lg font-black text-[#092B57] dark:text-[#F8FAFC]">{formatTodayTitle(todaySchedule.finalStatus, todaySchedule.shiftName)}</p>
+                <p className="text-xs text-text-muted font-mono">
+                  {todaySchedule.startTime && todaySchedule.endTime ? `${todaySchedule.startTime} — ${todaySchedule.endTime} WIB` : '—'}
+                </p>
               </div>
-              <StatusBadge status={todaySchedule.status} label={todaySchedule.status === 'WORK' ? 'KERJA' : 'OFF'} size="lg" />
+              <LabelBadge finalStatus={todaySchedule.finalStatus} scheduleStatus={todaySchedule.scheduleStatus} size="lg" />
             </div>
           ) : (
             <p className="text-xs text-text-muted">Tidak ada jadwal kerja hari ini.</p>
           )}
         </div>
 
-        <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
-          {schedules.slice(0, 6).map((schedule) => (
-            <div key={schedule.id} className="flex items-center justify-between rounded-xl border border-[#EDF2F7] dark:border-[#1A3F63] bg-white dark:bg-[#0E2742] p-3 text-xs shadow-2xs">
-              <div>
-                <p className="font-bold text-[#092B57] dark:text-[#F8FAFC]">{schedule.date}</p>
-                <p className="text-[11px] text-text-muted">{schedule.shift.name}</p>
-              </div>
-              <StatusBadge status={schedule.status} label={schedule.status === 'WORK' ? 'KERJA' : 'OFF'} size="sm" />
-            </div>
-          ))}
+        {/* Tabel jadwal */}
+        <div className="mt-4 overflow-hidden rounded-xl border border-[#EDF2F7] dark:border-[#1A3F63]">
+          <table className="w-full text-left text-xs">
+            <thead className="bg-[#F4F9FC] dark:bg-[#0A2035] text-[10px] font-black uppercase tracking-wider text-[#64748B] dark:text-[#BFD2E2] border-b border-[#E2E8F0] dark:border-[#1A3F63]">
+              <tr>
+                <th className="px-3 py-2">Tanggal</th>
+                <th className="px-3 py-2">Hari</th>
+                <th className="px-3 py-2">Shift</th>
+                <th className="px-3 py-2">Jam</th>
+                <th className="px-3 py-2">Status</th>
+                <th className="px-3 py-2">Catatan</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[#EDF2F7] dark:divide-[#1A3F63]">
+              {nextDays.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="px-3 py-6 text-center text-text-muted">Tidak ada jadwal untuk bulan ini.</td>
+                </tr>
+              )}
+              {nextDays.map((day) => (
+                <tr key={day.date} className="hover:bg-[#F8FBFE] dark:hover:bg-[#12314D]">
+                  <td className="px-3 py-2 font-mono font-bold text-[#0B3568] dark:text-[#E7F1FA]">{day.date}</td>
+                  <td className="px-3 py-2 font-semibold text-text-muted">{day.weekday}, {day.date.slice(8, 10)} {MONTHS[month - 1]}</td>
+                  <td className="px-3 py-2 font-bold text-[#123D70] dark:text-[#B9CCDE]">{day.finalStatus === 'OFF' ? '—' : day.shiftName ?? '—'}</td>
+                  <td className="px-3 py-2 font-mono text-text-muted">{day.finalStatus === 'OFF' ? '—' : day.startTime && day.endTime ? `${day.startTime} - ${day.endTime}` : '—'}</td>
+                  <td className="px-3 py-2"><LabelBadge finalStatus={day.finalStatus} scheduleStatus={day.scheduleStatus} size="sm" /></td>
+                  <td className="px-3 py-2 text-[10.5px] italic text-text-muted">
+                    {day.changed ? <span className="font-bold text-amber-600 dark:text-amber-400 not-italic">Jadwal berubah</span> : ''}
+                    {day.notes ? <span className="block max-w-[220px]">&ldquo;{day.notes}&rdquo;</span> : ''}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </section>
 
-      {/* 4. NOTIFIKASI + PENGUMUMAN */}
+      {/* 4. GRAFIK */}
+      <OperatorDashboardCharts
+        programBar={programChart.bar}
+        programDonut={programChart.donut}
+        monthlyStats={yearlyStats.perMonth}
+      />
+
+      {/* 5. NOTIFIKASI + PENGUMUMAN */}
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
         <section className="rounded-2xl border border-[rgba(15,62,105,0.10)] dark:border-[rgba(148,163,184,0.16)] bg-white dark:bg-[#102B45] p-5 shadow-[0_2px_12px_rgba(15,49,90,0.03)] card-subtle-hover">
           <div className="flex items-center justify-between border-b border-[#EDF2F7] dark:border-[#1A3F63] pb-3">
             <div className="flex items-center gap-2">
-              <div className="rounded-xl bg-[#0088D8]/10 text-[#0088D8] dark:text-[#38BDF8] p-2">
-                <Bell className="h-4 w-4" />
-              </div>
+              <div className="rounded-xl bg-[#0088D8]/10 text-[#0088D8] dark:text-[#38BDF8] p-2"><Bell className="h-4 w-4" /></div>
               <h3 className="text-sm font-black text-[#092B57] dark:text-[#F8FAFC]">Notifikasi Pribadi</h3>
             </div>
-            <Link href="/notifications" className="text-xs font-bold text-[#0088D8] dark:text-[#38BDF8] hover:underline">
-              Semua →
-            </Link>
+            <Link href="/notifications" className="text-xs font-bold text-[#0088D8] dark:text-[#38BDF8] hover:underline">Semua →</Link>
           </div>
           <div className="mt-3 space-y-2">
             {notifications.length ? (
@@ -184,9 +210,7 @@ export default async function OperatorDashboardPage() {
 
         <section className="rounded-2xl border border-[rgba(15,62,105,0.10)] dark:border-[rgba(148,163,184,0.16)] bg-white dark:bg-[#102B45] p-5 shadow-[0_2px_12px_rgba(15,49,90,0.03)] card-subtle-hover">
           <div className="flex items-center gap-2 border-b border-[#EDF2F7] dark:border-[#1A3F63] pb-3">
-            <div className="rounded-xl bg-orange-500/10 text-[#F58220] p-2">
-              <Megaphone className="h-4 w-4" />
-            </div>
+            <div className="rounded-xl bg-orange-500/10 text-[#F58220] p-2"><Megaphone className="h-4 w-4" /></div>
             <h3 className="text-sm font-black text-[#092B57] dark:text-[#F8FAFC]">Pengumuman Operasional</h3>
           </div>
           <div className="mt-3 space-y-2">
@@ -206,3 +230,37 @@ export default async function OperatorDashboardPage() {
     </div>
   );
 }
+
+
+function formatTodayTitle(finalStatus: string | null, shiftName: string | null): string {
+  if (finalStatus === 'OFF') return 'OFF (Libur)';
+  if (finalStatus === 'CUTI') return 'CUTI';
+  if (finalStatus === 'IZIN') return 'IZIN';
+  if (finalStatus === 'SAKIT') return 'SAKIT';
+  return shiftName ?? 'Kerja';
+}
+
+function MiniStat({ label, value, color }: { label: string; value: number; color: string }) {
+  return (
+    <div className="rounded-xl bg-[#F8FAFC] dark:bg-[#0D2339] border border-[#EDF2F7] dark:border-[#1A3F63] p-3 shadow-2xs">
+      <p className="text-[10px] font-bold text-text-muted uppercase">{label}</p>
+      <p className={`mt-1 text-xl font-black tabular-nums ${color}`}>{value}</p>
+    </div>
+  );
+}
+
+function LabelBadge({ finalStatus, scheduleStatus, size }: { finalStatus: string | null; scheduleStatus: string; size?: 'sm' | 'lg' }) {
+  const base = size === 'lg' ? 'px-2.5 py-1 text-[10.5px]' : 'px-2 py-0.5 text-[9.5px]';
+  const cls = `inline-flex rounded-full border font-black ${base}`;
+  if (finalStatus === 'CUTI') return <span className={`${cls} bg-amber-50 text-amber-700 border-amber-200`}>CUTI</span>;
+  if (finalStatus === 'IZIN') return <span className={`${cls} bg-teal-50 text-teal-700 border-teal-200`}>IZIN</span>;
+  if (finalStatus === 'SAKIT') return <span className={`${cls} bg-rose-50 text-rose-700 border-rose-200`}>SAKIT</span>;
+  if (finalStatus === 'OFF') return <span className={`${cls} bg-red-50 text-red-600 border-red-200`}>OFF</span>;
+  if (finalStatus === 'PAGI' || finalStatus === 'MALAM' || finalStatus === 'WORK') {
+    return <span className={`${cls} bg-[#EAF4FC] text-[#0066B3] border-[#BBDFF5]`}>KERJA</span>;
+  }
+  if (scheduleStatus === 'WORK') return <span className={`${cls} bg-[#EAF4FC] text-[#0066B3] border-[#BBDFF5]`}>KERJA</span>;
+  if (scheduleStatus === 'OFF') return <span className={`${cls} bg-red-50 text-red-600 border-red-200`}>OFF</span>;
+  return <span className={`${cls} bg-slate-100 text-slate-500 border-slate-200`}>—</span>;
+}
+

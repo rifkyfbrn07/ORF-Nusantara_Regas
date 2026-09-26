@@ -40,7 +40,7 @@ async function main() {
   await check('admin', '/admin/dashboard', adminToken);
   await check('admin users', '/admin/users', adminToken);
   await check('op', '/operator/dashboard', operatorToken);
-  await check('op', '/operator/schedule?view=month', operatorToken);
+  await check('op', '/operator/jadwal-saya', operatorToken);
   await check('op->mgr dashboard', '/manager/dashboard', operatorToken);
   await check('mgr', '/manager/dashboard', managerToken);
   await check('mgr', '/manager/announcements', managerToken);

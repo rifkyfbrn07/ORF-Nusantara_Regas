@@ -70,54 +70,61 @@ export async function bulkCreateSchedules(params: BulkAddParams): Promise<BulkSc
   const orfShifts = await getOrfShiftMap();
   const pattern = params.patternKey ? WORK_PATTERNS[params.patternKey] : null;
 
-  let created = 0;
-  let updated = 0;
+  // ATOMIC: seluruh pembuatan massal (mungkin banyak operator x banyak tanggal)
+  // ditulis dalam SATU transaction — gagal di tengah → rollback (tidak ada
+  // schedule-half-imported + tidak ada duplikat karena unique upsert).
+  const { created, updated } = await prisma.$transaction(async (tx) => {
+    let created = 0;
+    let updated = 0;
 
-  for (const operatorId of params.operatorIds) {
-    const patternShifts = pattern
-      ? generatePatternShifts(pattern, dates.length, params.patternOffset || 0)
-      : null;
+    for (const operatorId of params.operatorIds) {
+      const patternShifts = pattern
+        ? generatePatternShifts(pattern, dates.length, params.patternOffset || 0)
+        : null;
 
-    for (let i = 0; i < dates.length; i++) {
-      const date = dates[i];
-      let shiftId: string;
-      let status: ScheduleStatus;
+      for (let i = 0; i < dates.length; i++) {
+        const date = dates[i];
+        let shiftId: string;
+        let status: ScheduleStatus;
 
-      if (patternShifts) {
-        const shift = patternShifts[i] as PatternShift;
-        shiftId = shift === 'PAGI' ? orfShifts.pagi : shift === 'MALAM' ? orfShifts.malam : orfShifts.off;
-        status = shift === 'OFF' ? ScheduleStatus.OFF : ScheduleStatus.WORK;
-      } else {
-        shiftId = params.shiftId!;
-        status = ScheduleStatus.WORK;
-      }
-      if (!shiftId) continue;
+        if (patternShifts) {
+          const shift = patternShifts[i] as PatternShift;
+          shiftId = shift === 'PAGI' ? orfShifts.pagi : shift === 'MALAM' ? orfShifts.malam : orfShifts.off;
+          status = shift === 'OFF' ? ScheduleStatus.OFF : ScheduleStatus.WORK;
+        } else {
+          shiftId = params.shiftId!;
+          status = ScheduleStatus.WORK;
+        }
+        if (!shiftId) continue;
 
-      const existing = await prisma.schedule.findUnique({
-        where: { userId_date: { userId: operatorId, date } },
-        select: { id: true },
-      });
-      if (existing) {
-        await prisma.schedule.update({
-          where: { id: existing.id },
-          data: { shiftId, locationId: params.locationId, status, notes: params.notes },
+        const existing = await tx.schedule.findUnique({
+          where: { userId_date: { userId: operatorId, date } },
+          select: { id: true },
         });
-        updated += 1;
-      } else {
-        await prisma.schedule.create({
-          data: {
-            userId: operatorId,
-            date,
-            shiftId,
-            locationId: params.locationId,
-            status,
-            notes: params.notes,
-          },
-        });
-        created += 1;
+        if (existing) {
+          await tx.schedule.update({
+            where: { id: existing.id },
+            data: { shiftId, locationId: params.locationId, status, notes: params.notes },
+          });
+          updated += 1;
+        } else {
+          await tx.schedule.create({
+            data: {
+              userId: operatorId,
+              date,
+              shiftId,
+              locationId: params.locationId,
+              status,
+              notes: params.notes,
+            },
+          });
+          created += 1;
+        }
       }
     }
-  }
+
+    return { created, updated };
+  });
 
   await recordAuditLog({
     userId: params.creatorId,
@@ -449,89 +456,93 @@ export async function confirmImportRows(
     keyCount.set(key, (keyCount.get(key) || 0) + 1);
   }
 
-  const results: ImportRowResult[] = [];
-  let created = 0;
-  let updated = 0;
-  let skippedConflict = 0;
-  let skippedInvalid = 0;
+  // ATOMIC: seluruh baris valid ditulis dalam SATU transaction + historik
+  // DataImport + audit — gagal di tengah → rollback (REQUEST tidak pernah
+  // berubah tanpa schedule / vice versa).
+  return prisma.$transaction(async (tx) => {
+    const results: ImportRowResult[] = [];
+    let created = 0;
+    let updated = 0;
+    let skippedConflict = 0;
+    let skippedInvalid = 0;
 
-  for (const item of resolved) {
-    if (item.error || !item.user || !item.date || !item.shift) {
-      skippedInvalid += 1;
-      results.push({ row: item.row, ok: false, kind: 'INVALID', message: item.error || 'Baris tidak valid' });
-      continue;
-    }
-    const key = `${item.user.id}|${item.date}`;
-    if ((keyCount.get(key) || 0) > 1) {
-      skippedConflict += 1;
-      results.push({
-        row: item.row,
-        ok: false,
-        kind: 'CONFLICT',
-        message: 'Roster ganda untuk operator & tanggal yang sama — dilewati.',
-        date: item.date,
-        userName: item.user.name,
-        shift: item.shift.label,
-      });
-      continue;
-    }
-    const existingRow = existingByKey.get(key);
-    if (existingRow) {
-      const sameShift = existingRow.shiftId === item.shift.shiftId && existingRow.status === item.shift.status;
-      const sameNotes = (existingRow.notes || '') === (item.note || '');
-      if (sameShift && sameNotes) {
-        results.push({ row: item.row, ok: true, kind: 'UNCHANGED', message: 'Tidak ada perubahan', date: item.date, userName: item.user.name, shift: item.shift.label });
+    for (const item of resolved) {
+      if (item.error || !item.user || !item.date || !item.shift) {
+        skippedInvalid += 1;
+        results.push({ row: item.row, ok: false, kind: 'INVALID', message: item.error || 'Baris tidak valid' });
         continue;
       }
-      await prisma.schedule.update({
-        where: { id: existingRow.id },
-        data: { shiftId: item.shift.shiftId, locationId, status: item.shift.status, notes: item.note || undefined },
+      const key = `${item.user.id}|${item.date}`;
+      if ((keyCount.get(key) || 0) > 1) {
+        skippedConflict += 1;
+        results.push({
+          row: item.row,
+          ok: false,
+          kind: 'CONFLICT',
+          message: 'Roster ganda untuk operator & tanggal yang sama — dilewati.',
+          date: item.date,
+          userName: item.user.name,
+          shift: item.shift.label,
+        });
+        continue;
+      }
+      const existingRow = existingByKey.get(key);
+      if (existingRow) {
+        const sameShift = existingRow.shiftId === item.shift.shiftId && existingRow.status === item.shift.status;
+        const sameNotes = (existingRow.notes || '') === (item.note || '');
+        if (sameShift && sameNotes) {
+          results.push({ row: item.row, ok: true, kind: 'UNCHANGED', message: 'Tidak ada perubahan', date: item.date, userName: item.user.name, shift: item.shift.label });
+          continue;
+        }
+        await tx.schedule.update({
+          where: { id: existingRow.id },
+          data: { shiftId: item.shift.shiftId, locationId, status: item.shift.status, notes: item.note || undefined },
+        });
+        results.push({ row: item.row, ok: true, kind: 'UPDATED', message: 'Diperbarui', date: item.date, userName: item.user.name, shift: item.shift.label });
+        updated += 1;
+        existingByKey.set(key, { id: existingRow.id, shiftId: item.shift.shiftId, status: item.shift.status, notes: item.note || null });
+        continue;
+      }
+      await tx.schedule.create({
+        data: {
+          userId: item.user.id,
+          date: item.date,
+          shiftId: item.shift.shiftId,
+          locationId,
+          status: item.shift.status,
+          notes: item.note || undefined,
+        },
       });
-      results.push({ row: item.row, ok: true, kind: 'UPDATED', message: 'Diperbarui', date: item.date, userName: item.user.name, shift: item.shift.label });
-      updated += 1;
-      // Perbarui cache agar dua baris identik tidak meng-call update dua kali.
-      existingByKey.set(key, { id: existingRow.id, shiftId: item.shift.shiftId, status: item.shift.status, notes: item.note || null });
-      continue;
+      results.push({ row: item.row, ok: true, kind: 'NEW', message: 'Dibuat', date: item.date, userName: item.user.name, shift: item.shift.label });
+      created += 1;
     }
-    await prisma.schedule.create({
+
+    await tx.dataImport.create({
       data: {
-        userId: item.user.id,
-        date: item.date,
-        shiftId: item.shift.shiftId,
-        locationId,
-        status: item.shift.status,
-        notes: item.note || undefined,
+        fileName: `import-jadwal-${new Date().toISOString().slice(0, 10)}.xlsx`,
+        fileHash: createHash('sha256').update(JSON.stringify(rows)).digest('hex'),
+        fileSize: 0,
+        documentType: ImportDocumentType.JADWAL_KERJA,
+        status: ImportStatus.SUCCESS,
+        sheetNames: ['Template Jadwal'],
+        year: new Date().getFullYear(),
+        totalRecords: rows.length,
+        createdCount: created,
+        updatedCount: updated,
+        unchangedCount: results.filter((r) => r.kind === 'UNCHANGED').length,
+        conflictCount: skippedConflict,
+        rejectedCount: skippedInvalid,
+        importedById: creatorId,
       },
     });
-    results.push({ row: item.row, ok: true, kind: 'NEW', message: 'Dibuat', date: item.date, userName: item.user.name, shift: item.shift.label });
-    created += 1;
-  }
 
-  await prisma.dataImport.create({
-    data: {
-      fileName: `import-jadwal-${new Date().toISOString().slice(0, 10)}.xlsx`,
-      fileHash: createHash('sha256').update(JSON.stringify(rows)).digest('hex'),
-      fileSize: 0,
-      documentType: ImportDocumentType.JADWAL_KERJA,
-      status: ImportStatus.SUCCESS,
-      sheetNames: ['Template Jadwal'],
-      year: new Date().getFullYear(),
-      totalRecords: rows.length,
-      createdCount: created,
-      updatedCount: updated,
-      unchangedCount: results.filter((r) => r.kind === 'UNCHANGED').length,
-      conflictCount: skippedConflict,
-      rejectedCount: skippedInvalid,
-      importedById: creatorId,
-    },
+    await recordAuditLog({
+      userId: creatorId,
+      action: 'IMPORT_SCHEDULES',
+      entity: 'Schedule',
+      metadata: { totalRows: rows.length, created, updated, skippedInvalid, skippedConflict },
+    }, tx);
+
+    return { results, created, updated, skippedConflict, skippedInvalid };
   });
-
-  await recordAuditLog({
-    userId: creatorId,
-    action: 'IMPORT_SCHEDULES',
-    entity: 'Schedule',
-    metadata: { totalRows: rows.length, created, updated, skippedInvalid, skippedConflict },
-  });
-
-  return { results, created, updated, skippedConflict, skippedInvalid };
 }

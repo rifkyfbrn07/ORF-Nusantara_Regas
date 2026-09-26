@@ -406,6 +406,31 @@ async function applyOffExchangeSwap(
   const sA_dB = await tx.schedule.findUnique({ where: { userId_date: { userId: A, date: dB } } });
   const sB_dB = await tx.schedule.findUnique({ where: { userId_date: { userId: B, date: dB } } });
 
+  // Re-validasi cuti/izin APPROVED (bisa disetujui setelah exchange dibuat).
+  // REQUIREMENT #11: jangan menimpa schedule yang sudah menjadi CUTI/IZIN/SAKIT.
+  const leaveChecks = await Promise.all([
+    hasApprovedLeave(A, dA, tx),
+    hasApprovedLeave(A, dB, tx),
+    hasApprovedLeave(B, dA, tx),
+    hasApprovedLeave(B, dB, tx),
+  ]);
+  if (leaveChecks.some((l) => Boolean(l))) {
+    const leaveLabel = (l?: { type: LeaveType } | null) =>
+      !l ? '' : l.type === LeaveType.SICK ? 'sakit' : l.type === LeaveType.PERMISSION ? 'izin' : 'cuti';
+    const combos: Array<[string, string, { type: LeaveType } | null]> = [
+      [A, dA, leaveChecks[0]],
+      [A, dB, leaveChecks[1]],
+      [B, dA, leaveChecks[2]],
+      [B, dB, leaveChecks[3]],
+    ];
+    const conflict = combos.find(([, , l]) => Boolean(l));
+    if (conflict) {
+      throw new Error(
+        `Konflik: operator ${conflict[0]} kini memiliki cuti/izin/sakit (${leaveLabel(conflict[2])}) pada tanggal ${conflict[1]}. Pertukaran tidak dapat diterapkan.`
+      );
+    }
+  }
+
   if (!sA_dA || !sB_dA || !sA_dB || !sB_dB) {
     throw new Error('Roster veranderd — een van de jadwal is niet meer beschikbaar. Pertukaran niet kunnen toepassen.');
   }
@@ -515,15 +540,15 @@ export async function reviewShiftExchange(params: ReviewShiftExchangeParams) {
       userId: exchange.requesterId,
       type: 'SHIFT_EXCHANGE',
       title: `Tukar Hari OFF ${decisionText}`,
-      message: `Permintaan tukar hari OFF met ${exchange.targetUser.name} is ${decisionText.toLowerCase()} door Manager/Admin. Roster${params.status === 'APPROVED' ? ' resmi diperbarui' : ''}.`,
+      message: `Permintaan tukar hari OFF dengan ${exchange.targetUser.name} telah ${decisionText.toLowerCase()} oleh Manager/Admin. Roster${params.status === 'APPROVED' ? ' resmi diperbarui' : ''}.`,
       link: '/operator/shift-exchange',
     }, tx);
     await createNotification({
       userId: exchange.targetUserId,
       type: 'SHIFT_EXCHANGE',
       title: `Tukar Hari OFF ${decisionText}`,
-      message: `Permintaan tukar hari OFF met ${exchange.requester.name} is ${decisionText.toLowerCase()} door Manager/Admin. Roster${params.status === 'APPROVED' ? ' resmi diperbarui' : ''}.`,
-      link: '/operator/schedule',
+      message: `Permintaan tukar hari OFF dengan ${exchange.requester.name} telah ${decisionText.toLowerCase()} oleh Manager/Admin. Roster${params.status === 'APPROVED' ? ' resmi diperbarui' : ''}.`,
+      link: '/operator/jadwal-saya',
     }, tx);
 
     return { exchangeId: params.exchangeId, rejected: params.status === 'REJECTED' };

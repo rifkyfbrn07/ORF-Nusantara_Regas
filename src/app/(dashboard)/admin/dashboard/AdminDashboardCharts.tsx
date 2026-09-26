@@ -34,6 +34,9 @@ interface SchedulePoint {
   pagi: number;
   malam: number;
   off: number;
+  cuti: number;
+  izin: number;
+  sakit: number;
 }
 
 const chartTooltipStyle = {
@@ -122,7 +125,7 @@ export function AdminDashboardCharts({
           Ringkasan Kehadiran Berdasarkan Jadwal
         </div>
         <p className="text-[10px] font-semibold text-text-muted dark:text-[#AFC4D6] mb-3 flex items-center gap-1">
-          <Info className="h-3 w-3 text-[#38A9EA]" /> Dihitung dari jadwal kerja operator (bukan check-in aktual).
+          <Info className="h-3 w-3 text-[#38A9EA]" /> Dihitung dari jadwal final (Cuti/Izin APPROVED sudah diperhitungkan; bukan check-in aktual).
         </p>
         <div className="h-56">
           <ResponsiveContainer width="100%" height="100%">
@@ -132,9 +135,12 @@ export function AdminDashboardCharts({
               <YAxis allowDecimals={false} tick={{ fontSize: 10, fill: 'var(--text-muted, #94A3B8)' }} tickLine={false} axisLine={false} />
               <Tooltip contentStyle={chartTooltipStyle} cursor={{ fill: 'var(--surface-interactive, #F1F5F9)' }} />
               <Legend wrapperStyle={{ fontSize: 10 }} />
-              <Bar dataKey="pagi" name="Jadwal Pagi" fill="#38A9EA" radius={[3, 3, 0, 0]} maxBarSize={18} />
-              <Bar dataKey="malam" name="Jadwal Malam" fill="#0088D8" radius={[3, 3, 0, 0]} maxBarSize={18} />
-              <Bar dataKey="off" name="Hari Off" fill="#64798D" radius={[3, 3, 0, 0]} maxBarSize={18} />
+              <Bar dataKey="pagi" name="Jadwal Pagi" fill="#38A9EA" radius={[3, 3, 0, 0]} maxBarSize={14} />
+              <Bar dataKey="malam" name="Jadwal Malam" fill="#0088D8" radius={[3, 3, 0, 0]} maxBarSize={14} />
+              <Bar dataKey="off" name="Hari Off" fill="#64798D" radius={[3, 3, 0, 0]} maxBarSize={14} />
+              <Bar dataKey="cuti" name="Cuti" fill="#F59E0B" radius={[3, 3, 0, 0]} maxBarSize={14} />
+              <Bar dataKey="izin" name="Izin" fill="#14B8A6" radius={[3, 3, 0, 0]} maxBarSize={14} />
+              <Bar dataKey="sakit" name="Sakit" fill="#F43F5E" radius={[3, 3, 0, 0]} maxBarSize={14} />
             </BarChart>
           </ResponsiveContainer>
         </div>

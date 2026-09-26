@@ -41,45 +41,20 @@ interface OperatorStatusTableProps {
 }
 
 export function OperatorStatusTable({ data = [] }: OperatorStatusTableProps) {
-  const defaultSchedule = [
-    {
-      waktu: '08:00 - 16:00',
-      operator: 'Andi Pratama',
-      shift: 'Pagi',
-      lokasi: 'LNG Plant',
-      status: 'Hadir',
-      statusClass: 'bg-[#22A65A]/15 text-[#22A65A] dark:text-[#4ADE80] border-[#22A65A]/30',
-    },
-    {
-      waktu: '14:00 - 22:00',
-      operator: 'Budi Santoso',
-      shift: 'Siang',
-      lokasi: 'Compressor',
-      status: 'Hadir',
-      statusClass: 'bg-[#22A65A]/15 text-[#22A65A] dark:text-[#4ADE80] border-[#22A65A]/30',
-    },
-    {
-      waktu: '22:00 - 06:00',
-      operator: 'Citra Dewi',
-      shift: 'Malam',
-      lokasi: 'Utilities',
-      status: 'Belum Absen',
-      statusClass: 'bg-[#EF3340]/15 text-[#EF3340] dark:text-red-400 border-[#EF3340]/30',
-    },
-    {
-      waktu: '06:00 - 14:00',
-      operator: 'Dedi Kurniawan',
-      shift: 'Pagi',
-      lokasi: 'Loading Jetty',
-      status: 'Cuti',
-      statusClass: 'bg-purple-500/15 text-purple-600 dark:text-purple-300 border-purple-500/30',
-    },
-  ];
+  // No dummy/static rows — hanya data actual dari server (getManpowerStatusSummary).
+  const defaultSchedule: {
+    waktu: string;
+    operator: string;
+    shift: string;
+    lokasi: string;
+    status: string;
+    statusClass: string;
+  }[] = [];
 
   const rows =
     data.length > 0
       ? data.slice(0, 5).map((row) => ({
-          waktu: row.shift ? `${row.shift.startTime} - ${row.shift.endTime}` : '08:00 - 16:00',
+          waktu: row.shift ? `${row.shift.startTime} - ${row.shift.endTime}` : '—',
           operator: row.operator.name,
           shift: row.shift?.name || 'Pagi',
           lokasi: row.location?.name || 'LNG Plant',
@@ -137,6 +112,13 @@ export function OperatorStatusTable({ data = [] }: OperatorStatusTableProps) {
             </tr>
           </thead>
           <tbody className="divide-y divide-[#E2E8F0] dark:divide-[rgba(120,190,235,0.10)] text-[11.5px] bg-white dark:bg-[#0D263E]">
+            {rows.length === 0 && (
+              <tr>
+                <td colSpan={5} className="px-4 py-6 text-center text-xs text-[#64748B] dark:text-[#8FA8BF]">
+                  Belum ada data kehadiran untuk hari ini.
+                </td>
+              </tr>
+            )}
             {rows.map((r, idx) => (
               <tr key={idx} className="hover:bg-[#F4F9FC] dark:hover:bg-[#12314D] transition-colors">
                 <td className="px-4 py-3 font-mono font-bold text-[#123D70] dark:text-[#AFC4D5]">

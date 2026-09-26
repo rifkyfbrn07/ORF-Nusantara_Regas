@@ -84,18 +84,19 @@ export async function getAttendanceAnalytics(startDate: string, endDate: string)
 
   const trendData = Object.values(dateMap).sort((a, b) => a.date.localeCompare(b.date));
 
-  // Shift Breakdown
+  // Shift Breakdown (label sesuai shift roster ORF; data dihitung dari schedule)
   const shiftDistribution = [
-    { name: 'Shift Pagi (06:00 - 14:00)', hadir: 0, terlambat: 0, total: 0 },
-    { name: 'Shift Siang (14:00 - 22:00)', hadir: 0, terlambat: 0, total: 0 },
-    { name: 'Shift Malam (22:00 - 06:00)', hadir: 0, terlambat: 0, total: 0 },
+    { name: 'Shift Pagi (07:00 - 19:00)', hadir: 0, terlambat: 0, total: 0 },
+    { name: 'Shift Malam (19:00 - 07:00)', hadir: 0, terlambat: 0, total: 0 },
+    { name: 'Non-Shift / OFF', hadir: 0, terlambat: 0, total: 0 },
   ];
 
   for (const a of attendances) {
-    const shiftCode = a.schedule?.shift?.code;
-    let idx = 0;
-    if (shiftCode === 'SHIFT_SIANG') idx = 1;
-    if (shiftCode === 'SHIFT_MALAM') idx = 2;
+    const shiftCode = (a.schedule?.shift?.code || '').toLowerCase();
+    const shiftName = (a.schedule?.shift?.name || '').toLowerCase();
+    let idx = 2;
+    if (shiftCode.includes('pagi') || shiftName.includes('pagi') || shiftCode === 'shift_pagi') idx = 0;
+    else if (shiftCode.includes('malam') || shiftName.includes('malam') || shiftCode === 'shift_malam') idx = 1;
 
     shiftDistribution[idx].total++;
     if (a.status === AttendanceStatus.HADIR) shiftDistribution[idx].hadir++;

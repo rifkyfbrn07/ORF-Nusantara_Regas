@@ -359,7 +359,7 @@ export function ScheduleManagerClient({
         </div>
       </div>
 
-      {/* 3. Daily Timeline Mode (06:00 Pagi, 14:00 Siang, 22:00 Malam) */}
+      {/* 3. Daily Timeline Mode (07:00 Pagi, 19:00 Malam — roster ORF) */}
       {viewMode === 'timeline' ? (
         <div className="space-y-4">
           {shifts.map((shift) => {

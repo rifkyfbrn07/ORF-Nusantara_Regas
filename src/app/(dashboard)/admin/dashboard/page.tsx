@@ -89,10 +89,35 @@ export default async function AdminDashboardPage() {
     timeZone: 'Asia/Jakarta',
   });
 
+  // Jam kerja resmi diambil dari tabel Shift (bukan hardcode) agar konsisten.
+  const orfShifts = await prisma.shift.findMany({
+    where: { code: { in: ['ORF_PAGI', 'ORF_MALAM', 'ORF_OFF'] } },
+    select: { code: true, startTime: true, endTime: true },
+  });
+  const waktuPagi = orfShifts.find((s) => s.code === 'ORF_PAGI');
+  const waktuMalam = orfShifts.find((s) => s.code === 'ORF_MALAM');
+  const orfOff = orfShifts.find((s) => s.code === 'ORF_OFF');
+
+  // Detail jadwal hari ini — data REAL (tanpa fallback angka karangan).
   const scheduleRows = [
-    { waktu: '06:00 - 14:00', shift: 'Pagi', jumlahOperator: todayCounts.pagi || 5, status: 'Normal' },
-    { waktu: '14:00 - 22:00', shift: 'Malam', jumlahOperator: Math.ceil((todayCounts.malam || 8) / 2), status: 'Normal' },
-    { waktu: '22:00 - 06:00', shift: 'Malam', jumlahOperator: Math.floor((todayCounts.malam || 8) / 2), status: 'Normal' },
+    {
+      waktu: waktuPagi ? `${waktuPagi.startTime} - ${waktuPagi.endTime}` : '07:00 - 19:00',
+      shift: 'Pagi',
+      jumlahOperator: todayCounts.pagi,
+      status: 'Normal',
+    },
+    {
+      waktu: waktuMalam ? `${waktuMalam.startTime} - ${waktuMalam.endTime}` : '19:00 - 07:00',
+      shift: 'Malam',
+      jumlahOperator: todayCounts.malam,
+      status: 'Normal',
+    },
+    {
+      waktu: orfOff && orfOff.startTime === orfOff.endTime ? '00:00 - 24:00' : 'OFF',
+      shift: 'OFF',
+      jumlahOperator: todayCounts.off,
+      status: 'Libur',
+    },
   ];
 
   const recentActivities: ActivityItem[] = recentAuditLogs.map((log) => {
@@ -143,10 +168,10 @@ export default async function AdminDashboardPage() {
 
         {/* Card 2: Operational Pulse */}
         <OperationalPulseCard
-          totalToday={todayCounts.total || 13}
-          pagiCount={todayCounts.pagi || 5}
-          malamCount={todayCounts.malam || 4}
-          offCount={todayCounts.off || 4}
+          totalToday={todayCounts.total}
+          pagiCount={todayCounts.pagi}
+          malamCount={todayCounts.malam}
+          offCount={todayCounts.off}
         />
 
         {/* Card 3: Facility Status */}
@@ -165,10 +190,10 @@ export default async function AdminDashboardPage() {
         <div className="lg:col-span-8 min-w-0">
           <TodayScheduleCard
             dateLabel={dateLabel}
-            totalJadwal={todayCounts.total || 13}
-            shiftPagi={todayCounts.pagi || 5}
-            shiftMalam={todayCounts.malam || 4}
-            offCount={todayCounts.off || 4}
+            totalJadwal={todayCounts.total}
+            shiftPagi={todayCounts.pagi}
+            shiftMalam={todayCounts.malam}
+            offCount={todayCounts.off}
             scheduleRows={scheduleRows}
             viewAllHref="/manager/schedules"
           />
@@ -204,7 +229,7 @@ export default async function AdminDashboardPage() {
           <AdminDashboardCharts
             programBar={programChart.bar}
             programDonut={programChart.donut}
-            scheduleSummary={scheduleSummary.perMonth.map((m) => ({ month: m.monthLabel, pagi: m.pagi, malam: m.malam, off: m.off }))}
+            scheduleSummary={scheduleSummary.perMonth.map((m) => ({ month: m.monthLabel, pagi: m.pagi, malam: m.malam, off: m.off, cuti: m.cuti, izin: m.izin, sakit: m.sakit }))}
           />
         </div>
         <p className="mt-1 text-[10.5px] font-semibold text-[#64748B] dark:text-[#8FA8BF] flex items-center gap-1">

@@ -42,6 +42,23 @@ export async function submitLeaveRequest(params: SubmitLeaveParams) {
     throw new Error('Data karyawan/operator tidak ditemukan.');
   }
 
+  // Cegah konflik sejak pengajuan: jika sudah ada CUTI/IZIN yang APPROVED pada
+  // rentang yang sama, jangan izinkan pengajuan baru (schedule final bertabrakan).
+  const approvedOverlap = await prisma.leaveRequest.findFirst({
+    where: {
+      userId: params.userId,
+      status: RequestStatus.APPROVED,
+      startDate: { lte: params.endDate },
+      endDate: { gte: params.startDate },
+    },
+    select: { startDate: true, endDate: true },
+  });
+  if (approvedOverlap) {
+    throw new Error(
+      `Gagal mengajukan: Anda sudah memiliki ${params.type} yang DISETUJUI pada rentang ${approvedOverlap.startDate} s/d ${approvedOverlap.endDate}. Ajukan pada tanggal lain.`
+    );
+  }
+
   const request = await prisma.leaveRequest.create({
     data: {
       userId: params.userId,
@@ -106,14 +123,57 @@ export async function reviewLeaveRequest(params: ReviewLeaveParams) {
       include: { user: true },
     });
 
-    if (!existing) throw new Error('Pengajuan cuti/izin niet gevonden.');
+    if (!existing) throw new Error('Pengajuan cuti/izin tidak ditemukan.');
 
-    // FINAL-STATE GUARD — nooit herverwerken (PENDING → APPROVED → REJECTED etc.).
+    // FINAL-STATE GUARD — tidak boleh diproses ulang (PENDING → APPROVED → REJECTED dst).
     if (existing.status !== RequestStatus.PENDING) {
-      throw new Error('Pengajuan cuti/izin heeft al een definitieve status — herverwerking niet toegestaan.');
+      throw new Error('Pengajuan cuti/izin sudah memiliki status final — pemrosesan ulang tidak diizinkan.');
     }
 
-    // Conditional write: alleen een PENDING request kan verwerkt worden (concurrency-safe).
+    // ==========================================================================
+    // VALIDASI KONFLIK (SEBELUM approval / sebelum schedule diubah)
+    // Requirement #10 & #11 — tolak approval bila ada konflik, jangan overwrite
+    // diam-diam. Tidak membuat schedule terpisah (unique userId+date).
+    // ==========================================================================
+    if (params.status === 'APPROVED') {
+      // 1. LeaveRequest lain (APPROVED/PENDING) yang tumpang tindih utk user sama.
+      const overlappingLeave = await tx.leaveRequest.findFirst({
+        where: {
+          userId: existing.userId,
+          id: { not: existing.id },
+          startDate: { lte: existing.endDate },
+          endDate: { gte: existing.startDate },
+        },
+        select: { status: true },
+      });
+      if (overlappingLeave) {
+        const label = overlappingLeave.status === RequestStatus.APPROVED ? 'sudah disetujui' : 'masih PENDING';
+        throw new Error(
+          `Konflik: terdapat pengajuan cuti/izin lain (${label}) pada rentang ${existing.startDate} s/d ${existing.endDate}. Selesaikan konflik tersebut sebelum approval.`
+        );
+      }
+
+      // 2. Tukar Hari OFF (ShiftExchange) PENDING yang melibatkan tanggal cuti ini.
+      const datesArr: string[] = listDatesBetween(existing.startDate, existing.endDate);
+      const pendingExchange = await tx.shiftExchange.findFirst({
+        where: {
+          status: RequestStatus.PENDING,
+          OR: [
+            { requesterId: existing.userId, requesterSchedule: { date: { in: datesArr } } },
+            { targetUserId: existing.userId, targetSchedule: { date: { in: datesArr } } },
+          ],
+        },
+        include: { requesterSchedule: true, targetSchedule: true },
+      });
+      if (pendingExchange) {
+        const date = pendingExchange.requesterSchedule?.date ?? pendingExchange.targetSchedule?.date ?? '';
+        throw new Error(
+          `Konflik: tanggal ${date} memiliki pengajuan Tukar Hari OFF yang masih PENDING. Selesaikan dahulu pertukaran tersebut sebelum menyetujui cuti/izin.`
+        );
+      }
+    }
+
+    // Conditional write: hanya PENDING request yang boleh diproses (concurrency-safe).
     const updatedStatus = params.status === 'APPROVED' ? RequestStatus.APPROVED : RequestStatus.REJECTED;
     const guarded = await tx.leaveRequest.updateMany({
       where: { id: params.requestId, status: RequestStatus.PENDING },
@@ -125,36 +185,61 @@ export async function reviewLeaveRequest(params: ReviewLeaveParams) {
       },
     });
     if (guarded.count === 0) {
-      throw new Error('Pengajuan cuti/izin is inmiddels door iemand anders verwerkt (definitieve status).');
+      throw new Error('Pengajuan cuti/izin sudah diproses oleh orang lain (status final).');
     }
     const updated = await tx.leaveRequest.findUniqueOrThrow({ where: { id: params.requestId } });
 
-    // SISTEM update de officiële dagelijkse rooster automatisch wanneer cuti/izin
-    // DISETUJUI: WORK → OFF voor de leave-periode (zolang er geen check-in is).
+    // ==========================================================================
+    // UPDATE JADWAL FINAL SAAT APPROVED — atomik (dalam transaction yang sama).
+    // CASE A: schedule sudah ada  -> update status OFF + catatan cuti/izin
+    // CASE B: schedule belum ada  -> buat row OFF dengan shift ORF_OFF
+    // CASE C: tanggal sudah OFF   -> dibiarkan OFF, hanya ditambahkan catatan
+    // CASE D: konflik tukar OFF   -> sudah divalidasi di atas (ditolak)
+    // CASE E: approved            -> perubahan masuk ke schedule final
+    // Tidak pernah membuat DUA row untuk (userId, date) — pakai unique upsert.
+    // ==========================================================================
     if (params.status === 'APPROVED' && existing.type) {
-      const dates: string[] = [];
-      for (let d = new Date(`${existing.startDate}T00:00:00+07:00`); d <= new Date(`${existing.endDate}T00:00:00+07:00`); d.setDate(d.getDate() + 1)) {
-        dates.push(d.toLocaleDateString('en-CA', { timeZone: 'Asia/Jakarta' }));
-      }
-      const schedules = await tx.schedule.findMany({
-        where: { userId: existing.userId, date: { in: dates }, status: ScheduleStatus.WORK },
-        select: { id: true, attendances: { select: { id: true, checkIn: true } } },
-      });
       const leaveLabel = existing.type === LeaveType.SICK ? 'Sakit' : existing.type === LeaveType.PERMISSION ? 'Izin' : 'Cuti';
-      for (const schedule of schedules) {
-        // Dagen die de operator al heeft gewerkt worden NIET gewijzigd (absentie blijft geldig).
-        if (schedule.attendances.some((a) => a.checkIn !== null)) continue;
-        await tx.schedule.update({
-          where: { id: schedule.id },
-          data: {
+      const noteText = `${leaveLabel} — disetujui${params.reviewerNote ? ` (${params.reviewerNote})` : ''}`;
+      const datesArr = listDatesBetween(existing.startDate, existing.endDate);
+
+      const offShift = await tx.shift.findFirst({ where: { code: 'ORF_OFF' } });
+      const fallbackLocation = await tx.location.findFirst({ orderBy: { name: 'asc' }, select: { id: true } });
+      if (!offShift) {
+        throw new Error('Shift OFF (ORF_OFF) tidak ditemukan — jadwal cuti tidak dapat dibuat. Hubungi Admin.');
+      }
+      if (!fallbackLocation) {
+        throw new Error('Lokasi default tidak ditemukan — jadwal cuti tidak dapat dibuat. Hubungi Admin.');
+      }
+
+      for (const date of datesArr) {
+        const schedule = await tx.schedule.findUnique({
+          where: { userId_date: { userId: existing.userId, date } },
+          include: { attendances: { select: { id: true, checkIn: true } } },
+        });
+
+        // Tanggal yang sudah dihadiri (check-in) TIDAK diubah (absensi tetap valid).
+        if (schedule && schedule.attendances.some((a) => a.checkIn !== null)) continue;
+
+        await tx.schedule.upsert({
+          where: { userId_date: { userId: existing.userId, date } },
+          update: {
             status: ScheduleStatus.OFF,
-            notes: `${leaveLabel} — disetujui${params.reviewerNote ? ` (${params.reviewerNote})` : ''}`,
+            notes: noteText,
+          },
+          create: {
+            userId: existing.userId,
+            shiftId: offShift.id,
+            locationId: fallbackLocation.id,
+            date,
+            status: ScheduleStatus.OFF,
+            notes: noteText,
           },
         });
       }
     }
 
-    // Audit (binnen dezelfde transaction — nooit token/credential in metadata).
+    // Audit (dalam transaction yang sama — tidak pernah menaruh token/kredensial di metadata).
     await recordAuditLog({
       userId: params.managerId,
       action: params.status === 'APPROVED' ? 'APPROVE_LEAVE' : 'REJECT_LEAVE',
@@ -171,13 +256,13 @@ export async function reviewLeaveRequest(params: ReviewLeaveParams) {
       },
     }, tx);
 
-    // Notify Operator (binnen dezelfde transaction).
+    // Notify Operator (dalam transaction yang sama).
     const decisionText = params.status === 'APPROVED' ? 'Disetujui' : 'Ditolak';
     await createNotification({
       userId: existing.userId,
       type: 'LEAVE_STATUS',
       title: `Pengajuan ${existing.type} ${decisionText}`,
-      message: `Permohonan ${existing.type} Anda voor tanggal ${existing.startDate} s/d ${existing.endDate} is ${decisionText.toLowerCase()} door Manager/Admin. ${params.reviewerNote ? `Catatan: ${params.reviewerNote}` : ''}`,
+      message: `Permohonan ${existing.type} Anda untuk tanggal ${existing.startDate} s/d ${existing.endDate} telah ${decisionText.toLowerCase()} oleh Manager/Admin. ${params.status === 'APPROVED' ? 'Jadwal resmi Anda sudah diperbarui.' : ''}${params.reviewerNote ? ` Catatan: ${params.reviewerNote}` : ''}`,
       link: '/operator/requests',
     }, tx);
 
@@ -185,7 +270,7 @@ export async function reviewLeaveRequest(params: ReviewLeaveParams) {
   });
 
   if (result.status === RequestStatus.REJECTED) {
-    // REJECTED → evidence opruimen (blob + metadata), request BLIJFT bewaard (historie).
+    // REJECTED → evidence dibersihkan (blob + metadata), request TETAP disimpan (histori).
     try {
       await deleteEvidenceForRejectedRecord('LeaveRequest', params.requestId, params.managerId);
     } catch (error) {
@@ -288,3 +373,19 @@ export async function searchEmployeesForLeave(query: string, limit = 10) {
     orderBy: { name: 'asc' },
   });
 }
+
+/** Enumerasi daftar tanggal YYYY-MM-DD antara dua tanggal (inklusif). */
+function listDatesBetween(startDate: string, endDate: string): string[] {
+  const dates: string[] = [];
+  if (endDate < startDate) return dates;
+  const cursor = new Date(`${startDate}T00:00:00+07:00`);
+  const end = new Date(`${endDate}T00:00:00+07:00`);
+  let guard = 0;
+  while (cursor <= end && guard < 400) {
+    dates.push(cursor.toLocaleDateString('en-CA', { timeZone: 'Asia/Jakarta' }));
+    cursor.setDate(cursor.getDate() + 1);
+    guard += 1;
+  }
+  return dates;
+}
+
