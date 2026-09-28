@@ -1,6 +1,7 @@
 import React from 'react';
 import { requireAuth } from '@/lib/auth/session';
-import { getFinalScheduleStates } from '@/server/services/workStatisticsService';
+import { prisma } from '@/lib/db/prisma';
+import { getFinalScheduleStates, getApprovedLeaveOverlay } from '@/server/services/workStatisticsService';
 import { getRosterMonth } from '@/server/services/rosterService';
 import { JadwalSayaClient } from './JadwalSayaClient';
 
@@ -14,8 +15,8 @@ function clamp(value: number, min: number, max: number, fallback: number): numbe
 }
 
 export default async function OperatorJadwalSayaPage({ searchParams }: PageProps) {
-  // PRIVACY: operator hanya melihat jadwal dirinya sendiri. userId diambil
-  // dari authenticated session di server — BUKAN dari URL/client.
+  // PRIVACY: jadwal pribadi hanya untuk session user; tab "Jadwal Operator"
+  // bersifat READ-ONLY (tanpa aksi edit/approve) dengan filter server-side.
   const user = await requireAuth();
 
   const params = await searchParams;
@@ -29,7 +30,12 @@ export default async function OperatorJadwalSayaPage({ searchParams }: PageProps
     1, 12, now.getMonth() + 1
   );
 
-  // Data jadwal FINAL (menggabungkan schedule + cuti/izin/sakit APPROVED).
+  const daysInMonth = new Date(year, month, 0).getDate();
+  const monthStart = `${year}-${String(month).padStart(2, '0')}-01`;
+  const monthEnd = `${year}-${String(month).padStart(2, '0')}-${String(daysInMonth).padStart(2, '0')}`;
+
+  // Data jadwal FINAL milik user yang login (memakai engine statistik yang sama
+  // dengan Dashboard Operator).
   const days = await getFinalScheduleStates(user.id, year, month);
 
   const data = await getRosterMonth({
@@ -40,5 +46,41 @@ export default async function OperatorJadwalSayaPage({ searchParams }: PageProps
     includeTodayStatus: true,
   });
 
-  return <JadwalSayaClient data={data} days={days} operatorName={user.name} operatorPosition={user.position} />;
+  // ---- Tab "Jadwal Operator" (read-only) ----
+  // Sumber data SAMA dengan roster manajerial: getRosterMonth tanpa onlyUserId
+  // (semua operator), plus daftar operator aktif untuk pencarian nama/
+  // username/employeeId dan overlay cuti/izin/sakit APPROVED yang konsisten
+  // dengan engine statistik (workStatisticsService).
+  const [allOperatorUsers, allRoster] = await Promise.all([
+    prisma.user.findMany({
+      where: { role: 'OPERATOR', isActive: true },
+      select: { id: true, name: true, username: true, employeeId: true, position: true },
+      orderBy: { employeeId: 'asc' },
+    }),
+    getRosterMonth({
+      year,
+      month,
+      includeContacts: false,
+      includeTodayStatus: false,
+    }),
+  ]);
+
+  const leaveOverlay = await getApprovedLeaveOverlay(
+    allOperatorUsers.map((u) => u.id),
+    monthStart,
+    monthEnd
+  );
+  const leaveOverlayPlain = Object.fromEntries(leaveOverlay);
+
+  return (
+    <JadwalSayaClient
+      data={data}
+      days={days}
+      operatorName={user.name}
+      operatorPosition={user.position}
+      allOperatorUsers={allOperatorUsers}
+      allRosterOperators={allRoster.operators}
+      leaveOverlay={leaveOverlayPlain}
+    />
+  );
 }
