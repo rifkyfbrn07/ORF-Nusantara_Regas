@@ -6,21 +6,27 @@ import { ExternalLink, Search } from 'lucide-react';
 import { APPLICATIONS } from '@/lib/applications';
 import { EmptyState } from '@/components/ui/EmptyState';
 
-/** Logo default — dipakai untuk aplikasi yang belum punya logo khusus. */
+/**
+ * Logo default — dipakai untuk aplikasi yang belum punya logo khusus.
+ * PNG transparan asli; container logo memakai surface terang (juga di dark mode)
+ * agar tulisan hitam/dark pada logo tetap terbaca — tanpa mengubah warna logo.
+ */
 const DEFAULT_LOGO = '/images/NREMAS.png';
 
 /**
- * Logo aplikasi (file asli di public/images, TIDAK digenerate ulang).
- * Mapping:
+ * Logo aplikasi (file asli di public/images, TIDAK digenerate ulang):
  *   - NREGAS EMAS  → NREMAS.png
  *   - ICOR 2.0 REFORM → ICOFR.png (cadangan bila aplikasi hadir)
  *   - SIPGAS       → SIPGAS.png
- * Aplikasi lain tanpa logo khusus otomatis memakai DEFAULT_LOGO (NREMAS.png).
+ *   - ActivoX      → ActivoX.png
+ * Aplikasi lain tanpa logo khusus memakai DEFAULT_LOGO (NREMAS.png).
+ * ICOFR/SIPGAS TIDAK dipakai sebagai fallback.
  */
 const APP_LOGO: Record<string, string> = {
   'nregas-emas': '/images/NREMAS.png',
   'gms-pgn': '/images/SIPGAS.png',
   icor: '/images/ICOFR.png',
+  activox: '/images/ActivoX.png',
 };
 
 export function AplikasiGrid() {
@@ -72,13 +78,13 @@ export function AplikasiGrid() {
                 className="group/card flex h-full flex-col rounded-2xl border border-[#DCE5EF] bg-white p-4 shadow-xs transition-all duration-150 hover:border-[#0077C8]/50 hover:bg-[#F4F9FC] hover:shadow-md dark:border-[rgba(120,190,235,0.14)] dark:bg-[#0D263E] dark:hover:border-[#38BDF8]/40 dark:hover:bg-[#143653] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0077C8] dark:focus-visible:outline-[#38BDF8]"
               >
                 <div className="flex items-start justify-between gap-2">
-                  <span className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-[#E2E8F0] bg-white dark:border-[rgba(120,190,235,0.14)] dark:bg-[#0D263E]">
+                  <span className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-[#E2E8F0] bg-white p-1 dark:border-[rgba(120,190,235,0.18)] dark:bg-white">
                     <Image
                       src={APP_LOGO[app.id] ?? DEFAULT_LOGO}
                       alt={`Logo ${app.name}`}
                       width={40}
                       height={40}
-                      className="h-10 w-10 object-contain"
+                      className="h-full w-full object-contain object-center"
                     />
                   </span>
                   <ExternalLink className="mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-400 transition-colors group-hover/card:text-[#0077C8] dark:group-hover/card:text-[#38BDF8]" />
