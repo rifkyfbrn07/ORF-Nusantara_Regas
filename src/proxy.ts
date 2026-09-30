@@ -76,6 +76,17 @@ export async function proxy(request: NextRequest) {
       (p) => pathname === p || pathname.startsWith(`${p}/`)
     );
 
+  // REGAS: MANAGER diizinkan mengakses HALAMAN APLIKASI (/operator/aplikasi) —
+  // kumpulan shortcut aplikasi eksternal yang sama dengan role lain. Hanya path
+  // ini yang diizinkan; area /operator/** lain tetap ditolak untuk MANAGER.
+  // Defense-in-depth: halaman tersebut tetap memverifikasi session via requireAuth().
+  const MANAGER_ALLOWED_OPERATOR_PATHS = ['/operator/aplikasi'];
+  const isManagerAllowedOperatorRoute =
+    role === 'MANAGER' &&
+    MANAGER_ALLOWED_OPERATOR_PATHS.some(
+      (p) => pathname === p || pathname.startsWith(`${p}/`)
+    );
+
   // REGAS: ADMIN super administrator — full access (defense-in-depth tetap di page level)
   if (role === 'ADMIN' && !isLoginPage) {
     return NextResponse.next();
@@ -86,7 +97,7 @@ export async function proxy(request: NextRequest) {
   }
 
   // Non-operator attempting operator-only area → bounce to own workspace
-  if (isOperatorArea && role !== 'OPERATOR') {
+  if (isOperatorArea && role !== 'OPERATOR' && !isManagerAllowedOperatorRoute) {
     return NextResponse.redirect(new URL(role === 'ADMIN' ? '/admin/dashboard' : '/manager/dashboard', request.url));
   }
 

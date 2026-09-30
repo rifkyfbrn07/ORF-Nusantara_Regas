@@ -152,6 +152,9 @@ function shiftKeyOf(code: string): RosterShiftKey | null {
  * Mengambil roster bulanan operator ORF.
  * - `onlyUserId`: mode "jadwal saya" — operator hanya melihat dirinya sendiri.
  * - `operatorFilter` / `shiftFilter`: filter tampilan untuk MANAGER/ADMIN.
+ * - `includeUnscheduledOperators`: roster penuh — sertakan seluruh operator aktif
+ *   yang BELUM memiliki jadwal pada bulan tsb (agar operator "belum dijadwalkan"
+ *   tetap tampil). Default `false` = perilaku existing (hanya operator ber-roster).
  * - `includeContacts`: hanya true untuk MANAGER/ADMIN (keputusan server-side).
  */
 export async function getRosterMonth(options: {
@@ -160,6 +163,7 @@ export async function getRosterMonth(options: {
   onlyUserId?: string;
   operatorFilter?: string; // userId
   shiftFilter?: RosterShiftKey | 'ALL';
+  includeUnscheduledOperators?: boolean;
   includeContacts: boolean;
   includeTodayStatus: boolean;
 }): Promise<RosterMonthData> {
@@ -232,6 +236,20 @@ export async function getRosterMonth(options: {
   // Distinct operator (urut employeeId = urut dokumen)
   const userMap = new Map<string, (typeof schedules)[number]['user']>();
   for (const s of schedules) userMap.set(s.user.id, s.user);
+
+  // Roster penuh (opsional): sertakan SELURUH operator aktif — termasuk yang
+  // belum memiliki jadwal pada bulan terkait, agar tidak hilang dari roster
+  // (status "belum dijadwalkan"). Opsi ini hanya dipakai halaman Roster.
+  if (options.includeUnscheduledOperators) {
+    const allActiveOperators = await prisma.user.findMany({
+      where: { role: 'OPERATOR', isActive: true },
+      select: { id: true, name: true, employeeId: true, position: true, phone: true },
+    });
+    for (const u of allActiveOperators) {
+      if (!userMap.has(u.id)) userMap.set(u.id, u);
+    }
+  }
+
   const operators = Array.from(userMap.values()).sort((a, b) =>
     a.employeeId.localeCompare(b.employeeId)
   );

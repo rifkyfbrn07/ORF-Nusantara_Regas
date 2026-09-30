@@ -13,6 +13,9 @@ function shiftCellClass(cell: RosterDayCell): string {
   if (cell.shiftKey === 'PAGI') return 'bg-[#EAF4FC] text-[#0066B3] border-[#BBDFF5]';
   if (cell.shiftKey === 'MALAM') return 'bg-[#0F315A] text-white border-[#0F315A]';
   if (cell.shiftKey === 'OFF') return 'bg-red-50 text-[#DC2626] border-red-200';
+  // Belum ada record jadwal untuk tanggal tsb ("belum dijadwalkan").
+  if (cell.shiftCode === null) return 'bg-white text-slate-300 border-dashed border-slate-300';
+  // Punya record jadwal tapi shift bukan roster ORF.
   return 'bg-slate-50 text-slate-300 border-slate-100';
 }
 
@@ -20,7 +23,16 @@ function shiftShortLabel(cell: RosterDayCell): string {
   if (cell.shiftKey === 'PAGI') return 'Pg';
   if (cell.shiftKey === 'MALAM') return 'Mlm';
   if (cell.shiftKey === 'OFF') return 'Off';
+  if (cell.shiftCode === null) return '·';
   return '—';
+}
+
+function cellTitle(cell: RosterDayCell): string {
+  if (cell.shiftKey === 'PAGI') return `${cell.date} — Shift Pagi (${cell.startTime ?? '?'}-${cell.endTime ?? '?'})`;
+  if (cell.shiftKey === 'MALAM') return `${cell.date} — Shift Malam (${cell.startTime ?? '?'}-${cell.endTime ?? '?'})`;
+  if (cell.shiftKey === 'OFF') return `${cell.date} — Libur`;
+  if (cell.shiftCode === null) return `${cell.date} — Belum dijadwalkan`;
+  return `${cell.date} — ${cell.shiftName ?? 'Jadwal lain'}`;
 }
 
 interface RosterMatrixProps {
@@ -111,7 +123,7 @@ export function RosterMatrix({ operators, daysInMonth, showContacts, emptyLabel 
                             className={`inline-flex items-center justify-center w-7 h-6 rounded-md border text-[9.5px] font-black ${shiftCellClass(cell)} ${
                               cell.isToday ? 'ring-2 ring-[#F59E0B] ring-offset-0' : ''
                             }`}
-                            title={cell.isToday ? `${cell.date} (Hari ini)` : cell.date}
+                            title={cell.isToday ? `${cellTitle(cell)} (Hari ini)` : cellTitle(cell)}
                           >
                             {shiftShortLabel(cell)}
                           </span>
