@@ -55,7 +55,7 @@ export const APPLICATIONS: ApplicationLink[] = [
   },
   {
     id: 'ims',
-    name: 'IMS',
+    name: 'ICOFR',
     description: 'Integrated Management System',
     url: 'https://apps.pertamina.com/IMS20',
   },
@@ -73,7 +73,7 @@ export const APPLICATIONS: ApplicationLink[] = [
   },
   {
     id: 'nregas-emas',
-    name: 'NREGAS EMAS',
+    name: 'NR EMAS',
     description: 'Nusantara Regas Emas',
     url: 'https://nregasemas.nusantararegas.com/login?returnUrl=https%3A%2F%2Fnregasemas.nusantararegas.com%2F',
   },
@@ -91,7 +91,7 @@ export const APPLICATIONS: ApplicationLink[] = [
   },
   {
     id: 'ptw',
-    name: 'PTW',
+    name: 'E-PTW',
     description: 'Permit to Work',
     url: 'https://ptw.nusantararegas.com/login',
   },
@@ -112,5 +112,17 @@ export const APPLICATIONS: ApplicationLink[] = [
     name: 'GEP',
     description: 'GEP',
     url: 'https://idploginuat.gep.com/Logon?ReturnUrl=%2Fconnect%2Fauthorize%2Fcallback%3Fclient_id%3Dmvc%26redirect_uri%3Dhttps%253A%252F%252Fsmartuat-auth.gep.com%252Ffederation%252Fgeplogin%252Fsignin%26response_type%3Dcode%26scope%3Dopenid%2520profile%2520email%26code_challenge%3Dl8ml7wg-9wRh3YfdDxWWeg-6JoflPYFy-dbfC6K5Sv4%26code_challenge_method%3DS256%26nonce%3D639201125677883418.Mzk5YjA3MGItNWMxZS00Y2Y4LTljNzMtYWNmOTg4NzczNmQzMDc2NWY0NzEtMTJhMy00MDJlLWIzYTAtNzA5ODExNjk0NjU3%26state%3DRCRPBBLXZUu67W97H5mbVtDLzh0pwffNEpE1QmTLdKJwI79hq8o1NNR4Qp8ikFMBFCZRl-usEdcYW4Kr0JM-knVaJ9_xWWT7wluxFMmClp_pZW5UP__ckyIsMRIU3_rMVxSLnyjYERjAxr2NsmK6JGK70rSw-esHUM7iLMpgx32EsvDRGLsKsjlc77RfEfKqHmdnow03U-tySSk4C3wEf1KDjP3xuhZfOrQohnyjGbmvN4jG11eV0g_OZoPPYDnAW2IY4Dm1yXyN4ajfzNYj9R7_sVXOz2cYYQyzhbxsp7Jt-mjM6Oab3n_BDdbAxGGdDXd-_7dnMwECv7G3eiI_30_6ZpmO6yO4Zsj2wX2bHSLBfUayY052GxQ3ljjKr-9Xe_yOL-5KITy0_EKAHqpMDH59aScNtNRj5yc89hBYScb7I8f6NTSOABGs-bXUDfMZ3PzM1LCJMwlj1JvSNlTCIA',
+  },
+  {
+    id: 'risk-lms',
+    name: 'Risk LMS',
+    description: 'Risk LMS',
+    url: 'https://nusantararegas.hashmicro.co/web/login',
+  },
+  {
+    id: 'jojonomic',
+    name: 'JOJONOMIC',
+    description: 'JOJONOMIC',
+    url: 'https://corp.jojonomic.id',
   },
 ];

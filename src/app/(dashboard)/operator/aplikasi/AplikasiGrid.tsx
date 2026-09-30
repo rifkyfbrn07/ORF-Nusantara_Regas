@@ -15,10 +15,12 @@ const DEFAULT_LOGO = '/images/NREMAS.png';
 
 /**
  * Logo aplikasi (file asli di public/images, TIDAK digenerate ulang):
- *   - NREGAS EMAS  → NREMAS.png
+ *   - NR EMAS       → NREMAS.png
  *   - ICOR 2.0 REFORM → ICOFR.png (cadangan bila aplikasi hadir)
- *   - SIPGAS       → SIPGAS.png
- *   - ActivoX      → ActivoX.png
+ *   - ICOFR          → ICOFR.png (WAJIB ICOFR, jangan fallback NREMAS)
+ *   - SIPGAS        → SIPGAS.png
+ *   - ActivoX       → ActivoX.png
+ *   - JOJONOMIC     → JOJONOMIC.png (logo khusus, TANPA fallback NREMAS)
  * Aplikasi lain tanpa logo khusus memakai DEFAULT_LOGO (NREMAS.png).
  * ICOFR/SIPGAS TIDAK dipakai sebagai fallback.
  */
@@ -26,7 +28,9 @@ const APP_LOGO: Record<string, string> = {
   'nregas-emas': '/images/NREMAS.png',
   'gms-pgn': '/images/SIPGAS.png',
   icor: '/images/ICOFR.png',
+  ims: '/images/ICOFR.png',
   activox: '/images/ActivoX.png',
+  jojonomic: '/images/JOJONOMIC.png',
 };
 
 export function AplikasiGrid() {
