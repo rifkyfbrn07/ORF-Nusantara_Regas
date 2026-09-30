@@ -8,6 +8,7 @@ import { getActiveAnnouncements } from '@/server/services/announcementService';
 import { getOperatorYearlyWorkStatistics, getFinalScheduleStates } from '@/server/services/workStatisticsService';
 import { getProgramKerjaAnnualChart } from '@/server/services/programKerjaService';
 import { getOperatorLeaveRequests } from '@/server/services/leaveService';
+import { getProgramStatus } from '@/lib/programKerjaLogic';
 import { formatIndonesianDate, formatJakartaDate, getJakartaNow } from '@/lib/time';
 import { UserAvatar } from '@/components/ui/UserAvatar';
 import { OperatorDashboardCharts } from './OperatorDashboardCharts';
@@ -161,7 +162,7 @@ export default async function OperatorDashboardPage() {
                 <Link key={p.id} href="/operator/program-kerja" className="block rounded-xl border border-[#EDF2F7] dark:border-[#1A3F63] bg-[#F8FAFC] dark:bg-[#0D2339] p-3 shadow-2xs hover:bg-[#F1F7FC] dark:hover:bg-[#12314D] transition">
                   <div className="flex items-start justify-between gap-2">
                     <p className="min-w-0 truncate text-xs font-bold text-[#0B3568] dark:text-[#E7F1FA]">{p.name}</p>
-                    <ProgramStatusPill status={p.status} />
+                    <ProgramStatusPill status={getProgramStatus(p)} />
                   </div>
                   <p className="mt-1 text-[10.5px] font-semibold text-text-muted">
                     {MONTHS[month - 1]} {year}{weeksLabel ? ` · ${weeksLabel}` : ''}

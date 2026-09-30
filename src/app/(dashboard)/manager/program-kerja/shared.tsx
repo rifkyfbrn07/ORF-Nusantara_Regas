@@ -12,7 +12,7 @@ export const CATEGORY_LABELS: Record<ProgramKerjaCategory, string> = {
 
 export const STATUS_LABELS: Record<ProgramStatus, string> = {
   PLAN: 'PLAN',
-  REALISASI: 'REALISASI',
+  REALISASI: 'TEREALISASI',
   ON_PROGRESS: 'ON PROGRESS',
   BELUM_TEREALISASI: 'TIDAK TEREALISASI',
 };
@@ -71,7 +71,12 @@ export function ProgressCell({ value, target }: { value: number; target: number 
 }
 
 /**
- * Mengembalikan status program untuk bulan tertentu berdasarkan data period (Plan / Realisasi)
+ * Status program untuk BULAN TERTENTU berdasarkan data periode (Plan / Realisasi).
+ *
+ * CATATAN: Ini adalah status derivasi per-bulan (untuk analisis bulanan),
+ * BUKAN status canonical program. Status canonical program (untuk KPI, donut,
+ * tabel, filter) harus memakai `getProgramStatus` dari
+ * `@/lib/programKerjaLogic` yang ditentukan dari `progress`.
  */
 export function getProgramMonthStatus(
   p: { months: { month: number; target: number | null; realization: number | null }[] },

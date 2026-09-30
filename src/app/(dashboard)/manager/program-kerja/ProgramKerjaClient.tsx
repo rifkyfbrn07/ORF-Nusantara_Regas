@@ -10,7 +10,15 @@ import { ProgramKerjaImportModal } from './ProgramKerjaImportModal';
 import { ProgramListView } from './ProgramListView';
 import { ProgramTimelineView } from './ProgramTimelineView';
 import { ProgramKerjaCharts } from './ProgramKerjaCharts';
-import { CATEGORY_LABELS, STATUS_LABELS, MONTH_SHORT, getProgramStatusMeta, getProgramMonthStatus } from './shared';
+import { CATEGORY_LABELS, STATUS_LABELS, MONTH_SHORT, getProgramStatusMeta } from './shared';
+import {
+  normalizePrograms,
+  calculateKPI,
+  calculateStatusSummary,
+  calculateMonthlyDistribution,
+  isActiveInMonth,
+  isBelumTerealisasi,
+} from '@/lib/programKerjaLogic';
 import { ProgramStatus } from '@prisma/client';
 
 export interface ProgramKerjaPicUser {
@@ -48,36 +56,35 @@ export function ProgramKerjaClient({ programs, stats, years, picUsers }: Program
     setQuery('');
   }
 
-  // SINGLE SOURCE OF TRUTH: Seluruh filter (tahun, kategori, status, bulan, search)
-  // dievaluasi secara konsisten berdasarkan DATA PERIODE AKTUAL.
+  // ============================================================================
+  // SINGLE SOURCE OF TRUTH (Rule 3 & 12)
+  // ----------------------------------------------------------------------------
+  // `normalizedPrograms` adalah dataset tunggal yang dipakai seluruh komponen
+  // (KPI, bar chart, donut, tabel, timeline). Setiap program dilengkapi
+  // `computedStatus` = getProgramStatus(progress) — resolver status yang sama
+  // untuk semua halaman. Filter (search, tahun, kategori, bulan, status)
+  // lalu menghasilkan `filtered` yang dipakai KPI/chart/donut/tabel sekaligus.
+  // ============================================================================
+  const normalizedPrograms = useMemo(() => normalizePrograms(programs), [programs]);
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return programs.filter((p) => {
+    return normalizedPrograms.filter((p) => {
       if (filterYear !== 'all' && String(p.year) !== filterYear) return false;
       if (filterCategory !== 'all' && p.category !== filterCategory) return false;
 
-      // Filter Bulan & Status berbasis period data
+      // Filter Bulan — program harus memiliki aktivitas (Plan/Realisasi) di bulan tsb.
       if (filterMonth !== 'all') {
-        const m = Number(filterMonth);
-        const mStatus = getProgramMonthStatus(p, m);
-        if (!mStatus) return false; // Program tidak memiliki aktivitas (plan / realisasi) di bulan terpilih
+        if (!isActiveInMonth(p, Number(filterMonth))) return false;
+      }
 
-        if (filterStatus !== 'all' && mStatus !== filterStatus) return false;
-      } else {
-        if (filterStatus !== 'all') {
-          if (filterStatus === 'PLAN') {
-            const hasPlan = p.months.some((m) => m.target !== null);
-            if (!hasPlan && p.status !== 'PLAN') return false;
-          } else if (filterStatus === 'REALISASI') {
-            const hasReal = p.months.some((m) => m.realization !== null && m.realization >= 100);
-            if (!hasReal) return false;
-          } else if (filterStatus === 'ON_PROGRESS') {
-            const hasOnProg = p.months.some((m) => m.realization !== null && m.realization > 0 && m.realization < 100);
-            if (!hasOnProg && p.status !== 'ON_PROGRESS') return false;
-          } else if (filterStatus === 'BELUM_TEREALISASI') {
-            const hasBelum = p.months.some((m) => m.realization !== null && m.realization === 0);
-            if (!hasBelum && p.status !== 'BELUM_TEREALISASI') return false;
-          }
+      // Filter Status — selalu berdasarkan `computedStatus` (progress), bukan field status db.
+      if (filterStatus !== 'all') {
+        if (filterStatus === 'BELUM_TEREALISASI') {
+          // BELUM_TEREALISASI adalah indikator KPI: progress < 100.
+          if (!isBelumTerealisasi(p)) return false;
+        } else if (p.computedStatus !== filterStatus) {
+          return false;
         }
       }
 
@@ -87,104 +94,45 @@ export function ProgramKerjaClient({ programs, stats, years, picUsers }: Program
       }
       return true;
     });
-  }, [programs, filterYear, filterCategory, filterStatus, filterMonth, query]);
+  }, [normalizedPrograms, filterYear, filterCategory, filterStatus, filterMonth, query]);
 
-  const kpi = useMemo(() => {
-    const total = filtered.length;
-    const sum = filtered.reduce((a, p) => a + p.progress, 0);
+  // KPI dihitung dari dataset `filtered` yang SAMA dengan bar/donut/tabel.
+  const kpi = useMemo(() => calculateKPI(filtered), [filtered]);
 
-    const isMonthFilter = filterMonth !== 'all';
-    const m = isMonthFilter ? Number(filterMonth) : 0;
-
-    const planCount = isMonthFilter
-      ? filtered.filter((p) => getProgramMonthStatus(p, m) === 'PLAN').length
-      : filtered.filter((p) => p.months.some((x) => x.target !== null)).length;
-
-    const realisasiCount = isMonthFilter
-      ? filtered.filter((p) => getProgramMonthStatus(p, m) === 'REALISASI').length
-      : filtered.filter((p) => p.months.some((x) => x.realization !== null && x.realization >= 100)).length;
-
-    const belumCount = isMonthFilter
-      ? filtered.filter((p) => getProgramMonthStatus(p, m) === 'BELUM_TEREALISASI').length
-      : filtered.filter((p) => p.status === 'BELUM_TEREALISASI' || p.months.some((x) => x.realization !== null && x.realization === 0)).length;
-
-    return {
-      total,
-      plan: planCount,
-      realisasi: realisasiCount,
-      avgProgress: total ? Math.round(sum / total) : 0,
-      belum: belumCount,
-    };
-  }, [filtered, filterMonth]);
-
-  // SINGLE SOURCE OF TRUTH — seluruh komponen (tabel, KPI, bar, donut)
-  // membaca dataset `filtered` yang sama untuk tabel, KPI, bar, dan donut.
+  // Bar & Donut — keduanya dihitung dari dataset `filtered` yang SAMA dengan
+  // KPI dan tabel (Rule 10 & 11). Tidak ada subset/agregasi berbeda di sini.
   const chartData = useMemo(() => {
     const scope = filterMonth !== 'all' ? [Number(filterMonth)] : Array.from({ length: 12 }, (_, i) => i + 1);
 
-    // Bar — satu titik per bulan pada scope.
-    // Dihitung murni berdasarkan period status masing-masing bulan dari filtered dataset.
-    const bar = scope.map((m) => {
-      const active = filtered.filter((p) => getProgramMonthStatus(p, m) !== null);
+    // BAR — "Distribusi Program Kerja per Bulan".
+    // Setiap program yang aktif di suatu bulan dihitung 1x dengan `computedStatus`
+    // (resolver yang sama dengan KPI/donut). Bukan angka statis/dummy.
+    const bar =
+      filterStatus === 'all'
+        ? calculateMonthlyDistribution(filtered, scope)
+        : (() => {
+            const scopePrograms = filtered.filter((p) =>
+              filterStatus === 'BELUM_TEREALISASI'
+                ? isBelumTerealisasi(p)
+                : p.computedStatus === filterStatus
+            );
+            return scope.map((m) => ({
+              month: MONTH_SHORT[m - 1],
+              m,
+              count: scopePrograms.filter((p) => isActiveInMonth(p, m)).length,
+            }));
+          })();
 
-      if (filterStatus !== 'all') {
-        // Status spesifik → satu seri "Jumlah Program" (tanpa campur status lain).
-        const count = active.filter((p) => getProgramMonthStatus(p, m) === filterStatus).length;
-        return { month: MONTH_SHORT[m - 1], m, count };
-      }
-
-      // Semua status → breakdown status per bulan berdasarkan period status aktual
-      const point: { month: string; m: number; [key: string]: number | string } = {
-        month: MONTH_SHORT[m - 1],
-        m,
-        PLAN: 0,
-        ON_PROGRESS: 0,
-        REALISASI: 0,
-        BELUM_TEREALISASI: 0,
-      };
-
-      for (const p of active) {
-        const statusKey = getProgramMonthStatus(p, m);
-        if (statusKey) {
-          point[statusKey] = (Number(point[statusKey]) || 0) + 1;
-        }
-      }
-      return point;
-    });
-
-    // Donut — selalu dari subset `filtered` yang sama:
-    //  - Semua status   → distribusi status (per bulan jika filter bulan aktif).
-    //  - Status spesifik → satu iris dengan warna semantic status terpilih.
+    // DONUT — "Ringkasan Status" dari aggregasi `computedStatus` yang sama
+    // dengan tabel (setiap program dihitung tepat sekali).
     const donut =
       filterStatus === 'all'
         ? (() => {
-            if (filterMonth !== 'all') {
-              const m = Number(filterMonth);
-              const dist: Record<string, number> = { PLAN: 0, ON_PROGRESS: 0, REALISASI: 0, BELUM_TEREALISASI: 0 };
-              for (const p of filtered) {
-                const st = getProgramMonthStatus(p, m);
-                if (st) dist[st] = (dist[st] || 0) + 1;
-              }
-              return (['PLAN', 'ON_PROGRESS', 'REALISASI', 'BELUM_TEREALISASI'] as const)
-                .map((statusKey) => {
-                  const meta = getProgramStatusMeta(statusKey);
-                  return {
-                    name: meta.label,
-                    value: dist[statusKey] || 0,
-                    color: meta.color,
-                  };
-                })
-                .filter((item) => item.value > 0);
-            }
-
-            return (['PLAN', 'ON_PROGRESS', 'REALISASI', 'BELUM_TEREALISASI'] as const)
+            const dist = calculateStatusSummary(filtered);
+            return (['PLAN', 'ON_PROGRESS', 'REALISASI'] as const)
               .map((statusKey) => {
                 const meta = getProgramStatusMeta(statusKey);
-                return {
-                  name: meta.label,
-                  value: filtered.filter((p) => p.status === statusKey).length,
-                  color: meta.color,
-                };
+                return { name: meta.label, value: dist[statusKey], color: meta.color };
               })
               .filter((item) => item.value > 0);
           })()
@@ -193,7 +141,7 @@ export function ProgramKerjaClient({ programs, stats, years, picUsers }: Program
             return [{ name: meta.label, value: filtered.length, color: meta.color }];
           })();
 
-    const year = filterYear !== 'all' ? Number(filterYear) : 2026;
+    const year = filterYear !== 'all' ? Number(filterYear) : (programs[0]?.year ?? 2026);
     return {
       bar,
       donut,
@@ -201,7 +149,7 @@ export function ProgramKerjaClient({ programs, stats, years, picUsers }: Program
       monthOnly: filterMonth !== 'all' ? MONTH_SHORT[Number(filterMonth) - 1] : null,
       status: filterStatus,
     };
-  }, [filtered, filterYear, filterMonth, filterStatus]);
+  }, [filtered, filterYear, filterMonth, filterStatus, programs]);
 
   function openCreate() {
     setModalProgram(null);
@@ -230,7 +178,7 @@ export function ProgramKerjaClient({ programs, stats, years, picUsers }: Program
     { label: 'Plan', value: String(kpi.plan), accent: 'border-l-[#0066B3]' },
     { label: 'Realisasi', value: String(kpi.realisasi), accent: 'border-l-emerald-500' },
     { label: 'Progress', value: `${kpi.avgProgress}%`, accent: 'border-l-[#F58220]' },
-    { label: 'Belum Terealisasi', value: String(kpi.belum), accent: 'border-l-red-500' },
+    { label: 'Belum Terealisasi', value: String(kpi.belumTerealisasi), accent: 'border-l-red-500' },
   ];
 
   return (

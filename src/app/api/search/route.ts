@@ -2,8 +2,16 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth/session';
 import { prisma } from '@/lib/db/prisma';
 import type { Role } from '@prisma/client';
+import { getProgramStatus } from '@/lib/programKerjaLogic';
 
 export const dynamic = 'force-dynamic';
+
+/** Label status canonical konsisten dgn resolver getProgramStatus (progress). */
+const PROGRAM_STATUS_TEXT: Record<string, string> = {
+  PLAN: 'PLAN',
+  ON_PROGRESS: 'ON PROGRESS',
+  REALISASI: 'TEREALISASI',
+};
 
 /**
  * Global Search API — dipakai Topbar.
@@ -97,15 +105,16 @@ export async function GET(request: NextRequest) {
 
     const programs = await prisma.programKerja.findMany({
       where: { OR: [{ name: { contains: q, mode: 'insensitive' } }, { notes: { contains: q, mode: 'insensitive' } }] },
-      select: { id: true, name: true, year: true, category: true, status: true },
+      select: { id: true, name: true, year: true, category: true, status: true, progress: true },
       take: 4,
       orderBy: [{ year: 'desc' }, { sequence: 'asc' }],
     });
     for (const p of programs) {
+      const statusText = PROGRAM_STATUS_TEXT[getProgramStatus({ progress: p.progress })] ?? p.status;
       results.push({
         type: 'PROGRAM',
         title: p.name,
-        subtitle: `Program Kerja ${p.year} · ${p.category.replaceAll('_', ' ')} · ${p.status.replaceAll('_', ' ')}`,
+        subtitle: `Program Kerja ${p.year} · ${p.category.replaceAll('_', ' ')} · ${statusText}`,
         href: '/manager/program-kerja',
       });
     }

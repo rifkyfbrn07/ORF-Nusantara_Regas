@@ -5,6 +5,7 @@ import {
   ProgramKerjaCreateInput,
   ProgramKerjaUpdateInput,
 } from '@/lib/validation';
+import { calculateKPI, getProgramStatus } from '@/lib/programKerjaLogic';
 
 // ============================================================================
 // Serialisasi untuk Client Component
@@ -174,23 +175,14 @@ const MONTH_SHORT_ID = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 
 export async function getProgramKerjaAnnualChart(year: number): Promise<ProgramAnnualChartData> {
   const programs = await prisma.programKerja.findMany({
     where: { year },
-    select: { status: true, months: { select: { month: true, target: true, realization: true } } },
+    select: { progress: true, months: { select: { month: true, target: true, realization: true } } },
   });
 
   const monthAgg = new Map<number, { plan: number; realisasi: number; tidakTerealisasi: number }>();
   for (let m = 1; m <= 12; m++) monthAgg.set(m, { plan: 0, realisasi: 0, tidakTerealisasi: 0 });
 
-  let realisasiCount = 0;
-  let onProgressCount = 0;
-  let belumCount = 0;
-  let planCount = 0;
-
+  // Bar — distribusi Plan vs Realisasi per bulan (berbasis data periode per bulan).
   for (const p of programs) {
-    if (p.status === ProgramStatus.REALISASI) realisasiCount += 1;
-    else if (p.status === ProgramStatus.ON_PROGRESS) onProgressCount += 1;
-    else if (p.status === ProgramStatus.BELUM_TEREALISASI) belumCount += 1;
-    else if (p.status === ProgramStatus.PLAN) planCount += 1;
-
     for (let m = 1; m <= 12; m++) {
       const mEntries = p.months.filter((x) => x.month === m);
       const hasPlan = mEntries.some((x) => x.target !== null);
@@ -211,14 +203,20 @@ export async function getProgramKerjaAnnualChart(year: number): Promise<ProgramA
     }
   }
 
+  // Donut — distribusi status program konsisten dengan resolver canonical
+  // `getProgramStatus` (berbasis progress, sesuai Rule 2 & 10).
+  const statusDist = { PLAN: 0, ON_PROGRESS: 0, REALISASI: 0 } as Record<ProgramStatus, number>;
+  for (const p of programs) {
+    statusDist[getProgramStatus({ progress: p.progress })] += 1;
+  }
+
   return {
     year,
     bar: MONTH_SHORT_ID.map((label, i) => ({ month: label, ...(monthAgg.get(i + 1)!) })),
     donut: [
-      { name: 'Realisasi', value: realisasiCount, color: '#16A34A' },
-      { name: 'ON PROGRESS', value: onProgressCount, color: '#F59E0B' },
-      { name: 'Tidak Terealisasi', value: belumCount, color: '#DC2626' },
-      { name: 'PLAN', value: planCount, color: '#0066B3' },
+      { name: 'PLAN', value: statusDist.PLAN, color: '#0066B3' },
+      { name: 'ON PROGRESS', value: statusDist.ON_PROGRESS, color: '#F59E0B' },
+      { name: 'REALISASI', value: statusDist.REALISASI, color: '#16A34A' },
     ],
   };
 }
@@ -227,41 +225,27 @@ export async function getProgramKerjaStats(year?: number): Promise<ProgramKerjaS
   const where: Prisma.ProgramKerjaWhereInput = year ? { year } : {};
   const programs = await prisma.programKerja.findMany({
     where,
-    select: { status: true, progress: true, category: true },
+    select: { status: true, progress: true, category: true, months: { select: { target: true } } },
   });
 
-  const stats: ProgramKerjaStats = {
-    total: programs.length,
-    plan: 0,
-    realisasi: 0,
-    onProgress: 0,
-    belumTerealisasi: 0,
-    avgProgress: 0,
-    perCategory: [],
-  };
+  // Perhitungan KPI memakai layer kalkulasi yang SAMA dengan halaman
+  // Program Kerja (single source of truth) — status dari progress.
+  const kpi = calculateKPI(programs);
 
   const categoryCount = new Map<ProgramCategory, number>();
-  let progressSum = 0;
   for (const p of programs) {
-    switch (p.status) {
-      case ProgramStatus.PLAN:
-        stats.plan += 1;
-        break;
-      case ProgramStatus.REALISASI:
-        stats.realisasi += 1;
-        break;
-      case ProgramStatus.ON_PROGRESS:
-        stats.onProgress += 1;
-        break;
-      case ProgramStatus.BELUM_TEREALISASI:
-        stats.belumTerealisasi += 1;
-        break;
-    }
-    progressSum += p.progress;
     categoryCount.set(p.category, (categoryCount.get(p.category) || 0) + 1);
   }
-  stats.avgProgress = stats.total > 0 ? Math.round(progressSum / stats.total) : 0;
-  stats.perCategory = Array.from(categoryCount.entries()).map(([category, total]) => ({ category, total }));
+
+  const stats: ProgramKerjaStats = {
+    total: kpi.total,
+    plan: kpi.plan,
+    realisasi: kpi.realisasi,
+    onProgress: kpi.onProgress,
+    belumTerealisasi: kpi.belumTerealisasi,
+    avgProgress: kpi.avgProgress,
+    perCategory: Array.from(categoryCount.entries()).map(([category, total]) => ({ category, total })),
+  };
   return stats;
 }
 

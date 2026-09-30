@@ -4,6 +4,7 @@ import React, { useMemo, useState } from 'react';
 import { Search } from 'lucide-react';
 import { EvidenceViewer } from '@/components/ui/EvidenceViewer';
 import type { ProgramKerjaDTO } from '@/server/services/programKerjaService';
+import { getProgramStatus } from '@/lib/programKerjaLogic';
 
 const CATEGORY_LABELS: Record<string, string> = {
   PENGADAAN: 'A. Pengadaan',
@@ -14,7 +15,7 @@ const CATEGORY_LABELS: Record<string, string> = {
 
 const STATUS_LABELS: Record<string, string> = {
   PLAN: 'PLAN',
-  REALISASI: 'REALISASI',
+  REALISASI: 'TEREALISASI',
   ON_PROGRESS: 'ON PROGRESS',
   BELUM_TEREALISASI: 'TIDAK TEREALISASI',
 };
@@ -65,8 +66,8 @@ function ProgramCard({ p }: { p: ProgramKerjaDTO }) {
           </div>
           <h3 className="mt-0.5 text-sm font-bold leading-snug text-[#0B3568]">{p.name}</h3>
         </div>
-        <span className={`inline-flex shrink-0 items-center rounded-full border px-2 py-0.5 text-[9.5px] font-black tracking-wide whitespace-nowrap ${STATUS_BADGE[p.status]}`}>
-          {STATUS_LABELS[p.status]}
+        <span className={`inline-flex shrink-0 items-center rounded-full border px-2 py-0.5 text-[9.5px] font-black tracking-wide whitespace-nowrap ${STATUS_BADGE[getProgramStatus(p)]}`}>
+          {STATUS_LABELS[getProgramStatus(p)]}
         </span>
       </div>
 

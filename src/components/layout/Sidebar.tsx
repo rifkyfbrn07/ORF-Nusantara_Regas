@@ -24,6 +24,7 @@ import {
   ChevronRight,
 } from 'lucide-react';
 import { SessionUser } from '@/lib/auth/session';
+import { ApplicationsMenu } from './ApplicationsMenu';
 
 interface SidebarProps {
   user: SessionUser;
@@ -39,6 +40,8 @@ interface NavItem {
   icon: React.ComponentType<{ className?: string; strokeWidth?: number }>;
   badge?: number;
   hasSub?: boolean;
+  /** Item khusus non-link (mis. menu Aplikasi penghasil dropdown). */
+  kind?: 'applications';
 }
 
 interface NavSection {
@@ -98,6 +101,7 @@ export function Sidebar({
         { label: 'Laporan', href: '/manager/reports', icon: ClipboardList },
         { label: 'Audit Log', href: '/manager/audit-logs', icon: ShieldCheck },
         { label: 'Pengaturan', href: '/admin/settings', icon: Settings },
+        { label: 'Aplikasi', href: '#', icon: Grid2X2, kind: 'applications' },
       ],
     },
   ];
@@ -143,6 +147,7 @@ export function Sidebar({
         { label: 'Laporan', href: '/manager/reports', icon: ClipboardList },
         { label: 'Audit Log', href: '/manager/audit-logs', icon: ShieldCheck },
         { label: 'Pengaturan', href: '/profile#keamanan', icon: Settings },
+        { label: 'Aplikasi', href: '#', icon: Grid2X2, kind: 'applications' },
       ],
     },
   ];
@@ -182,6 +187,7 @@ export function Sidebar({
       items: [
         { label: 'Notifikasi', href: '/notifications', icon: Bell, badge: unreadCount },
         { label: 'Pengaturan', href: '/profile', icon: Settings },
+        { label: 'Aplikasi', href: '#', icon: Grid2X2, kind: 'applications' },
       ],
     },
   ];
@@ -270,6 +276,14 @@ export function Sidebar({
 
             <nav className="space-y-1">
               {sec.items.map((item) => {
+                if ('kind' in item && item.kind === 'applications') {
+                  return (
+                    <ApplicationsMenu
+                      key={isMobileDrawer ? `applications-${isOpen ? 'open' : 'closed'}` : 'applications'}
+                    />
+                  );
+                }
+
                 const Icon = item.icon;
                 const isActive = checkIsActive(item.href);
 

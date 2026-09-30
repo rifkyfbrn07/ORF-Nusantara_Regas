@@ -19,7 +19,7 @@ import { STATUS_COLORS, STATUS_LABELS } from './shared';
 
 interface ProgramBarPoint {
   month: string;
-  // Status spesifik → { count } | SEMUA → { PLAN | ON_PROGRESS | REALISASI | BELUM_TEREALISASI }
+  // Status spesifik → { count } | SEMUA → { PLAN | ON_PROGRESS | REALISASI }
   [key: string]: number | string;
 }
 
@@ -93,8 +93,7 @@ export function ProgramKerjaCharts({
                 <>
                   <Bar dataKey="PLAN" name="PLAN" fill={STATUS_COLORS.PLAN} radius={[2, 2, 0, 0]} maxBarSize={14} />
                   <Bar dataKey="ON_PROGRESS" name="ON PROGRESS" fill={STATUS_COLORS.ON_PROGRESS} radius={[2, 2, 0, 0]} maxBarSize={14} />
-                  <Bar dataKey="REALISASI" name="REALISASI" fill={STATUS_COLORS.REALISASI} radius={[2, 2, 0, 0]} maxBarSize={14} />
-                  <Bar dataKey="BELUM_TEREALISASI" name="TIDAK TEREALISASI" fill={STATUS_COLORS.BELUM_TEREALISASI} radius={[2, 2, 0, 0]} maxBarSize={14} />
+                  <Bar dataKey="REALISASI" name="TEREALISASI" fill={STATUS_COLORS.REALISASI} radius={[2, 2, 0, 0]} maxBarSize={14} />
                 </>
               ) : (
                 <Bar
