@@ -7,11 +7,12 @@ import { APPLICATIONS } from '@/lib/applications';
 import { EmptyState } from '@/components/ui/EmptyState';
 
 /**
- * Logo default — dipakai untuk aplikasi yang belum punya logo khusus.
+ * Logo default — FALLBACK untuk aplikasi yang belum punya logo khusus.
+ * Menggunakan logo Pertamina (`PERTAMINA.png`) — BUKAN lagi NREMAS.png.
  * PNG transparan asli; container logo memakai surface terang (juga di dark mode)
  * agar tulisan hitam/dark pada logo tetap terbaca — tanpa mengubah warna logo.
  */
-const DEFAULT_LOGO = '/images/NREMAS.png';
+const DEFAULT_LOGO = '/images/PERTAMINA.png';
 
 /**
  * Logo aplikasi (file asli di public/images, TIDAK digenerate ulang):
@@ -20,8 +21,11 @@ const DEFAULT_LOGO = '/images/NREMAS.png';
  *   - ICOFR          → ICOFR.png (WAJIB ICOFR, jangan fallback NREMAS)
  *   - SIPGAS        → SIPGAS.png
  *   - ActivoX       → ActivoX.png
- *   - JOJONOMIC     → JOJONOMIC.png (logo khusus, TANPA fallback NREMAS)
- * Aplikasi lain tanpa logo khusus memakai DEFAULT_LOGO (NREMAS.png).
+ *   - JOJONOMIC     → JOJONOMIC.png
+ *   - DTM           → DTM.png
+ *   - IVENDOR       → IVENDOR.png (logo iVendor)
+ *   - GEP           → GEP.png
+ * Aplikasi lain tanpa logo khusus memakai DEFAULT_LOGO (PERTAMINA.png).
  * ICOFR/SIPGAS TIDAK dipakai sebagai fallback.
  */
 const APP_LOGO: Record<string, string> = {
@@ -31,6 +35,9 @@ const APP_LOGO: Record<string, string> = {
   ims: '/images/ICOFR.png',
   activox: '/images/ActivoX.png',
   jojonomic: '/images/JOJONOMIC.png',
+  digitravel: '/images/DTM.png',
+  evendor: '/images/IVENDOR.png',
+  gep: '/images/GEP.png',
 };
 
 export function AplikasiGrid() {
