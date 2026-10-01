@@ -4,7 +4,7 @@ import React, { useMemo, useState } from 'react';
 import { Search } from 'lucide-react';
 import { EvidenceViewer } from '@/components/ui/EvidenceViewer';
 import type { ProgramKerjaDTO } from '@/server/services/programKerjaService';
-import { getProgramStatus } from '@/lib/programKerjaLogic';
+import { getProgramMetrics } from '@/lib/programKerjaLogic';
 
 const CATEGORY_LABELS: Record<string, string> = {
   PENGADAAN: 'A. Pengadaan',
@@ -26,6 +26,12 @@ const STATUS_BADGE: Record<string, string> = {
   ON_PROGRESS: 'bg-amber-50 text-amber-700 border-amber-200',
   BELUM_TEREALISASI: 'bg-red-50 text-red-700 border-red-200',
 };
+
+function fmtNumber(value: number): string {
+  if (!Number.isFinite(value)) return '0';
+  const rounded = Math.round(value * 100) / 100;
+  return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1).replace(/\.0$/, '');
+}
 
 function ProgressBar({ value, target }: { value: number; target: number }) {
   const pct = target > 0 ? Math.min(100, Math.round((value / target) * 100)) : 0;
@@ -57,6 +63,7 @@ function EvidenceLink({ p }: { p: ProgramKerjaDTO }) {
 
 function ProgramCard({ p }: { p: ProgramKerjaDTO }) {
   const [expanded, setExpanded] = useState(false);
+  const metrics = getProgramMetrics(p);
   return (
     <article className="space-y-3 rounded-xl border border-[#DCE5EF] bg-white p-4 shadow-xs">
       <div className="flex items-start justify-between gap-2">
@@ -66,21 +73,25 @@ function ProgramCard({ p }: { p: ProgramKerjaDTO }) {
           </div>
           <h3 className="mt-0.5 text-sm font-bold leading-snug text-[#0B3568]">{p.name}</h3>
         </div>
-        <span className={`inline-flex shrink-0 items-center rounded-full border px-2 py-0.5 text-[9.5px] font-black tracking-wide whitespace-nowrap ${STATUS_BADGE[getProgramStatus(p)]}`}>
-          {STATUS_LABELS[getProgramStatus(p)]}
+        <span className={`inline-flex shrink-0 items-center rounded-full border px-2 py-0.5 text-[9.5px] font-black tracking-wide whitespace-nowrap ${STATUS_BADGE[metrics.status]}`}>
+          {STATUS_LABELS[metrics.status]}
         </span>
       </div>
 
-      <ProgressBar value={p.progress} target={p.planTarget} />
+      <ProgressBar value={metrics.progress} target={100} />
 
-      <div className="grid grid-cols-3 gap-2 text-[10px]">
+      <div className="grid grid-cols-2 gap-2 text-[10px] sm:grid-cols-4">
         <div>
-          <div className="font-black uppercase tracking-wide text-slate-400">Target (P)</div>
-          <div className="font-semibold text-slate-600">{p.planTarget}%</div>
+          <div className="font-black uppercase tracking-wide text-slate-400">Plan (P)</div>
+          <div className="font-semibold text-slate-600 tabular-nums">{fmtNumber(metrics.plan)}</div>
         </div>
         <div>
           <div className="font-black uppercase tracking-wide text-slate-400">Realisasi (R)</div>
-          <div className="font-semibold text-slate-600">{p.progress}%</div>
+          <div className="font-semibold text-emerald-700 tabular-nums">{fmtNumber(metrics.realization)}</div>
+        </div>
+        <div>
+          <div className="font-black uppercase tracking-wide text-slate-400">Remaining</div>
+          <div className="font-semibold text-slate-600 tabular-nums">{fmtNumber(metrics.remaining)}</div>
         </div>
         <div>
           <div className="font-black uppercase tracking-wide text-slate-400">Deadline</div>

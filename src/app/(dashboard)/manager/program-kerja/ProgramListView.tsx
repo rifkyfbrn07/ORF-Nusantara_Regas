@@ -1,21 +1,25 @@
 'use client';
 
 import React from 'react';
-import { Loader2, Pencil, Trash2 } from 'lucide-react';
+import { Eye, Loader2, Pencil, Trash2 } from 'lucide-react';
 import { EvidenceViewer } from '@/components/ui/EvidenceViewer';
 import type { ProgramKerjaDTO } from '@/server/services/programKerjaService';
-import type { ProgramCategory, ProgramStatus } from '@prisma/client';
-import { CATEGORY_LABELS, EmptyState, ProgressCell, StatusBadge } from './shared';
+import type { ProgramCategory } from '@prisma/client';
+import { CATEGORY_LABELS, EmptyState, ProgressCell, StatusBadge, fmtNumber } from './shared';
+import { getProgramMetrics } from '@/lib/programKerjaLogic';
+import type { ProgramMetrics } from '@/lib/programKerjaLogic';
 
 interface ProgramListViewProps {
   programs: ProgramRow[];
   deletingId: string | null;
   onEdit: (p: ProgramKerjaDTO) => void;
   onDelete: (p: ProgramKerjaDTO) => void;
+  /** Buka Detail Program (Informasi, Jadwal, Riwayat Update). */
+  onOpenUpdate: (p: ProgramKerjaDTO) => void;
 }
 
-/** Baris tabel = program ternormalisasi (memiliki `computedStatus` dari progress). */
-type ProgramRow = ProgramKerjaDTO & { computedStatus?: ProgramStatus };
+/** Baris tabel = program ternormalisasi; `metrics` berasal dari dataset yang sama dengan KPI/chart. */
+type ProgramRow = ProgramKerjaDTO & { metrics?: ProgramMetrics };
 
 function groupByCategory(programs: ProgramRow[]): { category: string; label: string; items: ProgramRow[] }[] {
   const order: ProgramCategory[] = ['PENGADAAN', 'RAPAT_KOORDINASI', 'OPERASIONAL_RUTIN', 'AUDIT'];
@@ -39,8 +43,10 @@ function DriveLink({ p }: { p: ProgramKerjaDTO }) {
     </span>
   );
 }
-export function ProgramListView({ programs, deletingId, onEdit, onDelete }: ProgramListViewProps) {
+export function ProgramListView({ programs, deletingId, onEdit, onDelete, onOpenUpdate }: ProgramListViewProps) {
   const groups = groupByCategory(programs);
+  // Fallback aman: bila `metrics` belum ada, hitung dari periode dataset yang sama.
+  const metricsOf = (p: ProgramRow): ProgramMetrics => p.metrics ?? getProgramMetrics(p);
 
   return (
     <>
@@ -56,6 +62,7 @@ export function ProgramListView({ programs, deletingId, onEdit, onDelete }: Prog
                 <th className="w-32 px-3 py-3 font-black">PIC</th>
                 <th className="w-20 px-3 py-3 font-black">Plan (P)</th>
                 <th className="w-20 px-3 py-3 font-black">Realisasi (R)</th>
+                <th className="w-20 px-3 py-3 font-black">Sisa (Remaining)</th>
                 <th className="w-32 px-3 py-3 font-black">Progress</th>
                 <th className="w-32 px-3 py-3 font-black">Status</th>
                 <th className="w-14 px-3 py-3 font-black">Bukti</th>
@@ -65,23 +72,33 @@ export function ProgramListView({ programs, deletingId, onEdit, onDelete }: Prog
             {groups.map((group) => (
               <tbody key={group.category} className="border-t-2 border-[#DCE5EF]">
                 <tr className="bg-slate-50/80">
-                  <td colSpan={11} className="px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-[#1769AA]">
+                  <td colSpan={12} className="px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-[#1769AA]">
                     {group.label}
                   </td>
                 </tr>
                 {group.items.map((p) => (
                   <tr key={p.id} className="align-top hover:bg-[#F8FBFE]">
                     <td className="px-3 py-3 text-xs font-black tabular-nums text-slate-400">{p.sequence}</td>
-                    <td className="max-w-[300px] px-3 py-3 text-xs font-bold text-[#0B3568]">{p.name}</td>
+                    <td className="max-w-[300px] px-3 py-3">
+                      <button
+                        type="button"
+                        onClick={() => onOpenUpdate(p)}
+                        className="block cursor-pointer text-left text-xs font-bold text-[#0B3568] hover:text-[#0066B3] hover:underline"
+                        title="Lihat detail & riwayat update"
+                      >
+                        {p.name}
+                      </button>
+                    </td>
                     <td className="px-3 py-3 text-[11px] font-semibold text-slate-500">{CATEGORY_LABELS[p.category]}</td>
                     <td className="px-3 py-3 text-[10.5px] font-semibold text-slate-600">{p.deadline ? new Date(p.deadline).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}</td>
                     <td className="px-3 py-3 text-[11px] font-semibold text-text-secondary">{p.pic?.name || 'Belum ditentukan'}</td>
-                    <td className="px-3 py-3 text-[11px] font-bold text-[#1769AA]">{p.planTarget}%</td>
-                    <td className="px-3 py-3 text-[11px] font-bold text-[#0B3568]">{p.progress}%</td>
-                    <td className="px-3 py-3"><ProgressCell value={p.progress} target={p.planTarget} /></td>
-                    <td className="px-3 py-3"><StatusBadge status={p.computedStatus ?? p.status} /></td>
+                    <td className="px-3 py-3 text-[11px] font-bold text-[#1769AA] tabular-nums">{fmtNumber(metricsOf(p).plan)}</td>
+                    <td className="px-3 py-3 text-[11px] font-bold text-emerald-700 tabular-nums">{fmtNumber(metricsOf(p).realization)}</td>
+                    <td className="px-3 py-3 text-[11px] font-bold text-slate-500 tabular-nums">{fmtNumber(metricsOf(p).remaining)}</td>
+                    <td className="px-3 py-3"><ProgressCell value={Math.round(metricsOf(p).progress)} target={100} /></td>
+                    <td className="px-3 py-3"><StatusBadge status={metricsOf(p).status} /></td>
                     <td className="px-3 py-3"><DriveLink p={p} /></td>
-                    <td className="px-3 py-3"><div className="flex items-center justify-end gap-1"><button type="button" onClick={() => onEdit(p)} className="cursor-pointer rounded-md p-1.5 text-slate-400 hover:bg-[#EAF4FC] hover:text-[#0066B3]" title="Perbarui"><Pencil className="h-3.5 w-3.5" /></button><button type="button" onClick={() => onDelete(p)} disabled={deletingId === p.id} className="cursor-pointer rounded-md p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600 disabled:opacity-50" title="Hapus">{deletingId === p.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}</button></div></td>
+                    <td className="px-3 py-3"><div className="flex items-center justify-end gap-1"><button type="button" onClick={() => onOpenUpdate(p)} className="cursor-pointer rounded-md p-1.5 text-slate-400 hover:bg-[#EDF4FB] hover:text-[#1769AA]" title="Detail & Riwayat Update"><Eye className="h-3.5 w-3.5" /></button><button type="button" onClick={() => onEdit(p)} className="cursor-pointer rounded-md p-1.5 text-slate-400 hover:bg-[#EAF4FC] hover:text-[#0066B3]" title="Perbarui"><Pencil className="h-3.5 w-3.5" /></button><button type="button" onClick={() => onDelete(p)} disabled={deletingId === p.id} className="cursor-pointer rounded-md p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600 disabled:opacity-50" title="Hapus">{deletingId === p.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}</button></div></td>
                   </tr>
                 ))}
               </tbody>
@@ -99,13 +116,14 @@ export function ProgramListView({ programs, deletingId, onEdit, onDelete }: Prog
             <div className="space-y-3">
               {group.items.map((p) => (
                 <article key={p.id} className="space-y-2.5 rounded-xl border border-[#DCE5EF] bg-white p-4 shadow-xs">
-                  <div className="flex items-start justify-between gap-2"><div className="min-w-0"><div className="text-[9.5px] font-black uppercase tracking-wider text-[#1769AA]">{p.sequence} · {CATEGORY_LABELS[p.category]}</div><div className="mt-0.5 text-xs font-bold leading-snug text-[#0B3568]">{p.name}</div></div><StatusBadge status={p.computedStatus ?? p.status} /></div>
-                  <ProgressCell value={p.progress} target={p.planTarget} />
-                  <div className="grid grid-cols-2 gap-2 text-[10px] sm:grid-cols-3"><div><span className="font-black uppercase tracking-wide text-slate-400">Deadline</span><div className="font-semibold text-slate-600">{p.deadline ? p.deadline.slice(0, 10) : '—'}</div></div><div><span className="font-black uppercase tracking-wide text-slate-400">PIC</span><div className="font-semibold text-slate-600">{p.pic?.name || 'Belum ditentukan'}</div></div><div><span className="font-black uppercase tracking-wide text-slate-400">Plan (P)</span><div className="font-semibold text-slate-600">{p.planTarget}%</div></div><div><span className="font-black uppercase tracking-wide text-slate-400">Realisasi</span><div className="font-semibold text-slate-600">{p.progress}%</div></div></div>
+                  <div className="flex items-start justify-between gap-2"><div className="min-w-0"><div className="text-[9.5px] font-black uppercase tracking-wider text-[#1769AA]">{p.sequence} · {CATEGORY_LABELS[p.category]}</div><div className="mt-0.5 text-xs font-bold leading-snug text-[#0B3568]">{p.name}</div></div><StatusBadge status={metricsOf(p).status} /></div>
+                  <ProgressCell value={Math.round(metricsOf(p).progress)} target={100} />
+                  <div className="grid grid-cols-2 gap-2 text-[10px] sm:grid-cols-3"><div><span className="font-black uppercase tracking-wide text-slate-400">Deadline</span><div className="font-semibold text-slate-600">{p.deadline ? p.deadline.slice(0, 10) : '—'}</div></div><div><span className="font-black uppercase tracking-wide text-slate-400">PIC</span><div className="font-semibold text-slate-600">{p.pic?.name || 'Belum ditentukan'}</div></div><div><span className="font-black uppercase tracking-wide text-slate-400">Plan (P)</span><div className="font-semibold text-slate-600 tabular-nums">{fmtNumber(metricsOf(p).plan)}</div></div><div><span className="font-black uppercase tracking-wide text-slate-400">Realisasi (R)</span><div className="font-semibold text-slate-600 tabular-nums">{fmtNumber(metricsOf(p).realization)}</div></div><div><span className="font-black uppercase tracking-wide text-slate-400">Remaining</span><div className="font-semibold text-slate-600 tabular-nums">{fmtNumber(metricsOf(p).remaining)}</div></div></div>
                   {p.notes && <p className="text-[10.5px] leading-relaxed text-slate-500">{p.notes}</p>}
                   <div className="flex items-center gap-2 border-t border-[#EDF2F7] pt-2">
                     <DriveLink p={p} />
-                    <button type="button" onClick={() => onEdit(p)} className="flex-1 cursor-pointer rounded-lg border border-[#CBD7E6] px-3 py-1.5 text-[11px] font-bold text-slate-600 hover:bg-slate-50">Perbarui</button>
+                    <button type="button" onClick={() => onOpenUpdate(p)} className="flex-1 cursor-pointer rounded-lg border border-[#0066B3] bg-[#EAF4FC] px-3 py-1.5 text-[11px] font-bold text-[#0066B3] hover:bg-[#D9EAF9]">Detail</button>
+                    <button type="button" onClick={() => onEdit(p)} className="cursor-pointer rounded-lg border border-[#CBD7E6] px-3 py-1.5 text-[11px] font-bold text-slate-600 hover:bg-slate-50">Perbarui</button>
                     <button type="button" onClick={() => onDelete(p)} disabled={deletingId === p.id} className="cursor-pointer rounded-lg border border-red-200 px-3 py-1.5 text-[11px] font-bold text-red-600 hover:bg-red-50 disabled:opacity-50">Hapus</button>
                   </div>
                 </article>

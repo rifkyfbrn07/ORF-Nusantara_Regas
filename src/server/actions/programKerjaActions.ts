@@ -10,11 +10,14 @@ import {
   upsertProgramKerjaTask,
   setTaskDone,
   updateProgramProgress,
+  submitProgramUpdate,
 } from '../services/programKerjaService';
+import type { ProgramUpdateSubmitInput } from '@/lib/validation';
 import {
   programKerjaCreateSchema,
   programKerjaUpdateSchema,
   programKerjaProgressSchema,
+  programUpdateSubmitSchema,
   ProgramKerjaCreateInput,
   ProgramKerjaUpdateInput,
 } from '@/lib/validation';
@@ -100,6 +103,24 @@ export async function setTaskDoneAction(input: { taskId: string; isDone: boolean
     return { success: true as const };
   } catch (error: unknown) {
     return { success: false as const, error: error instanceof Error ? error.message : 'Gagal memperbarui task.' };
+  }
+}
+
+export async function submitProgramUpdateAction(input: ProgramUpdateSubmitInput) {
+  let storagePathForRollback: string | undefined;
+  try {
+    const user = await requireRole([...ALLOWED_ROLES]);
+    const parse = programUpdateSubmitSchema.safeParse(input);
+    if (!parse.success) return { success: false as const, error: parse.error.issues[0]?.message || 'Data update tidak valid' };
+    storagePathForRollback = parse.data.storagePath || parse.data.driveFileId || undefined;
+    const update = await submitProgramUpdate(parse.data, user.id);
+    revalidateProgramKerja();
+    return { success: true as const, update };
+  } catch (error: unknown) {
+    // Jika pembuatan record gagal setelah upload berhasil, buang blob yang
+    // masih belum direferensikan — jangan biarkan file yatim.
+    if (storagePathForRollback) await rollbackBlobIfUnreferenced(storagePathForRollback).catch(() => {});
+    return { success: false as const, error: error instanceof Error ? error.message : 'Gagal mengirim update' };
   }
 }
 

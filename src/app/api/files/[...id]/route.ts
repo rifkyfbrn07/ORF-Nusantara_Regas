@@ -65,6 +65,28 @@ async function findAuthorizedFile(fileId: string, userId: string, role: string):
     return toFileRecord(progress.evidenceName, progress.evidenceMime, progress);
   }
 
+  // Riwayat Update (ProgramUpdate): lampiran menggunakan storage privat yang sama.
+  // MANAGER/ADMIN melihat semua; OPERATOR hanya update miliknya atau program
+  // yang PIC-nya dirinya (mengikuti pola ProgramKerjaProgressLog).
+  const programUpdate = await prisma.programUpdate.findFirst({
+    where: { OR: fileOrPath },
+    select: {
+      fileName: true,
+      mimeType: true,
+      storageProvider: true,
+      storagePath: true,
+      driveFileId: true,
+      userId: true,
+      program: { select: { picId: true } },
+    },
+  });
+  if (programUpdate) {
+    if (role === 'OPERATOR' && programUpdate.userId !== userId && programUpdate.program?.picId !== userId) {
+      return null;
+    }
+    return toFileRecord(programUpdate.fileName, programUpdate.mimeType, programUpdate);
+  }
+
   const report = await prisma.operationalReport.findFirst({
     where: { OR: fileOrPath, ...(role === 'OPERATOR' ? { uploadedById: userId } : {}) },
     select: { attachmentName: true, attachmentMime: true, storageProvider: true, storagePath: true, driveFileId: true },

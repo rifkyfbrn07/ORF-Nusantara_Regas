@@ -94,6 +94,14 @@ enum ProgramStatus {
   BELUM_TEREALISASI
 }
 
+/** Status riwayat update program — default TERKIRIM (approval workflow belum ada). */
+enum ProgramUpdateStatus {
+  DRAFT
+  TERKIRIM
+  DIVERIFIKASI
+  DITOLAK
+}
+
 enum ImportDocumentType {
   PROGRAM_KERJA
   JADWAL_KERJA
@@ -174,6 +182,7 @@ model User {
   picPrograms            ProgramKerja[]      @relation("ProgramKerjaPic")
   uploadedProgramKerjaEvidence ProgramKerja[] @relation("ProgramKerjaEvidenceUploaders")
   programProgressLogs    ProgramKerjaProgressLog[] @relation("ProgramKerjaProgressActors")
+  programUpdates         ProgramUpdate[]     @relation("ProgramUpdateSubmitters")
   createdAnnouncements   Announcement[]      @relation("CreatedAnnouncements")
   uploadedReports        OperationalReport[] @relation("UploadedReports")
   dataImports            DataImport[]        @relation("DataImportActors")
@@ -446,6 +455,7 @@ model ProgramKerja {
   tasks           ProgramKerjaTask[]
   months          ProgramKerjaMonth[]
   progressLogs    ProgramKerjaProgressLog[]
+  updates         ProgramUpdate[]
   createdAt       DateTime                @default(now())
   updatedAt       DateTime                @updatedAt
 
@@ -493,6 +503,39 @@ model ProgramKerjaProgressLog {
 
   @@index([programId])
   @@index([userId])
+}
+
+/**
+ * Riwayat Update Program — setiap pengiriman update/upload realisasi adalah
+ * record terpisah (append-only). Tidak pernah menimpa/replace update lama dan
+ * TIDAK pernah mengubah Plan/Realisasi program.
+ */
+model ProgramUpdate {
+  id               String              @id @default(cuid())
+  programId        String
+  program          ProgramKerja        @relation(fields: [programId], references: [id], onDelete: Cascade)
+  /** Pengirim update — null sebagai fallback aman bila user terhapus. */
+  userId           String?
+  user             User?               @relation("ProgramUpdateSubmitters", fields: [userId], references: [id], onDelete: SetNull)
+  /** Periode yang dilaporkan, mis. "September 2026". */
+  period           String?
+  notes            String?
+  fileName         String?
+  mimeType         String?
+  fileSize         Int?
+  /** URL legacy / fallback (mis. tautan Drive lama). Bukan URL publik untuk Blob. */
+  fileUrl          String?
+  driveFileId      String?
+  driveWebViewLink String?
+  storageProvider  String?
+  storagePath      String?
+  status           ProgramUpdateStatus @default(TERKIRIM)
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+
+  @@index([programId])
+  @@index([userId])
+  @@index([status])
 }
 
 model ProgramKerjaMonth {

@@ -49,6 +49,34 @@ export function getProgramStatusMeta(status: ProgramStatus): ProgramStatusMeta {
 
 export const MONTH_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
 
+/**
+ * Format angka KPI/grafik: tampilkan desimal hanya jika diperlukan.
+ * 61 → '61', 61.5 → '61.5', 0.67 → '0.7'.
+ */
+export function fmtNumber(value: number): string {
+  if (!Number.isFinite(value)) return '0';
+  const rounded = Math.round(value * 100) / 100;
+  return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1).replace(/\.0$/, '');
+}
+
+/** Format persen: 61.486... → '61.5', 61 → '61', NaN/Infinity → '0'. */
+export function fmtPercent(value: number): string {
+  if (!Number.isFinite(value)) return '0';
+  const rounded = Math.round(value * 10) / 10;
+  return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1);
+}
+
+/**
+ * Opsi filter status — hanya tiga status turunan dari progress
+ * (Plan / On Progress / Terealisasi). BELUM_TEREALISASI tidak dipakai lagi
+ * karena status selalu mengikuti progress terhadap Plan.
+ */
+export const STATUS_FILTER_OPTIONS: { value: Exclude<ProgramStatus, 'BELUM_TEREALISASI'>; label: string }[] = [
+  { value: 'PLAN', label: 'PLAN' },
+  { value: 'ON_PROGRESS', label: 'ON PROGRESS' },
+  { value: 'REALISASI', label: 'TEREALISASI' },
+];
+
 export function StatusBadge({ status }: { status: ProgramStatus }) {
   return (
     <span className={`inline-flex items-center px-2 py-0.5 rounded-full border text-[9.5px] font-black tracking-wide whitespace-nowrap ${STATUS_STYLES[status]}`}>

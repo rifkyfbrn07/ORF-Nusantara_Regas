@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/db/prisma';
-import { ProgramCategory, ProgramStatus, Prisma } from '@prisma/client';
+import { ProgramCategory, ProgramStatus, ProgramUpdateStatus, Prisma } from '@prisma/client';
 import { recordAuditLog } from './auditService';
 import {
   ProgramKerjaCreateInput,
@@ -18,6 +18,24 @@ export interface ProgramKerjaMonthDTO {
   target: number | null;
   /** Nilai Realisasi (R) pada periode; null = tidak ada data (sel kosong), bukan 0. */
   realization: number | null;
+}
+
+export interface ProgramUpdateDTO {
+  id: string;
+  /** Periode yang dilaporkan (mis. "September 2026"). */
+  period: string | null;
+  notes: string | null;
+  fileName: string | null;
+  mimeType: string | null;
+  fileSize: number | null;
+  fileUrl: string | null;
+  driveFileId: string | null;
+  driveWebViewLink: string | null;
+  storageProvider: string | null;
+  storagePath: string | null;
+  status: ProgramUpdateStatus;
+  submittedBy: { id: string; name: string } | null;
+  createdAt: string;
 }
 
 export interface ProgramKerjaDTO {
@@ -56,6 +74,8 @@ export interface ProgramKerjaDTO {
     userName: string | null;
     createdAt: string;
   }[];
+  /** Riwayat Update — setiap pengiriman update/upload adalah record terpisah. */
+  updates: ProgramUpdateDTO[];
   createdAt: string;
   updatedAt: string;
 }
@@ -83,7 +103,38 @@ export interface ProgramAnnualChartData {
   donut: { name: string; value: number; color: string }[];
 }
 
-function serializeProgram(program: Prisma.ProgramKerjaGetPayload<{ include: { pic: { select: { id: true; name: true } }; months: true; tasks: true; progressLogs: { include: { user: { select: { name: true } } }; orderBy: { createdAt: 'desc' } } } }>): ProgramKerjaDTO {
+type ProgramKerjaWithRelations = Prisma.ProgramKerjaGetPayload<{
+  include: {
+    pic: { select: { id: true; name: true } };
+    months: true;
+    tasks: true;
+    progressLogs: { include: { user: { select: { name: true } } }; orderBy: { createdAt: 'desc' } };
+    updates: { include: { user: { select: { id: true; name: true } } }; orderBy: { createdAt: 'desc' } };
+  };
+}>;
+
+export function serializeProgramUpdate(
+  update: Prisma.ProgramUpdateGetPayload<{ include: { user: { select: { id: true; name: true } } } }>
+): ProgramUpdateDTO {
+  return {
+    id: update.id,
+    period: update.period,
+    notes: update.notes,
+    fileName: update.fileName,
+    mimeType: update.mimeType,
+    fileSize: update.fileSize,
+    fileUrl: update.fileUrl,
+    driveFileId: update.driveFileId,
+    driveWebViewLink: update.driveWebViewLink,
+    storageProvider: update.storageProvider,
+    storagePath: update.storagePath,
+    status: update.status,
+    submittedBy: update.user ? { id: update.user.id, name: update.user.name } : null,
+    createdAt: update.createdAt.toISOString(),
+  };
+}
+
+function serializeProgram(program: ProgramKerjaWithRelations): ProgramKerjaDTO {
   return {
     id: program.id,
     year: program.year,
@@ -124,6 +175,7 @@ function serializeProgram(program: Prisma.ProgramKerjaGetPayload<{ include: { pi
           createdAt: log.createdAt.toISOString(),
         }))
       : [],
+    updates: program.updates ? program.updates.map(serializeProgramUpdate) : [],
     createdAt: program.createdAt.toISOString(),
     updatedAt: program.updatedAt.toISOString(),
   };
@@ -150,6 +202,7 @@ export async function listProgramKerja(filters?: {
       months: { orderBy: [{ month: 'asc' }, { week: 'asc' }] },
       tasks: { orderBy: [{ order: 'asc' }, { createdAt: 'asc' }] },
       progressLogs: { include: { user: { select: { name: true } } }, orderBy: { createdAt: 'desc' } },
+      updates: { include: { user: { select: { id: true, name: true } } }, orderBy: { createdAt: 'desc' } },
     },
     orderBy: [{ year: 'desc' }, { category: 'asc' }, { sequence: 'asc' }],
   });
@@ -539,4 +592,69 @@ export async function updateProgramProgress(
   });
 
   return { success: true, progress: clamped };
+}
+// ============================================================================
+// RIWAYAT UPDATE (ProgramUpdate)
+// ============================================================================
+
+/**
+ * Kirim update program (append-only). Membuat record Riwayat Update baru —
+ * tidak pernah menimpa update yang sudah ada dan TIDAK mengubah Plan/Realisasi,
+ * progress, status, maupun bulan program (Rule 9: jangan merusak fitur existing).
+ */
+export async function submitProgramUpdate(
+  input: {
+    programId: string;
+    period?: string | null;
+    notes?: string | null;
+    fileName?: string | null;
+    mimeType?: string | null;
+    fileSize?: number | null;
+    storageProvider?: string | null;
+    storagePath?: string | null;
+    driveFileId?: string | null;
+    driveWebViewLink?: string | null;
+    fileUrl?: string | null;
+  },
+  actorId: string
+): Promise<ProgramUpdateDTO> {
+  const program = await prisma.programKerja.findUnique({
+    where: { id: input.programId },
+    select: { id: true },
+  });
+  if (!program) throw new Error('Program tidak ditemukan.');
+
+  const update = await prisma.programUpdate.create({
+    data: {
+      programId: input.programId,
+      userId: actorId,
+      period: input.period ?? null,
+      notes: input.notes ?? null,
+      fileName: input.fileName ?? null,
+      mimeType: input.mimeType ?? null,
+      fileSize: input.fileSize ?? null,
+      storageProvider: input.storageProvider ?? null,
+      storagePath: input.storagePath ?? null,
+      driveFileId: input.driveFileId ?? null,
+      driveWebViewLink: input.driveWebViewLink ?? null,
+      fileUrl: input.fileUrl ?? null,
+      status: 'TERKIRIM',
+    },
+    include: { user: { select: { id: true, name: true } } },
+  });
+
+  await recordAuditLog({
+    userId: actorId,
+    action: 'CREATE_PROGRAM_UPDATE',
+    entity: 'ProgramUpdate',
+    entityId: update.id,
+    metadata: {
+      programId: input.programId,
+      period: input.period,
+      fileName: input.fileName,
+      storageProvider: input.storageProvider,
+    },
+  });
+
+  return serializeProgramUpdate(update);
 }

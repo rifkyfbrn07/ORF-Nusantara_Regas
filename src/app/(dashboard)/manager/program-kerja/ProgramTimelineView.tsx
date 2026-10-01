@@ -1,10 +1,15 @@
 'use client';
 
 import React from 'react';
+import { Eye } from 'lucide-react';
 import type { ProgramKerjaDTO } from '@/server/services/programKerjaService';
 import { CATEGORY_LABELS, MONTH_SHORT, EmptyState } from './shared';
 
-interface ProgramTimelineViewProps { programs: ProgramKerjaDTO[]; }
+interface ProgramTimelineViewProps {
+  programs: ProgramKerjaDTO[];
+  /** Buka Detail Program (Informasi, Jadwal, Riwayat Update). */
+  onOpenUpdate?: (p: ProgramKerjaDTO) => void;
+}
 type MonthPeriod = { plan: number | null; realization: number | null };
 
 /** Combine four Excel periods into one month without inventing a Plan. */
@@ -33,16 +38,16 @@ function MonthCell({ period }: { period: MonthPeriod }) {
   );
 }
 
-export function ProgramTimelineView({ programs }: ProgramTimelineViewProps) {
+export function ProgramTimelineView({ programs, onOpenUpdate }: ProgramTimelineViewProps) {
   return <>
     <div className="hidden overflow-hidden rounded-xl border border-[#DCE5EF] bg-white shadow-xs md:block">
       <div className="overflow-x-auto"><table className="w-full border-separate border-spacing-0 text-left"><thead><tr className="bg-[#EDF4FB] text-[9.5px] uppercase tracking-wider text-slate-500"><th className="sticky left-0 z-10 min-w-[260px] border-b border-[#DCE5EF] bg-[#EDF4FB] px-3 py-2.5 text-left font-black">Program Kerja</th>{MONTH_SHORT.map((month) => <th key={month} className="min-w-[52px] border-b border-[#DCE5EF] px-1 py-2.5 text-center font-black">{month}</th>)}</tr></thead><tbody className="divide-y divide-[#EDF2F7]">
-        {programs.map((program) => { const months = monthAggregate(program); return <tr key={program.id} className="hover:bg-[#F8FBFE]"><td className="sticky left-0 z-10 border-r border-[#EDF2F7] bg-white px-3 py-2"><div className="text-[9.5px] font-black uppercase tracking-wider text-[#1769AA]">{program.sequence} · {CATEGORY_LABELS[program.category]}</div><div className="text-[11px] font-bold leading-snug text-[#0B3568]">{program.name}</div></td>{months.map((period, index) => <td key={index} className="px-1 py-1"><MonthCell period={period} /></td>)}</tr>; })}
+        {programs.map((program) => { const months = monthAggregate(program); return <tr key={program.id} className="hover:bg-[#F8FBFE]"><td className="sticky left-0 z-10 border-r border-[#EDF2F7] bg-white px-3 py-2"><div className="flex items-center justify-between gap-2"><div className="min-w-0"><div className="text-[9.5px] font-black uppercase tracking-wider text-[#1769AA]">{program.sequence} · {CATEGORY_LABELS[program.category]}</div>{onOpenUpdate ? <button type="button" onClick={() => onOpenUpdate(program)} className="block cursor-pointer text-left text-[11px] font-bold leading-snug text-[#0B3568] hover:text-[#0066B3] hover:underline" title="Lihat detail & riwayat update">{program.name}</button> : <div className="text-[11px] font-bold leading-snug text-[#0B3568]">{program.name}</div>}</div>{onOpenUpdate && <button type="button" onClick={() => onOpenUpdate(program)} className="cursor-pointer rounded-md p-1 text-slate-400 hover:bg-[#EDF4FB] hover:text-[#1769AA]" title="Detail & Riwayat Update"><Eye className="h-3.5 w-3.5" /></button>}</div></td>{months.map((period, index) => <td key={index} className="px-1 py-1"><MonthCell period={period} /></td>)}</tr>; })}
       </tbody></table></div>
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-[#EDF2F7] bg-[#FBFDFE] px-4 py-2.5"><LegendDot color="bg-[#0088D8]" label="Plan (P) — sel biru Excel" /><LegendDot color="bg-emerald-500" label="Realisasi (R) — muncul di bawah Plan" /><LegendDot color="bg-red-400" label="R = 0 (belum terealisasi)" /><LegendDot color="bg-slate-200" label="Tidak ada data pada Excel" /></div>
       {programs.length === 0 && <EmptyState />}
     </div>
-    <div className="space-y-3 md:hidden">{programs.map((program) => { const months = monthAggregate(program); return <div key={program.id} className="space-y-3 rounded-xl border border-[#DCE5EF] bg-white p-4 shadow-xs"><div><div className="text-[9.5px] font-black uppercase tracking-wider text-[#1769AA]">{program.sequence} · {CATEGORY_LABELS[program.category]}</div><div className="mt-0.5 text-xs font-bold leading-snug text-[#0B3568]">{program.name}</div></div><div className="grid grid-cols-4 gap-1.5">{months.map((period, index) => <div key={index} className="rounded-lg border border-[#EDF2F7] bg-[#FBFDFE] px-2 py-1.5"><div className="text-[8.5px] font-black uppercase tracking-wide text-slate-400">{MONTH_SHORT[index]}</div>{period.plan === null && period.realization === null ? <div className="text-[10px] font-bold text-slate-300">—</div> : <MonthCell period={period} />}</div>)}</div><div className="flex items-center justify-between text-[10px] text-slate-500"><span className="font-semibold">P = biru</span><span className="font-semibold">R = hijau</span></div></div>; })}{programs.length === 0 && <div className="rounded-xl border border-[#DCE5EF] bg-white p-4"><EmptyState /></div>}</div>
+    <div className="space-y-3 md:hidden">{programs.map((program) => { const months = monthAggregate(program); return <div key={program.id} className="space-y-3 rounded-xl border border-[#DCE5EF] bg-white p-4 shadow-xs"><div className="flex items-start justify-between gap-2"><div className="min-w-0"><div className="text-[9.5px] font-black uppercase tracking-wider text-[#1769AA]">{program.sequence} · {CATEGORY_LABELS[program.category]}</div><div className="mt-0.5 text-xs font-bold leading-snug text-[#0B3568]">{program.name}</div></div>{onOpenUpdate && <button type="button" onClick={() => onOpenUpdate(program)} className="inline-flex shrink-0 cursor-pointer items-center gap-1 rounded-md border border-[#CBD7E6] px-2 py-1 text-[9.5px] font-bold text-[#0066B3] hover:bg-[#EAF4FC]"><Eye className="h-3 w-3" /> Detail</button>}</div><div className="grid grid-cols-4 gap-1.5">{months.map((period, index) => <div key={index} className="rounded-lg border border-[#EDF2F7] bg-[#FBFDFE] px-2 py-1.5"><div className="text-[8.5px] font-black uppercase tracking-wide text-slate-400">{MONTH_SHORT[index]}</div>{period.plan === null && period.realization === null ? <div className="text-[10px] font-bold text-slate-300">—</div> : <MonthCell period={period} />}</div>)}</div><div className="flex items-center justify-between text-[10px] text-slate-500"><span className="font-semibold">P = biru</span><span className="font-semibold">R = hijau</span></div></div>; })}{programs.length === 0 && <div className="rounded-xl border border-[#DCE5EF] bg-white p-4"><EmptyState /></div>}</div>
   </>;
 }
 

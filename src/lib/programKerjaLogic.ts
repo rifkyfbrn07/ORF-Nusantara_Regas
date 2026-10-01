@@ -176,3 +176,171 @@ export function calculateMonthlyDistribution(
     return point;
   });
 }
+// ============================================================================
+// NORMALIZED METRICS — SINGLE SOURCE OF TRUTH HALAMAN PROGRAM KERJA
+// ----------------------------------------------------------------------------
+// Model data:
+//   - P (Plan) dan R (Realisasi) pada dataset sumber adalah PASANGAN untuk
+//     SATU program kerja yang sama. P = baseline/target, R = progress terhadap P.
+//   - Satu periode (bulan + minggu) dengan `target !== null` = SATU unit Plan.
+//   - Realisasi dihitung HANYA pada periode yang memiliki Plan
+//     (`realization / 100` per periode, sehingga 0..1 per periode).
+//   - Realisasi TIDAK pernah menghapus Plan dan TIDAK pernah menambah program.
+//
+// Seluruh KPI, filter, tabel, bar chart, dan donut halaman Program Kerja WAJIB
+// memakai fungsi-fungsi di bawah ini — tidak boleh ada perhitungan mandiri di
+// komponen lain (Rule 16: single source of truth).
+// ============================================================================
+
+/** Program apa pun yang memiliki `months` (cukup untuk hitung metrik). */
+export type ProgramMetricsLike = { months?: ProgramKerjaMonthLike[] };
+
+export interface ProgramMetrics {
+  /** Jumlah unit Plan (periode minggu ber-target) dalam scope — baseline. */
+  plan: number;
+  /** Jumlah unit Plan yang terealisasi (nilai R/100 per periode) dalam scope. */
+  realization: number;
+  /** Sisa Plan = max(plan - realization, 0). Tidak pernah negatif. */
+  remaining: number;
+  /** progress = plan > 0 ? (realization / plan) * 100 : 0. Tidak pernah NaN/Infinity. */
+  progress: number;
+  /**
+   * Status turunan dari progress:
+   *   progress === 0      → PLAN
+   *   0 < progress < 100  → ON PROGRESS
+   *   progress >= 100     → REALISASI (label UI: TEREALISASI)
+   */
+  status: ComputedProgramStatus;
+}
+
+export const ALL_MONTHS = Array.from({ length: 12 }, (_, i) => i + 1);
+
+/**
+ * Hitung metrik Plan/Realisasi sebuah program pada `months` (null/undefined =
+ * seluruh Januari–Desember). Plan tetap dipertahankan meskipun sudah 100%.
+ */
+export function getProgramMetrics(
+  p: ProgramMetricsLike,
+  months?: number[]
+): ProgramMetrics {
+  const scope = months && months.length > 0 ? new Set(months) : null;
+  let plan = 0;
+  let realization = 0;
+
+  for (const m of p.months ?? []) {
+    if (m.month === undefined) continue;
+    if (scope && !scope.has(m.month)) continue;
+    // Plan dihitung dari keberadaan target (sel biru/jadwal), BUKAN dari nilai 100.
+    if (m.target === null || m.target === undefined) continue;
+
+    plan += 1;
+    if (m.realization !== null && m.realization !== undefined) {
+      // Nilai R dalam persen (0..100). 100 → 1 unit, 50 → 0.5 unit, 0 → 0 unit.
+      realization += Math.min(1, Math.max(0, m.realization / 100));
+    }
+  }
+
+  const remaining = Math.max(plan - realization, 0);
+  // Progress dikunci maksimal 100% (Rule 15 CASE 4: realisasi > plan tetap 100%).
+  const progress = plan > 0 ? Math.min(100, (realization / plan) * 100) : 0;
+  return {
+    plan,
+    realization,
+    remaining,
+    progress,
+    status: getProgramStatus({ progress }),
+  };
+}
+export interface ProgramAggregateMetrics {
+  /** Jumlah program unik dalam dataset (P/R tidak pernah dihitung terpisah). */
+  total: number;
+  /** Total seluruh Plan (baseline) dalam scope — tidak pernah berkurang saat realisasi. */
+  plan: number;
+  /** Total seluruh Realisasi terhadap Plan dalam scope. */
+  realization: number;
+  /** Total Sisa Plan = max(plan - realization, 0). */
+  remaining: number;
+  /** progress agregat (weighted terhadap Plan) = realization / plan * 100. */
+  progress: number;
+  /** Distribusi program berdasarkan status turunan dari progress. */
+  statusSummary: Record<ComputedProgramStatus, number>;
+}
+
+/** Agregasi lintas program untuk KPI, donut, dan subtitle grafik. */
+export function getAggregateProgramMetrics(
+  programs: ProgramMetricsLike[],
+  months?: number[]
+): ProgramAggregateMetrics {
+  let total = 0;
+  let plan = 0;
+  let realization = 0;
+  const statusSummary: Record<ComputedProgramStatus, number> = {
+    PLAN: 0,
+    ON_PROGRESS: 0,
+    REALISASI: 0,
+  };
+
+  for (const program of programs) {
+    const metrics = getProgramMetrics(program, months);
+    total += 1;
+    plan += metrics.plan;
+    realization += metrics.realization;
+    statusSummary[metrics.status] += 1;
+  }
+
+  const remaining = Math.max(plan - realization, 0);
+  const progress = plan > 0 ? Math.min(100, (realization / plan) * 100) : 0;
+  return { total, plan, realization, remaining, progress, statusSummary };
+}
+
+export interface MonthlyBreakdownPoint {
+  month: string;
+  m: number;
+  /** Total Plan pada bulan tsb (baseline yang selalu dipertahankan). */
+  plan: number;
+  /** Total Realisasi pada bulan tsb. */
+  realization: number;
+  /** Sisa Plan pada bulan tsb = max(plan - realization, 0). */
+  remaining: number;
+  /** progress bulan tsb = realization / plan * 100. */
+  progress: number;
+}
+
+/**
+ * Distribusi Plan/Realisasi/Remaining per bulan — bahan bar chart.
+ * `realisasi + remaining` SELALU sama dengan `plan` (Rule 8).
+ */
+export function getMonthlyBreakdown(
+  programs: ProgramMetricsLike[],
+  months: number[] = ALL_MONTHS
+): MonthlyBreakdownPoint[] {
+  return months.map((m) => {
+    let plan = 0;
+    let realization = 0;
+    for (const program of programs) {
+      const metrics = getProgramMetrics(program, [m]);
+      plan += metrics.plan;
+      realization += metrics.realization;
+    }
+    const remaining = Math.max(plan - realization, 0);
+    const progress = plan > 0 ? Math.min(100, (realization / plan) * 100) : 0;
+    return {
+      month: PROGRAM_MONTH_SHORT[m - 1] ?? String(m),
+      m,
+      plan,
+      realization,
+      remaining,
+      progress,
+    };
+  });
+}
+
+export type NormalizedProgramMetrics<T> = T & { metrics: ProgramMetrics };
+
+/** Normalisasi dataset: setiap program dilengkapi `metrics` sesuai scope filter. */
+export function normalizeProgramsWithMetrics<T extends ProgramMetricsLike>(
+  programs: T[],
+  months?: number[]
+): NormalizedProgramMetrics<T>[] {
+  return programs.map((p) => ({ ...p, metrics: getProgramMetrics(p, months) }));
+}

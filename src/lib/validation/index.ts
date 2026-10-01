@@ -317,3 +317,30 @@ export const programKerjaUpdateSchema = programKerjaBaseSchema
   .extend({ id: z.string().min(1, 'ID Program Kerja wajib disertakan') });
 
 export type ProgramKerjaUpdateInput = z.infer<typeof programKerjaUpdateSchema>;
+
+// ============================================================================
+// RIWAYAT UPDATE PROGRAM (ProgramUpdate)
+// ============================================================================
+// Setiap pengiriman update = record terpisah (append-only). Status minimal
+// TERKIRIM didukung; DRAFT/DIVERIFIKASI/DITOLAK tersedia untuk workflow masa
+// depan (belum ada approval backend).
+export const programUpdateSubmitSchema = z
+  .object({
+    programId: z.string().min(1, 'Program wajib dipilih.'),
+    period: z.string().trim().min(1, 'Periode update wajib diisi.').max(120, 'Periode maksimal 120 karakter'),
+    notes: z.string().trim().max(2000, 'Catatan update maksimal 2000 karakter').optional(),
+    fileName: z.string().trim().max(255, 'Nama file maksimal 255 karakter').optional(),
+    mimeType: z.string().trim().max(120).optional(),
+    fileSize: z.number().int().min(0).max(50 * 1024 * 1024).optional(),
+    storageProvider: z.string().trim().max(60).optional(),
+    storagePath: z.string().trim().max(2048).optional(),
+    driveFileId: z.string().trim().max(2048).optional(),
+    driveWebViewLink: z.string().trim().max(2048).optional(),
+    fileUrl: z.string().trim().max(2048).optional(),
+  })
+  .refine((v) => Boolean(v.fileName?.trim() || v.notes?.trim()), {
+    message: 'Lampirkan file atau isi catatan pada update.',
+    path: ['fileName'],
+  });
+
+export type ProgramUpdateSubmitInput = z.infer<typeof programUpdateSubmitSchema>;
