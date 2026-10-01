@@ -67,14 +67,15 @@ export function fmtPercent(value: number): string {
 }
 
 /**
- * Opsi filter status — hanya tiga status turunan dari progress
- * (Plan / On Progress / Terealisasi). BELUM_TEREALISASI tidak dipakai lagi
- * karena status selalu mengikuti progress terhadap Plan.
+ * Opsi filter status — EMPAT status turunan (mutually exclusive, satu program =
+ * satu status): Plan / On Progress / Terealisasi / Tidak Terealisasi.
+ * Status selalu mengikuti progress terhadap Plan + jatuh tempo periode.
  */
-export const STATUS_FILTER_OPTIONS: { value: Exclude<ProgramStatus, 'BELUM_TEREALISASI'>; label: string }[] = [
+export const STATUS_FILTER_OPTIONS: { value: ProgramStatus; label: string }[] = [
   { value: 'PLAN', label: 'PLAN' },
   { value: 'ON_PROGRESS', label: 'ON PROGRESS' },
   { value: 'REALISASI', label: 'TEREALISASI' },
+  { value: 'BELUM_TEREALISASI', label: 'TIDAK TEREALISASI' },
 ];
 
 export function StatusBadge({ status }: { status: ProgramStatus }) {

@@ -17,7 +17,8 @@ import { ProgramStatus } from '@prisma/client';
 export type ComputedProgramStatus =
   | 'PLAN'
   | 'ON_PROGRESS'
-  | 'REALISASI';
+  | 'REALISASI'
+  | 'BELUM_TEREALISASI';
 
 export interface ProgramKerjaMonthLike {
   month?: number;
@@ -39,16 +40,19 @@ export const PROGRAM_MONTH_SHORT = [
 // ----------------------------------------------------------------------------
 // STATUS RESOLVER (Rule 2 & 13)
 // ----------------------------------------------------------------------------
-// Status ditentukan dari PROGRESS, bukan dari field status database.
-//   progress === 0        => PLAN
-//   0 < progress < 100    => ON PROGRESS
-//   progress >= 100       => REALISASI (label UI: TEREALISASI)
+// Status ditentukan dari PROGRESS (bukan field status database) + jatuh tempo:
+//   progress >= 100              => REALISASI (label UI: TEREALISASI)
+//   0 < progress < 100           => ON PROGRESS
+//   progress === 0 & sudah due   => BELUM_TEREALISASI (label UI: TIDAK TEREALISASI)
+//   progress === 0 & belum due   => PLAN
 //
 // Program dengan progress 100% TIDAK boleh tampil sebagai ON PROGRESS.
-export function getProgramStatus(p: { progress: number }): ComputedProgramStatus {
+// Progress 0 yang periode-nya belum jatuh tempo TETAP PLAN (bukan TIDAK TEREALISASI).
+export function getProgramStatus(p: { progress: number; overdue?: boolean | number }): ComputedProgramStatus {
   const progress = Number(p.progress) || 0;
   if (progress >= 100) return ProgramStatus.REALISASI;
   if (progress > 0) return ProgramStatus.ON_PROGRESS;
+  if (p.overdue) return ProgramStatus.BELUM_TEREALISASI;
   return ProgramStatus.PLAN;
 }
 
@@ -126,6 +130,7 @@ export interface StatusSummary {
   PLAN: number;
   ON_PROGRESS: number;
   REALISASI: number;
+  BELUM_TEREALISASI: number;
 }
 
 /**
@@ -133,7 +138,7 @@ export interface StatusSummary {
  * (resolver yang sama dengan tabel). Total kategori = jumlah program.
  */
 export function calculateStatusSummary(programs: ProgramKerjaLike[]): StatusSummary {
-  const summary: StatusSummary = { PLAN: 0, ON_PROGRESS: 0, REALISASI: 0 };
+  const summary: StatusSummary = { PLAN: 0, ON_PROGRESS: 0, REALISASI: 0, BELUM_TEREALISASI: 0 };
   for (const program of programs) {
     summary[getProgramStatus(program)] += 1;
   }
@@ -179,36 +184,44 @@ export function calculateMonthlyDistribution(
 // ============================================================================
 // NORMALIZED METRICS — SINGLE SOURCE OF TRUTH HALAMAN PROGRAM KERJA
 // ----------------------------------------------------------------------------
-// Model data:
-//   - P (Plan) dan R (Realisasi) pada dataset sumber adalah PASANGAN untuk
-//     SATU program kerja yang sama. P = baseline/target, R = progress terhadap P.
-//   - Satu periode (bulan + minggu) dengan `target !== null` = SATU unit Plan.
-//   - Realisasi dihitung HANYA pada periode yang memiliki Plan
-//     (`realization / 100` per periode, sehingga 0..1 per periode).
-//   - Realisasi TIDAK pernah menghapus Plan dan TIDAK pernah menambah program.
+// Model data (P = Plan, R = Realisasi adalah PASANGAN untuk SATU program):
+//   - Plan  = BASELINE dalam scope: SATU Program = SATU Plan.
+//     Program yang sudah terealisasi TETAP punya Plan (Plan tidak pernah
+//     berkurang / dihapus karena realisasi).
+//   - Realisasi = SATU Program dihitung terealisasi PENUH (progress >= 100%).
+//   - Tidak Terealisasi = max(Plan - Realisasi, 0).
+//   - Progress per program (0..100) dihitung dari unit periode Plan
+//     (untuk status/donut yang akurat), Progress agregat = Realisasi/Plan*100.
 //
 // Seluruh KPI, filter, tabel, bar chart, dan donut halaman Program Kerja WAJIB
 // memakai fungsi-fungsi di bawah ini — tidak boleh ada perhitungan mandiri di
-// komponen lain (Rule 16: single source of truth).
+// komponen lain (single source of truth).
 // ============================================================================
 
-/** Program apa pun yang memiliki `months` (cukup untuk hitung metrik). */
-export type ProgramMetricsLike = { months?: ProgramKerjaMonthLike[] };
+/** Program apa pun yang memiliki `months` (+ opsional `year`/`deadline`). */
+export type ProgramMetricsLike = {
+  months?: ProgramKerjaMonthLike[];
+  year?: number;
+  deadline?: Date | string | null;
+};
 
 export interface ProgramMetrics {
-  /** Jumlah unit Plan (periode minggu ber-target) dalam scope — baseline. */
+  /** Boolean 1/0 — program punya Plan (baseline) dalam scope. 0 = tanpa Plan. */
   plan: number;
-  /** Jumlah unit Plan yang terealisasi (nilai R/100 per periode) dalam scope. */
+  /** 1/0 — program sudah terealisasi PENUH (progress >= 100%) dalam scope. */
   realization: number;
-  /** Sisa Plan = max(plan - realization, 0). Tidak pernah negatif. */
-  remaining: number;
-  /** progress = plan > 0 ? (realization / plan) * 100 : 0. Tidak pernah NaN/Infinity. */
+  /** Tidak Terealisasi = max(plan - realization, 0). Tidak pernah negatif. */
+  notRealized: number;
+  /** Progress per program (0..100) dari unit periode Plan dalam scope. */
   progress: number;
+  /** Program. Plan jatuh tempo (deadline/bulan target lewat) padahal progress 0. */
+  overdue: boolean;
   /**
-   * Status turunan dari progress:
-   *   progress === 0      → PLAN
-   *   0 < progress < 100  → ON PROGRESS
-   *   progress >= 100     → REALISASI (label UI: TEREALISASI)
+   * Status turunan (mutually exclusive — SATU program = SATU status):
+   *   progress >= 100        → REALISASI (label: TEREALISASI)
+   *   0 < progress < 100     → ON PROGRESS
+   *   progress = 0 & overdue → BELUM_TEREALISASI (label: TIDAK TEREALISASI)
+   *   progress = 0 & belum   → PLAN
    */
   status: ComputedProgramStatus;
 }
@@ -216,16 +229,56 @@ export interface ProgramMetrics {
 export const ALL_MONTHS = Array.from({ length: 12 }, (_, i) => i + 1);
 
 /**
+ * Apakah Plan program sudah JATUH TEMPO padahal progress 0 (untuk kategori
+ * TIDAK TEREALISASI). Menggunakan field `deadline` existing jika ada; bila
+ * tidak, memakai bulan terakhir yang direncanakan (target period) di scope:
+ * - scope bulan tertentu (PER BULAN) → bulan terakhir dalam scope itu.
+ * - scope tahunan → seluruh bulan Januari–Desember pada `year` program.
+ * Bulan target yang MASIH di depan / berjalan → belum jatuh tempo (PLAN).
+ */
+export function isProgramOverdue(
+  p: ProgramMetricsLike,
+  months?: number[],
+  now: Date = new Date()
+): boolean {
+  if (p.deadline) {
+    const d = p.deadline instanceof Date ? p.deadline : new Date(p.deadline);
+    if (!Number.isNaN(d.getTime()) && d < now) return true;
+  }
+
+  const scope = months && months.length > 0 ? new Set(months) : null;
+  let maxPlannedMonth = 0;
+  for (const m of p.months ?? []) {
+    if (m.target === null || m.target === undefined) continue;
+    if (scope && !scope.has(m.month ?? -1)) continue;
+    if ((m.month ?? 0) > maxPlannedMonth) maxPlannedMonth = m.month ?? 0;
+  }
+  if (maxPlannedMonth === 0) return false;
+
+  const year = p.year ?? now.getFullYear();
+  const dueYearMonth = year * 12 + maxPlannedMonth; // posisi bulan 1-based
+  const currentYearMonth = now.getFullYear() * 12 + (now.getMonth() + 1);
+  return dueYearMonth < currentYearMonth;
+}
+
+/**
  * Hitung metrik Plan/Realisasi sebuah program pada `months` (null/undefined =
- * seluruh Januari–Desember). Plan tetap dipertahankan meskipun sudah 100%.
+ * seluruh Januari–Desember).
+ *
+ * - `plan` = 1 bila program memiliki target Plan dalam scope (baseline; tidak
+ *   pernah hilang meskipun sudah 100% terealisasi).
+ * - `progress` dihitung dari unit periode (akurat untuk status & donut).
+ * - `realization` = 1 hanya jika progress scope >= 100%.
+ * - `notRealized` = max(plan - realization, 0).
  */
 export function getProgramMetrics(
   p: ProgramMetricsLike,
-  months?: number[]
+  months?: number[],
+  now: Date = new Date()
 ): ProgramMetrics {
   const scope = months && months.length > 0 ? new Set(months) : null;
-  let plan = 0;
-  let realization = 0;
+  let planUnits = 0;
+  let realizedUnits = 0;
 
   for (const m of p.months ?? []) {
     if (m.month === undefined) continue;
@@ -233,43 +286,48 @@ export function getProgramMetrics(
     // Plan dihitung dari keberadaan target (sel biru/jadwal), BUKAN dari nilai 100.
     if (m.target === null || m.target === undefined) continue;
 
-    plan += 1;
+    planUnits += 1;
     if (m.realization !== null && m.realization !== undefined) {
       // Nilai R dalam persen (0..100). 100 → 1 unit, 50 → 0.5 unit, 0 → 0 unit.
-      realization += Math.min(1, Math.max(0, m.realization / 100));
+      realizedUnits += Math.min(1, Math.max(0, m.realization / 100));
     }
   }
 
-  const remaining = Math.max(plan - realization, 0);
-  // Progress dikunci maksimal 100% (Rule 15 CASE 4: realisasi > plan tetap 100%).
-  const progress = plan > 0 ? Math.min(100, (realization / plan) * 100) : 0;
+  const progress = planUnits > 0 ? Math.min(100, (realizedUnits / planUnits) * 100) : 0;
+  const plan = planUnits > 0 ? 1 : 0;
+  const realization = plan > 0 && progress >= 100 ? 1 : 0;
+  const notRealized = Math.max(plan - realization, 0);
+  const overdue = isProgramOverdue(p, months, now);
+
   return {
     plan,
     realization,
-    remaining,
+    notRealized,
     progress,
-    status: getProgramStatus({ progress }),
+    overdue,
+    status: getProgramStatus({ progress, overdue }),
   };
 }
 export interface ProgramAggregateMetrics {
   /** Jumlah program unik dalam dataset (P/R tidak pernah dihitung terpisah). */
   total: number;
-  /** Total seluruh Plan (baseline) dalam scope — tidak pernah berkurang saat realisasi. */
+  /** Total Plan (baseline) = jumlah program yang punya Plan dalam scope. */
   plan: number;
-  /** Total seluruh Realisasi terhadap Plan dalam scope. */
+  /** Total program yang sudah terealisasi PENUH (progress >= 100%) dalam scope. */
   realization: number;
-  /** Total Sisa Plan = max(plan - realization, 0). */
-  remaining: number;
-  /** progress agregat (weighted terhadap Plan) = realization / plan * 100. */
+  /** Tidak Terealisasi = max(plan - realization, 0). Tidak pernah negatif. */
+  notRealized: number;
+  /** Progress agregat = total Realisasi / total Plan × 100 (bukan rata-rata %). */
   progress: number;
-  /** Distribusi program berdasarkan status turunan dari progress. */
+  /** Distribusi STATUS program — mutually exclusive, total = total program. */
   statusSummary: Record<ComputedProgramStatus, number>;
 }
 
-/** Agregasi lintas program untuk KPI, donut, dan subtitle grafik. */
+/** Agregasi lintas program untuk KPI, bar chart, dan donut (dataset yang sama). */
 export function getAggregateProgramMetrics(
   programs: ProgramMetricsLike[],
-  months?: number[]
+  months?: number[],
+  now: Date = new Date()
 ): ProgramAggregateMetrics {
   let total = 0;
   let plan = 0;
@@ -278,58 +336,60 @@ export function getAggregateProgramMetrics(
     PLAN: 0,
     ON_PROGRESS: 0,
     REALISASI: 0,
+    BELUM_TEREALISASI: 0,
   };
 
   for (const program of programs) {
-    const metrics = getProgramMetrics(program, months);
+    const metrics = getProgramMetrics(program, months, now);
     total += 1;
     plan += metrics.plan;
     realization += metrics.realization;
     statusSummary[metrics.status] += 1;
   }
 
-  const remaining = Math.max(plan - realization, 0);
+  const notRealized = Math.max(plan - realization, 0);
   const progress = plan > 0 ? Math.min(100, (realization / plan) * 100) : 0;
-  return { total, plan, realization, remaining, progress, statusSummary };
+  return { total, plan, realization, notRealized, progress, statusSummary };
 }
 
 export interface MonthlyBreakdownPoint {
   month: string;
   m: number;
-  /** Total Plan pada bulan tsb (baseline yang selalu dipertahankan). */
+  /** Jumlah program ber-Plan pada bulan tsb (baseline per bulan). */
   plan: number;
-  /** Total Realisasi pada bulan tsb. */
+  /** Jumlah program yang terealisasi penuh pada bulan tsb. */
   realization: number;
-  /** Sisa Plan pada bulan tsb = max(plan - realization, 0). */
-  remaining: number;
+  /** Tidak Terealisasi bulan tsb = max(plan - realization, 0). */
+  notRealized: number;
   /** progress bulan tsb = realization / plan * 100. */
   progress: number;
 }
 
 /**
- * Distribusi Plan/Realisasi/Remaining per bulan — bahan bar chart.
- * `realisasi + remaining` SELALU sama dengan `plan` (Rule 8).
+ * Distribusi Plan/Realisasi/Tidak Terealisasi per bulan.
+ * `realization + notRealized` SELALU sama dengan `plan` (bar tidak double count).
  */
 export function getMonthlyBreakdown(
   programs: ProgramMetricsLike[],
-  months: number[] = ALL_MONTHS
+  months: number[] = ALL_MONTHS,
+  now: Date = new Date()
 ): MonthlyBreakdownPoint[] {
   return months.map((m) => {
     let plan = 0;
     let realization = 0;
     for (const program of programs) {
-      const metrics = getProgramMetrics(program, [m]);
+      const metrics = getProgramMetrics(program, [m], now);
       plan += metrics.plan;
       realization += metrics.realization;
     }
-    const remaining = Math.max(plan - realization, 0);
+    const notRealized = Math.max(plan - realization, 0);
     const progress = plan > 0 ? Math.min(100, (realization / plan) * 100) : 0;
     return {
       month: PROGRAM_MONTH_SHORT[m - 1] ?? String(m),
       m,
       plan,
       realization,
-      remaining,
+      notRealized,
       progress,
     };
   });

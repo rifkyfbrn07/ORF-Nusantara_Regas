@@ -25,6 +25,7 @@ const DEFAULT_LOGO = '/images/PERTAMINA.png';
  *   - DTM           → DTM.png
  *   - IVENDOR       → IVENDOR.png (logo iVendor)
  *   - GEP           → GEP.png
+ *   - PMS Online    → PMS.png (logo PMS Online 2.0 yang tersedia di project)
  * Aplikasi lain tanpa logo khusus memakai DEFAULT_LOGO (PERTAMINA.png).
  * ICOFR/SIPGAS TIDAK dipakai sebagai fallback.
  */
@@ -38,6 +39,7 @@ const APP_LOGO: Record<string, string> = {
   digitravel: '/images/DTM.png',
   evendor: '/images/IVENDOR.png',
   gep: '/images/GEP.png',
+  'pms-online': '/images/PMS.png',
 };
 
 export function AplikasiGrid() {

@@ -90,8 +90,8 @@ function ProgramCard({ p }: { p: ProgramKerjaDTO }) {
           <div className="font-semibold text-emerald-700 tabular-nums">{fmtNumber(metrics.realization)}</div>
         </div>
         <div>
-          <div className="font-black uppercase tracking-wide text-slate-400">Remaining</div>
-          <div className="font-semibold text-slate-600 tabular-nums">{fmtNumber(metrics.remaining)}</div>
+          <div className="font-black uppercase tracking-wide text-slate-400">Tidak Terealisasi</div>
+          <div className="font-semibold text-slate-600 tabular-nums">{fmtNumber(metrics.notRealized)}</div>
         </div>
         <div>
           <div className="font-black uppercase tracking-wide text-slate-400">Deadline</div>

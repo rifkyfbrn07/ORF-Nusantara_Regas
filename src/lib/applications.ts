@@ -120,6 +120,12 @@ export const APPLICATIONS: ApplicationLink[] = [
     url: 'https://nusantararegas.hashmicro.co/web/login',
   },
   {
+    id: 'pms-online',
+    name: 'PMS Online 2.0',
+    description: 'PMS Academy — Performance Management System',
+    url: 'https://apps.pertamina.com/PMSOnlineV2/Pages/PMSAcademy/PMSAcademy',
+  },
+  {
     id: 'jojonomic',
     name: 'JOJONOMIC',
     description: 'JOJONOMIC',

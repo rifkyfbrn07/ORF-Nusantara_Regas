@@ -10,17 +10,16 @@ import { ProgramKerjaImportModal } from './ProgramKerjaImportModal';
 import { ProgramDetailModal } from './ProgramDetailModal';
 import { ProgramListView } from './ProgramListView';
 import { ProgramTimelineView } from './ProgramTimelineView';
-import { CATEGORY_LABELS, MONTH_SHORT, STATUS_FILTER_OPTIONS, fmtNumber, fmtPercent } from './shared';
+import { CATEGORY_LABELS, MONTH_SHORT, STATUS_COLORS, STATUS_FILTER_OPTIONS, STATUS_LABELS, fmtNumber, fmtPercent } from './shared';
 import {
   ALL_MONTHS,
   getAggregateProgramMetrics,
-  getMonthlyBreakdown,
   getProgramMetrics,
   isActiveInMonth,
 } from '@/lib/programKerjaLogic';
 import type { ProgramStatus } from '@prisma/client';
-import { ProgramKerjaCharts, REALISASI_COLOR, REMAINING_COLOR } from './ProgramKerjaCharts';
-import type { DonutSlice } from './ProgramKerjaCharts';
+import { ProgramKerjaCharts } from './ProgramKerjaCharts';
+import type { BarPoint, DonutSlice } from './ProgramKerjaCharts';
 
 export interface ProgramKerjaPicUser {
   id: string;
@@ -100,24 +99,41 @@ export function ProgramKerjaClient({ programs, stats, years, picUsers }: Program
   }, [normalizedPrograms, filterYear, filterCategory, filterStatus, filterMonth, query]);
 
   // KPI, bar, dan donut semuanya dihitung dari `filtered` yang SAMA dengan tabel
-  // (Rule 10 & 11). Tidak ada agregasi berbeda di komponen lain.
+  // (single source of truth). Tidak ada agregasi berbeda di komponen lain.
   const aggregate = useMemo(() => getAggregateProgramMetrics(filtered, scopeMonths), [filtered, scopeMonths]);
-  const bar = useMemo(() => getMonthlyBreakdown(filtered, scopeMonths), [filtered, scopeMonths]);
-
-  // Donut — REALISASI vs REMAINING terhadap total Plan (Realisasi% + Remaining% = 100%).
-  const donut = useMemo<DonutSlice[]>(() => {
-    const plan = aggregate.plan;
-    const realizedPct = plan > 0 ? (aggregate.realization / plan) * 100 : 0;
-    const remainingPct = plan > 0 ? (aggregate.remaining / plan) * 100 : 0;
-    return [
-      { id: 'realisasi', name: 'Realisasi', value: aggregate.realization, percent: realizedPct, color: REALISASI_COLOR },
-      { id: 'remaining', name: 'Remaining (Sisa Plan)', value: aggregate.remaining, percent: remainingPct, color: REMAINING_COLOR },
-    ];
-  }, [aggregate]);
 
   const year = filterYear !== 'all' ? Number(filterYear) : (programs[0]?.year ?? 2026);
   const monthOnly = filterMonth !== 'all' ? MONTH_SHORT[Number(filterMonth) - 1] : null;
   const periodLabel = filterMonth !== 'all' ? `PER BULAN — ${monthOnly} ${year}` : `PER TAHUN — ${year}`;
+
+  // BAR — baseline PLAN: TEREALISASI + TIDAK TEREALISASI = PLAN (tidak double count).
+  const bar = useMemo<BarPoint[]>(
+    () => [
+      {
+        label: monthOnly ? `${monthOnly} ${year}` : `${year}`,
+        plan: aggregate.plan,
+        realization: aggregate.realization,
+        notRealized: aggregate.notRealized,
+      },
+    ],
+    [aggregate, monthOnly, year]
+  );
+
+  // DONUT — distribusi STATUS program (mutually exclusive; total = jumlah program).
+  const donut = useMemo<DonutSlice[]>(() => {
+    const total = aggregate.total;
+    return (
+      (['PLAN', 'ON_PROGRESS', 'REALISASI', 'BELUM_TEREALISASI'] as const)
+        .map((s) => ({
+          id: s,
+          name: STATUS_LABELS[s],
+          value: aggregate.statusSummary[s] ?? 0,
+          percent: total > 0 ? ((aggregate.statusSummary[s] ?? 0) / total) * 100 : 0,
+          color: STATUS_COLORS[s],
+        }))
+        .filter((slice) => slice.value > 0)
+    );
+  }, [aggregate]);
 
   function openCreate() {
     setModalProgram(null);
@@ -142,11 +158,11 @@ export function ProgramKerjaClient({ programs, stats, years, picUsers }: Program
   }
 
   const kpis = [
-    { label: 'Total Program', value: fmtNumber(aggregate.total), accent: 'border-l-[#0066B3]' },
+    { label: 'Program', value: fmtNumber(aggregate.total), accent: 'border-l-[#0066B3]' },
     { label: 'Plan', value: fmtNumber(aggregate.plan), accent: 'border-l-[#0066B3]' },
     { label: 'Realisasi', value: fmtNumber(aggregate.realization), accent: 'border-l-emerald-500' },
+    { label: 'Tidak Terealisasi', value: fmtNumber(aggregate.notRealized), accent: 'border-l-red-500' },
     { label: 'Progress', value: `${fmtPercent(aggregate.progress)}%`, accent: 'border-l-[#F58220]' },
-    { label: 'Remaining', value: fmtNumber(aggregate.remaining), accent: 'border-l-slate-400' },
   ];
 
   return (
