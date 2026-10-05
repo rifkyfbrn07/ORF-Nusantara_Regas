@@ -5,7 +5,7 @@ import {
   ProgramKerjaCreateInput,
   ProgramKerjaUpdateInput,
 } from '@/lib/validation';
-import { calculateKPI, getProgramStatus } from '@/lib/programKerjaLogic';
+import { calculateKPI, getProgramCurrentStatus, getProgramStatus } from '@/lib/programKerjaLogic';
 
 // ============================================================================
 // Serialisasi untuk Client Component
@@ -330,7 +330,8 @@ export async function createProgramKerja(input: ProgramKerjaCreateInput, actorId
       realization: input.realization ?? null,
       planTarget: input.planTarget,
       progress: input.progress,
-      status: input.status as ProgramStatus,
+      // Status OTOMATIS dari progress: 0 → PLAN, 0<x<100 → ON PROGRESS, 100 → REALISASI (TEREALISASI).
+      status: getProgramCurrentStatus({ progress: input.progress, status: input.status as ProgramStatus }),
       notes: input.notes ?? null,
       deadline: input.deadline ? new Date(`${input.deadline}T00:00:00+07:00`) : null,
       picId: input.picId ?? null,
@@ -383,6 +384,15 @@ export async function updateProgramKerja(input: ProgramKerjaUpdateInput, actorId
   const existing = await prisma.programKerja.findUnique({ where: { id } });
   if (!existing) throw new Error('Program Kerja tidak ditemukan.');
 
+  // Progress baru + Status OTOMATIS (0 → PLAN, 0<x<100 → ON PROGRESS, 100 → TEREALISASI).
+  // Field `progress` menjadi otoritas utama; field `status` yang dikirim user
+  // diabaikan kecuali untuk menentukan PLAN vs TIDAK TEREALISASI saat progress 0.
+  const progressValue = data.progress !== undefined ? Math.min(100, Math.max(0, Math.round(data.progress))) : existing.progress;
+  const statusValue = getProgramCurrentStatus({
+    progress: progressValue,
+    status: data.status !== undefined ? (data.status as ProgramStatus) : existing.status,
+  });
+
   const program = await prisma.programKerja.update({
     where: { id },
     data: {
@@ -393,8 +403,8 @@ export async function updateProgramKerja(input: ProgramKerjaUpdateInput, actorId
       ...(data.plan !== undefined ? { plan: data.plan ?? null } : {}),
       ...(data.realization !== undefined ? { realization: data.realization ?? null } : {}),
       ...(data.planTarget !== undefined ? { planTarget: data.planTarget } : {}),
-      ...(data.progress !== undefined ? { progress: data.progress } : {}),
-      ...(data.status !== undefined ? { status: data.status as ProgramStatus } : {}),
+      ...(data.progress !== undefined ? { progress: progressValue } : {}),
+      status: statusValue,
       ...(data.notes !== undefined ? { notes: data.notes ?? null } : {}),
       ...(data.deadline !== undefined ? { deadline: data.deadline ? new Date(`${data.deadline}T00:00:00+07:00`) : null } : {}),
       ...(data.picId !== undefined ? { picId: data.picId ?? null } : {}),
@@ -531,11 +541,13 @@ export async function updateProgramProgress(
   actorRole: string,
   evidence?: { evidenceUrl?: string; evidenceName?: string; evidenceMime?: string; evidenceSize?: number; driveFileId?: string; driveWebViewLink?: string; storageProvider?: string; storagePath?: string; note?: string }
 ) {
-  const program = await prisma.programKerja.findUnique({ where: { id: programId }, select: { id: true, progress: true } });
+  const program = await prisma.programKerja.findUnique({ where: { id: programId }, select: { id: true, progress: true, status: true } });
   if (!program) throw new Error('Program Kerja tidak ditemukan.');
   const can = actorRole === 'ADMIN' || actorRole === 'MANAGER';
   if (!can) throw new Error('Anda tidak berwenang memperbarui progress program ini.');
   const clamped = Math.min(100, Math.max(0, Math.round(progress)));
+  // Status OTOMATIS dari progress terbaru (100% → TEREALISASI, dst.).
+  const autoStatus = getProgramCurrentStatus({ progress: clamped, status: program.status });
 
   // Evidence wajib saat progress meningkat (bukti/evidence)
   if (clamped > program.progress) {
@@ -569,6 +581,7 @@ export async function updateProgramProgress(
       where: { id: programId },
       data: {
         progress: clamped,
+        status: autoStatus,
         ...(evidence?.evidenceUrl ? { evidenceUrl: evidence.evidenceUrl } : {}),
         ...(evidence?.evidenceName ? { evidenceName: evidence.evidenceName } : {}),
         ...(evidence?.evidenceMime ? { evidenceMime: evidence.evidenceMime } : {}),

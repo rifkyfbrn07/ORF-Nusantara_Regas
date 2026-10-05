@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { CheckSquare, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
 import { ProgramCategory as ProgramKerjaCategory, ProgramStatus } from '@prisma/client';
 import { createProgramKerjaAction, updateProgramKerjaAction } from '@/server/actions/programKerjaActions';
 import type { ProgramKerjaDTO } from '@/server/services/programKerjaService';
@@ -95,6 +96,18 @@ export function ProgramKerjaFormModal({ program, users, onClose, onSaved }: Prog
 
   const set = <K extends keyof FormState>(key: K, value: FormState[K]) => setForm((current) => ({ ...current, [key]: value }));
 
+  /** Update progress + status otomatis: 0→PLAN, 0<x<100→ON PROGRESS, 100→TEREALISASI. */
+  function handleProgressChange(value: number) {
+    const progress = Math.min(100, Math.max(0, Math.round(Number(value) || 0)));
+    setForm((current) => {
+      let status = current.status;
+      if (progress >= 100) status = 'REALISASI';
+      else if (progress > 0) status = 'ON_PROGRESS';
+      else status = current.status === 'BELUM_TEREALISASI' ? 'BELUM_TEREALISASI' : 'PLAN';
+      return { ...current, progress, status };
+    });
+  }
+
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
     if (uploading) return; // jangan double submit saat upload berlangsung
@@ -111,11 +124,18 @@ export function ProgramKerjaFormModal({ program, users, onClose, onSaved }: Prog
       setError('Target Plan harus berupa angka bulat 0–100%.');
       return;
     }
-    // Bukti/evidence wajib saat progress > 0 atau status realisasi/on-progress
-    const needsEvidence = form.progress > 0 || form.status === 'REALISASI' || form.status === 'ON_PROGRESS';
-    if (needsEvidence && !form.driveFileId && !form.driveWebViewLink && !form.evidenceUrl && !form.storagePath) {
-      setError('Bukti/evidence wajib dilampirkan untuk program dengan progress atau realisasi.');
-      return;
+    // Bukti/evidence wajib SAAT MEMBUAT program dengan progress/realisasi
+    // (aturan create existing — server zod-nya juga menerapkan).
+    // PADA UPDATE: file tetap dikirim bila di-upload, tetapi TIDAK memblokir
+    // simpan progress agar update progress benar-benar dapat disimpan
+    // (server update tidak pernah mewajibkan evidence).
+    const isCreate = !program;
+    if (isCreate) {
+      const needsEvidence = form.progress > 0 || form.status === 'REALISASI' || form.status === 'ON_PROGRESS';
+      if (needsEvidence && !form.driveFileId && !form.driveWebViewLink && !form.evidenceUrl && !form.storagePath) {
+        setError('Bukti/evidence wajib dilampirkan untuk program dengan progress atau realisasi.');
+        return;
+      }
     }
     setSaving(true);
     try {
@@ -123,7 +143,7 @@ export function ProgramKerjaFormModal({ program, users, onClose, onSaved }: Prog
         ...form,
         plan: form.plan.trim() || undefined,
         realization: form.realization.trim() || undefined,
-                notes: form.notes.trim() || undefined,
+        notes: form.notes.trim() || undefined,
         deadline: form.deadline || null,
         picId: form.picId || undefined,
         evidenceUrl: form.evidenceUrl || undefined,
@@ -132,15 +152,24 @@ export function ProgramKerjaFormModal({ program, users, onClose, onSaved }: Prog
         evidenceSize: form.evidenceSize || undefined,
         driveFileId: form.driveFileId || undefined,
         driveWebViewLink: form.driveWebViewLink || undefined,
+        // storageProvider/storagePath WAJIB ikut terkirim agar evidence Blob
+        // yang baru di-upload benar-benar tersimpan (sebelumnya terbuang).
+        storageProvider: form.storageProvider || undefined,
+        storagePath: form.storagePath || undefined,
       };
       const result = program
         ? await updateProgramKerjaAction({ id: program.id, ...payload })
         : await createProgramKerjaAction(payload);
       if (!result.success) {
-        setError(result.error);
+        setError(result.error || 'Gagal menyimpan data program.');
         return;
       }
+      toast.success(program ? 'Progress berhasil diperbarui.' : 'Data program berhasil disimpan.');
       onSaved();
+    } catch (error) {
+      // Jangan pernah menelan error — tampilkan pesan yang jelas & log untuk debugging.
+      console.error('[ProgramKerjaFormModal] simpan gagal:', error);
+      setError('Gagal menyimpan perubahan. Coba lagi — jika berlanjut, hubungi administrator.');
     } finally {
       setSaving(false);
     }
@@ -236,7 +265,7 @@ export function ProgramKerjaFormModal({ program, users, onClose, onSaved }: Prog
               max={100}
               step={1}
               aria-label="Progress Program Kerja"
-              onChange={(event) => set('progress', Number(event.target.value))}
+              onChange={(event) => handleProgressChange(Number(event.target.value))}
               className="h-5 w-full cursor-pointer accent-[#0066B3] touch-none"
             />
             <div className="flex justify-between text-[9px] font-bold text-slate-400"><span>0%</span><span>100%</span></div>

@@ -4,7 +4,7 @@ import React, { useMemo, useState } from 'react';
 import { Search } from 'lucide-react';
 import { EvidenceViewer } from '@/components/ui/EvidenceViewer';
 import type { ProgramKerjaDTO } from '@/server/services/programKerjaService';
-import { getProgramMetrics } from '@/lib/programKerjaLogic';
+import { getProgramCurrentStatus, getProgramMetrics } from '@/lib/programKerjaLogic';
 
 const CATEGORY_LABELS: Record<string, string> = {
   PENGADAAN: 'A. Pengadaan',
@@ -73,12 +73,12 @@ function ProgramCard({ p }: { p: ProgramKerjaDTO }) {
           </div>
           <h3 className="mt-0.5 text-sm font-bold leading-snug text-[#0B3568]">{p.name}</h3>
         </div>
-        <span className={`inline-flex shrink-0 items-center rounded-full border px-2 py-0.5 text-[9.5px] font-black tracking-wide whitespace-nowrap ${STATUS_BADGE[metrics.status]}`}>
-          {STATUS_LABELS[metrics.status]}
+        <span className={`inline-flex shrink-0 items-center rounded-full border px-2 py-0.5 text-[9.5px] font-black tracking-wide whitespace-nowrap ${STATUS_BADGE[getProgramCurrentStatus(p)]}`}>
+          {STATUS_LABELS[getProgramCurrentStatus(p)]}
         </span>
       </div>
 
-      <ProgressBar value={metrics.progress} target={100} />
+      <ProgressBar value={p.progress} target={100} />
 
       <div className="grid grid-cols-2 gap-2 text-[10px] sm:grid-cols-4">
         <div>

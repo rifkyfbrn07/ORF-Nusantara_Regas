@@ -52,6 +52,23 @@ export function getProgramStatus(p: { progress: number }): ComputedProgramStatus
   return ProgramStatus.PLAN;
 }
 
+/**
+ * Status PROGRAM saat ini — kanonik untuk donut & auto-status update.
+ * (Paling update: progress yang disimpan, bukan field status yang mungkin basi.)
+ *   progress >= 100        → REALISASI (label UI: TEREALISASI)
+ *   0 < progress < 100     → ON PROGRESS
+ *   progress === 0:
+ *     status existing BELUM_TEREALISASI → BELUM_TEREALISASI (TIDAK TEREALISASI)
+ *     else                               → PLAN
+ */
+export function getProgramCurrentStatus(p: { progress?: number; status?: ProgramStatus | null }): ProgramStatus {
+  const progress = Number(p.progress ?? 0) || 0;
+  if (progress >= 100) return ProgramStatus.REALISASI;
+  if (progress > 0) return ProgramStatus.ON_PROGRESS;
+  if (p.status === ProgramStatus.BELUM_TEREALISASI) return ProgramStatus.BELUM_TEREALISASI;
+  return ProgramStatus.PLAN;
+}
+
 /** KPI "Belum Terealisasi": progress < 100 (konsisten dengan definisi status). */
 export function isBelumTerealisasi(p: { progress: number }): boolean {
   return (Number(p.progress) || 0) < 100;
