@@ -62,7 +62,7 @@ export function ProgramListView({ programs, deletingId, onEdit, onDelete, onOpen
                 <th className="w-32 px-3 py-3 font-black">PIC</th>
                 <th className="w-20 px-3 py-3 font-black">Plan (P)</th>
                 <th className="w-20 px-3 py-3 font-black">Realisasi (R)</th>
-                <th className="w-24 px-3 py-3 font-black">Tidak Terealisasi</th>
+                <th className="w-20 px-3 py-3 font-black">Sisa (Remaining)</th>
                 <th className="w-32 px-3 py-3 font-black">Progress</th>
                 <th className="w-32 px-3 py-3 font-black">Status</th>
                 <th className="w-14 px-3 py-3 font-black">Bukti</th>
@@ -94,7 +94,7 @@ export function ProgramListView({ programs, deletingId, onEdit, onDelete, onOpen
                     <td className="px-3 py-3 text-[11px] font-semibold text-text-secondary">{p.pic?.name || 'Belum ditentukan'}</td>
                     <td className="px-3 py-3 text-[11px] font-bold text-[#1769AA] tabular-nums">{fmtNumber(metricsOf(p).plan)}</td>
                     <td className="px-3 py-3 text-[11px] font-bold text-emerald-700 tabular-nums">{fmtNumber(metricsOf(p).realization)}</td>
-                    <td className="px-3 py-3 text-[11px] font-bold text-slate-500 tabular-nums">{fmtNumber(metricsOf(p).notRealized)}</td>
+                    <td className="px-3 py-3 text-[11px] font-bold text-slate-500 tabular-nums">{fmtNumber(metricsOf(p).remaining)}</td>
                     <td className="px-3 py-3"><ProgressCell value={Math.round(metricsOf(p).progress)} target={100} /></td>
                     <td className="px-3 py-3"><StatusBadge status={metricsOf(p).status} /></td>
                     <td className="px-3 py-3"><DriveLink p={p} /></td>
@@ -118,7 +118,7 @@ export function ProgramListView({ programs, deletingId, onEdit, onDelete, onOpen
                 <article key={p.id} className="space-y-2.5 rounded-xl border border-[#DCE5EF] bg-white p-4 shadow-xs">
                   <div className="flex items-start justify-between gap-2"><div className="min-w-0"><div className="text-[9.5px] font-black uppercase tracking-wider text-[#1769AA]">{p.sequence} · {CATEGORY_LABELS[p.category]}</div><div className="mt-0.5 text-xs font-bold leading-snug text-[#0B3568]">{p.name}</div></div><StatusBadge status={metricsOf(p).status} /></div>
                   <ProgressCell value={Math.round(metricsOf(p).progress)} target={100} />
-                  <div className="grid grid-cols-2 gap-2 text-[10px] sm:grid-cols-3"><div><span className="font-black uppercase tracking-wide text-slate-400">Deadline</span><div className="font-semibold text-slate-600">{p.deadline ? p.deadline.slice(0, 10) : '—'}</div></div><div><span className="font-black uppercase tracking-wide text-slate-400">PIC</span><div className="font-semibold text-slate-600">{p.pic?.name || 'Belum ditentukan'}</div></div><div><span className="font-black uppercase tracking-wide text-slate-400">Plan (P)</span><div className="font-semibold text-slate-600 tabular-nums">{fmtNumber(metricsOf(p).plan)}</div></div><div><span className="font-black uppercase tracking-wide text-slate-400">Realisasi (R)</span><div className="font-semibold text-slate-600 tabular-nums">{fmtNumber(metricsOf(p).realization)}</div></div><div><span className="font-black uppercase tracking-wide text-slate-400">Tidak Terealisasi</span><div className="font-semibold text-slate-600 tabular-nums">{fmtNumber(metricsOf(p).notRealized)}</div></div></div>
+                  <div className="grid grid-cols-2 gap-2 text-[10px] sm:grid-cols-3"><div><span className="font-black uppercase tracking-wide text-slate-400">Deadline</span><div className="font-semibold text-slate-600">{p.deadline ? p.deadline.slice(0, 10) : '—'}</div></div><div><span className="font-black uppercase tracking-wide text-slate-400">PIC</span><div className="font-semibold text-slate-600">{p.pic?.name || 'Belum ditentukan'}</div></div><div><span className="font-black uppercase tracking-wide text-slate-400">Plan (P)</span><div className="font-semibold text-slate-600 tabular-nums">{fmtNumber(metricsOf(p).plan)}</div></div><div><span className="font-black uppercase tracking-wide text-slate-400">Realisasi (R)</span><div className="font-semibold text-slate-600 tabular-nums">{fmtNumber(metricsOf(p).realization)}</div></div><div><span className="font-black uppercase tracking-wide text-slate-400">Remaining</span><div className="font-semibold text-slate-600 tabular-nums">{fmtNumber(metricsOf(p).remaining)}</div></div></div>
                   {p.notes && <p className="text-[10.5px] leading-relaxed text-slate-500">{p.notes}</p>}
                   <div className="flex items-center gap-2 border-t border-[#EDF2F7] pt-2">
                     <DriveLink p={p} />

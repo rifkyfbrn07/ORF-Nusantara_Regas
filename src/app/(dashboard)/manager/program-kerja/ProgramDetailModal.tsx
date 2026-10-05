@@ -290,7 +290,7 @@ export function ProgramDetailModal({ program, canSubmit = true, onClose }: Progr
             </div>
             <Field label="Plan (P)" value={fmtNumber(metrics.plan)} />
             <Field label="Realisasi (R)" value={fmtNumber(metrics.realization)} />
-            <Field label="Tidak Terealisasi" value={fmtNumber(metrics.notRealized)} />
+            <Field label="Remaining" value={fmtNumber(metrics.remaining)} />
           </div>
           <div className="rounded-xl border border-[#DCE5EF] bg-[#FBFDFE] p-3">
             <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-wide text-slate-400">
