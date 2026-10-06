@@ -1,17 +1,9 @@
 import type { Metadata } from 'next';
-import { Plus_Jakarta_Sans } from 'next/font/google';
 import './globals.css';
 import './theme.css';
 import { Toaster } from 'sonner';
 import { ThemeProvider } from '@/components/theme/ThemeProvider';
 import { Preloader } from '@/components/layout/Preloader';
-
-const plusJakartaSans = Plus_Jakarta_Sans({
-  subsets: ['latin'],
-  display: 'swap',
-  variable: '--font-plus-jakarta-sans',
-  weight: ['400', '500', '600', '700', '800'],
-});
 
 export const metadata: Metadata = {
   title: 'Distribusi Gas & ORF — Operational Workforce & Shift Management',
@@ -27,8 +19,8 @@ const themeInitScript = `(() => { try { const stored = localStorage.getItem('orf
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="id" className={`${plusJakartaSans.variable} font-sans`} suppressHydrationWarning>
-      <body className={`${plusJakartaSans.className} antialiased bg-[#F5F7FA] text-slate-900 min-h-screen`}>
+    <html lang="id" className="font-sans" suppressHydrationWarning>
+      <body className="antialiased bg-[#F5F7FA] text-slate-900 min-h-screen">
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
         <ThemeProvider>
           <Preloader />
