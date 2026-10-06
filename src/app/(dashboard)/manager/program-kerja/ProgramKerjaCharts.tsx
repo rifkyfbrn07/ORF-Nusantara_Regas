@@ -100,7 +100,7 @@ export function ProgramKerjaCharts({ bar, donut, status }: ProgramKerjaChartsPro
 
   const title = isAll ? 'Plan vs Realisasi per Bulan' : `Plan vs Realisasi per Bulan — ${displayLabel ?? ''}`;
   const subtitle = isAll
-    ? 'Jumlah program berjadwal (P) dan terealisasi (R = 100) setiap bulan.'
+    ? 'Jumlah unit Plan (P) dan unit realisasi (R) setiap bulan. Plan adalah baseline dan tidak pernah berkurang.'
     : `Hanya program berstatus ${displayLabel} sesuai filter.`;
   const donutTitle = 'Distribusi Status Program';
   const donutSubtitle = `${fmtNumber(donutTotal)} program · satu program = satu kategori (total 100%).`;

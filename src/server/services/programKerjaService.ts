@@ -5,7 +5,13 @@ import {
   ProgramKerjaCreateInput,
   ProgramKerjaUpdateInput,
 } from '@/lib/validation';
-import { calculateKPI, getProgramCurrentStatus, getProgramStatus } from '@/lib/programKerjaLogic';
+import {
+  ALL_MONTHS,
+  addRealizationUnits,
+  getAggregateProgramMetrics,
+  getMonthlyBreakdown,
+  getProgramCurrentStatus,
+} from '@/lib/programKerjaLogic';
 
 // ============================================================================
 // Serialisasi untuk Client Component
@@ -218,88 +224,72 @@ export async function getProgramKerjaYears(): Promise<number[]> {
   return rows.map((r) => r.year);
 }
 
-const MONTH_SHORT_ID = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
-
 /**
- * Data grafik tahunan Program Kerja:
- * - Bar: per bulan → jumlah program berjadwal (Plan) vs terealisasi (R=100) vs tidak terealisasi (R=0).
- * - Donut: distribusi status program.
+ * Data grafik tahunan Program Kerja — SINGLE SOURCE OF TRUTH sama dengan
+ * halaman Program (quantity unit Plan/Realisasi, bukan jumlah unique Program).
+ * - Bar: per bulan → quantity Plan vs Realisasi vs Remaining (Tidak).
+ * - Donut: distribusi status program (mutually exclusive).
  */
 export async function getProgramKerjaAnnualChart(year: number): Promise<ProgramAnnualChartData> {
   const programs = await prisma.programKerja.findMany({
     where: { year },
-    select: { progress: true, months: { select: { month: true, target: true, realization: true } } },
+    select: {
+      year: true,
+      deadline: true,
+      months: { orderBy: [{ month: 'asc' }, { week: 'asc' }], select: { month: true, week: true, target: true, realization: true } },
+    },
   });
 
-  const monthAgg = new Map<number, { plan: number; realisasi: number; tidakTerealisasi: number }>();
-  for (let m = 1; m <= 12; m++) monthAgg.set(m, { plan: 0, realisasi: 0, tidakTerealisasi: 0 });
+  const agg = getAggregateProgramMetrics(programs, ALL_MONTHS);
+  const bar = getMonthlyBreakdown(programs, ALL_MONTHS).map((b) => ({
+    month: b.month,
+    plan: b.plan,
+    realisasi: b.realization,
+    tidakTerealisasi: b.remaining,
+  }));
 
-  // Bar — distribusi Plan vs Realisasi per bulan (berbasis data periode per bulan).
-  for (const p of programs) {
-    for (let m = 1; m <= 12; m++) {
-      const mEntries = p.months.filter((x) => x.month === m);
-      const hasPlan = mEntries.some((x) => x.target !== null);
-      const realVals = mEntries.filter((x) => x.realization !== null).map((x) => x.realization!);
-
-      const agg = monthAgg.get(m)!;
-      if (hasPlan) {
-        agg.plan += 1;
-      }
-      if (realVals.length > 0) {
-        const maxVal = Math.max(...realVals);
-        if (maxVal >= 100) {
-          agg.realisasi += 1;
-        } else if (maxVal <= 0 && realVals.every((v) => v === 0)) {
-          agg.tidakTerealisasi += 1;
-        }
-      }
-    }
+  const donut: { name: string; value: number; color: string }[] = [
+    { name: 'PLAN', value: agg.statusSummary.PLAN, color: '#0066B3' },
+    { name: 'ON PROGRESS', value: agg.statusSummary.ON_PROGRESS, color: '#F59E0B' },
+    { name: 'TEREALISASI', value: agg.statusSummary.REALISASI, color: '#16A34A' },
+  ];
+  if (agg.statusSummary.BELUM_TEREALISASI > 0) {
+    donut.push({ name: 'TIDAK TEREALISASI', value: agg.statusSummary.BELUM_TEREALISASI, color: '#DC2626' });
   }
 
-  // Donut — distribusi status program konsisten dengan resolver canonical
-  // `getProgramStatus` (berbasis progress, sesuai Rule 2 & 10).
-  const statusDist = { PLAN: 0, ON_PROGRESS: 0, REALISASI: 0 } as Record<ProgramStatus, number>;
-  for (const p of programs) {
-    statusDist[getProgramStatus({ progress: p.progress })] += 1;
-  }
-
-  return {
-    year,
-    bar: MONTH_SHORT_ID.map((label, i) => ({ month: label, ...(monthAgg.get(i + 1)!) })),
-    donut: [
-      { name: 'PLAN', value: statusDist.PLAN, color: '#0066B3' },
-      { name: 'ON PROGRESS', value: statusDist.ON_PROGRESS, color: '#F59E0B' },
-      { name: 'REALISASI', value: statusDist.REALISASI, color: '#16A34A' },
-    ],
-  };
+  return { year, bar, donut };
 }
 
 export async function getProgramKerjaStats(year?: number): Promise<ProgramKerjaStats> {
   const where: Prisma.ProgramKerjaWhereInput = year ? { year } : {};
   const programs = await prisma.programKerja.findMany({
     where,
-    select: { status: true, progress: true, category: true, months: { select: { target: true } } },
+    select: {
+      year: true,
+      deadline: true,
+      category: true,
+      months: { orderBy: [{ month: 'asc' }, { week: 'asc' }], select: { month: true, week: true, target: true, realization: true } },
+    },
   });
 
-  // Perhitungan KPI memakai layer kalkulasi yang SAMA dengan halaman
-  // Program Kerja (single source of truth) — status dari progress.
-  const kpi = calculateKPI(programs);
+  // KPI memakai layer kalkulasi yang SAMA dengan halaman Program Kerja
+  // (getAggregateProgramMetrics) — quantity Plan/Realisasi, bukan count program.
+  const agg = getAggregateProgramMetrics(programs, ALL_MONTHS);
 
   const categoryCount = new Map<ProgramCategory, number>();
   for (const p of programs) {
     categoryCount.set(p.category, (categoryCount.get(p.category) || 0) + 1);
   }
 
-  const stats: ProgramKerjaStats = {
-    total: kpi.total,
-    plan: kpi.plan,
-    realisasi: kpi.realisasi,
-    onProgress: kpi.onProgress,
-    belumTerealisasi: kpi.belumTerealisasi,
-    avgProgress: kpi.avgProgress,
+  return {
+    total: agg.total,
+    plan: agg.plan,
+    realisasi: agg.realization,
+    onProgress: agg.statusSummary.ON_PROGRESS,
+    belumTerealisasi: agg.statusSummary.BELUM_TEREALISASI,
+    avgProgress: Math.round(agg.progress * 10) / 10,
     perCategory: Array.from(categoryCount.entries()).map(([category, total]) => ({ category, total })),
   };
-  return stats;
 }
 
 // ============================================================================
@@ -670,4 +660,92 @@ export async function submitProgramUpdate(
   });
 
   return serializeProgramUpdate(update);
+}
+// ============================================================================
+// UPDATE PROGRESS KUMULATIF — "Tambah Realisasi Hari Ini"
+// ============================================================================
+
+/**
+ * Menambahkan `amount` unit realisasi secara KUMULATIF:
+ * `newRealization = oldRealization + amount`, dikunci maksimal = Plan.
+ * - Periode plan diisi dari yang teroldest (bulan, minggu) → realization 100.
+ * - Plan (baseline) TIDAK berubah.
+ * - Status otomatis: realization >= plan → TEREALISASI; >0 → ON PROGRESS.
+ * - Setiap penambahan disimpan sebagai Riwayat (ProgramKerjaProgressLog).
+ * Melempar bila program tidak punya Plan afa sudah terealisasi penuh.
+ */
+export async function addProgramRealization(
+  programId: string,
+  amount: number,
+  actorId: string,
+  note?: string | null
+): Promise<ProgramKerjaDTO> {
+  if (!Number.isInteger(amount) || amount <= 0) {
+    throw new Error('Jumlah realisasi hari ini harus berupa angka bulat >= 1.');
+  }
+
+  const program = await prisma.programKerja.findUnique({
+    where: { id: programId },
+    select: { id: true, year: true },
+  });
+  if (!program) throw new Error('Program tidak ditemukan.');
+
+  const months = await prisma.programKerjaMonth.findMany({
+    where: { programId },
+    orderBy: [{ month: 'asc' }, { week: 'asc' }],
+  });
+
+  const planUnits = months.filter((m) => m.target !== null).length;
+  if (planUnits === 0) {
+    throw new Error('Program tidak memiliki Plan untuk menerima realisasi.');
+  }
+  const currentUnits = months.reduce(
+    (sum, m) => (m.target === null ? 0 : sum + Math.min(1, Math.max(0, (m.realization ?? 0) / 100))),
+    0
+  );
+  if (currentUnits >= planUnits) {
+    throw new Error(`Program sudah terealisasi penuh (${planUnits}/${planUnits}). Realisasi tidak boleh melebihi Plan.`);
+  }
+
+  const result = addRealizationUnits(months, amount);
+  const newProgress = Math.round(result.progress);
+  const newStatus = result.status as ProgramStatus;
+
+  const tx: Prisma.PrismaPromise<unknown>[] = [
+    prisma.programKerja.update({
+      where: { id: programId },
+      data: { progress: newProgress, status: newStatus, updatedAt: new Date() },
+    }),
+    prisma.programKerjaProgressLog.create({
+      data: {
+        programId,
+        oldProgress: Math.round((currentUnits / planUnits) * 100),
+        newProgress,
+        note: note ?? `Realisasi +${amount} (total ${Math.round(result.realization)} / Plan ${planUnits})`,
+        userId: actorId,
+      },
+    }),
+  ];
+  for (const u of result.updates) {
+    tx.push(
+      prisma.programKerjaMonth.updateMany({
+        where: { programId, month: u.month, week: u.week },
+        data: { realization: u.realization },
+      })
+    );
+  }
+  await prisma.$transaction(tx);
+
+  await recordAuditLog({
+    userId: actorId,
+    action: 'ADD_PROGRAM_REALIZATION',
+    entity: 'ProgramKerja',
+    entityId: programId,
+    metadata: { amount, plan: planUnits, realization: result.realization, progress: newProgress, status: newStatus },
+  });
+
+  const refreshed = await listProgramKerja({ year: program.year });
+  const found = refreshed.find((p) => p.id === programId);
+  if (!found) throw new Error('Program tidak ditemukan setelah update.');
+  return found;
 }

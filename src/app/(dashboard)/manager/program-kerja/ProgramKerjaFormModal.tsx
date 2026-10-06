@@ -4,11 +4,12 @@ import React, { useState } from 'react';
 import { CheckSquare, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { ProgramCategory as ProgramKerjaCategory, ProgramStatus } from '@prisma/client';
-import { createProgramKerjaAction, updateProgramKerjaAction } from '@/server/actions/programKerjaActions';
+import { addProgramRealizationAction, createProgramKerjaAction, updateProgramKerjaAction } from '@/server/actions/programKerjaActions';
 import type { ProgramKerjaDTO } from '@/server/services/programKerjaService';
 import { Modal } from '@/components/ui/Modal';
 import { FileUploadProof } from '@/components/ui/FileUploadProof';
-import { CATEGORY_LABELS, STATUS_LABELS } from './shared';
+import { getProgramMetrics } from '@/lib/programKerjaLogic';
+import { CATEGORY_LABELS, fmtNumber, fmtPercent } from './shared';
 
 interface FormState {
   year: number;
@@ -93,43 +94,33 @@ export function ProgramKerjaFormModal({ program, users, onClose, onSaved }: Prog
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Update Progress KUMULATIF — user menambahkan N pekerjaan selesai hari ini.
+  const [todayCompleted, setTodayCompleted] = useState(0);
+  const [todayNote, setTodayNote] = useState('');
+  const metrics = program ? getProgramMetrics(program) : undefined;
 
   const set = <K extends keyof FormState>(key: K, value: FormState[K]) => setForm((current) => ({ ...current, [key]: value }));
 
-  /** Update progress + status otomatis: 0→PLAN, 0<x<100→ON PROGRESS, 100→TEREALISASI. */
-  function handleProgressChange(value: number) {
-    const progress = Math.min(100, Math.max(0, Math.round(Number(value) || 0)));
-    setForm((current) => {
-      let status = current.status;
-      if (progress >= 100) status = 'REALISASI';
-      else if (progress > 0) status = 'ON_PROGRESS';
-      else status = current.status === 'BELUM_TEREALISASI' ? 'BELUM_TEREALISASI' : 'PLAN';
-      return { ...current, progress, status };
-    });
-  }
-
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
-    if (uploading) return; // jangan double submit saat upload berlangsung
+    if (uploading || saving) return; // jangan double submit saat upload/simpan berlangsung
     setError(null);
+    const isCreate = !program;
     if (form.status === 'BELUM_TEREALISASI' && !form.notes.trim()) {
       setError('Program tidak terealisasi wajib disertai catatan alasan.');
-      return;
-    }
-    if (!Number.isInteger(form.progress) || form.progress < 0 || form.progress > 100) {
-      setError('Progress harus berupa angka bulat 0–100%.');
       return;
     }
     if (!Number.isInteger(form.planTarget) || form.planTarget < 0 || form.planTarget > 100) {
       setError('Target Plan harus berupa angka bulat 0–100%.');
       return;
     }
-    // Bukti/evidence wajib SAAT MEMBUAT program dengan progress/realisasi
-    // (aturan create existing — server zod-nya juga menerapkan).
-    // PADA UPDATE: file tetap dikirim bila di-upload, tetapi TIDAK memblokir
-    // simpan progress agar update progress benar-benar dapat disimpan
-    // (server update tidak pernah mewajibkan evidence).
-    const isCreate = !program;
+    if (!Number.isInteger(todayCompleted) || todayCompleted < 0) {
+      setError('Jumlah realisasi hari ini harus berupa angka bulat >= 0.');
+      return;
+    }
+
+    // Bukti/evidence: dijalur CREATE (aturan existing — server zod juga menerapkan);
+    // dijalur UPDATE, file tetap dikirim bila di-upload maar TIDAK memblokir.
     if (isCreate) {
       const needsEvidence = form.progress > 0 || form.status === 'REALISASI' || form.status === 'ON_PROGRESS';
       if (needsEvidence && !form.driveFileId && !form.driveWebViewLink && !form.evidenceUrl && !form.storagePath) {
@@ -139,10 +130,16 @@ export function ProgramKerjaFormModal({ program, users, onClose, onSaved }: Prog
     }
     setSaving(true);
     try {
+      // Metadata program — PROGRESS/STATUS TIDAK ikut terkirim (otomatis dari
+      // realisation kumulatif + server), agar update progress tidak menimpa.
       const payload = {
-        ...form,
+        year: form.year,
+        category: form.category,
+        sequence: form.sequence,
+        name: form.name,
         plan: form.plan.trim() || undefined,
         realization: form.realization.trim() || undefined,
+        planTarget: form.planTarget,
         notes: form.notes.trim() || undefined,
         deadline: form.deadline || null,
         picId: form.picId || undefined,
@@ -152,19 +149,29 @@ export function ProgramKerjaFormModal({ program, users, onClose, onSaved }: Prog
         evidenceSize: form.evidenceSize || undefined,
         driveFileId: form.driveFileId || undefined,
         driveWebViewLink: form.driveWebViewLink || undefined,
-        // storageProvider/storagePath WAJIB ikut terkirim agar evidence Blob
-        // yang baru di-upload benar-benar tersimpan (sebelumnya terbuang).
         storageProvider: form.storageProvider || undefined,
         storagePath: form.storagePath || undefined,
       };
-      const result = program
-        ? await updateProgramKerjaAction({ id: program.id, ...payload })
-        : await createProgramKerjaAction(payload);
+      const result = isCreate
+        ? await createProgramKerjaAction({ ...payload, progress: 0, status: 'PLAN' })
+        : await updateProgramKerjaAction({ id: program.id, ...payload });
       if (!result.success) {
         setError(result.error || 'Gagal menyimpan data program.');
         return;
       }
-      toast.success(program ? 'Progress berhasil diperbarui.' : 'Data program berhasil disimpan.');
+      // Update Progress KUMULATIF — menambahkan realisasi vs nilai lama (dikunci Plan).
+      if (!isCreate && todayCompleted > 0) {
+        const addResult = await addProgramRealizationAction({
+          programId: program.id,
+          amount: todayCompleted,
+          note: todayNote.trim() || undefined,
+        });
+        if (!addResult.success) {
+          setError(addResult.error || 'Gagal menambahkan realisasi hari ini.');
+          return;
+        }
+      }
+      toast.success(isCreate ? 'Data program berhasil disimpan.' : todayCompleted > 0 ? `Progress berhasil diperbarui (+${todayCompleted}).` : 'Data program berhasil diperbarui.');
       onSaved();
     } catch (error) {
       // Jangan pernah menelan error — tampilkan pesan yang jelas & log untuk debugging.
@@ -247,37 +254,36 @@ export function ProgramKerjaFormModal({ program, users, onClose, onSaved }: Prog
           </div>
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-[1fr_2fr]">
-          <div>
-            <label className="mb-1 block text-[10px] font-bold uppercase tracking-wide text-slate-500">Target P (%)</label>
-            <input type="number" className="field w-full" value={form.planTarget} min={0} max={100} onChange={(e) => set('planTarget', Number(e.target.value))} />
-          </div>
-          <div>
-            <div className="mb-2 flex items-center justify-between">
-              <label htmlFor="program-progress" className="text-[10px] font-bold uppercase tracking-wide text-slate-500">Progress Program Kerja</label>
-              <span className="text-lg font-black tabular-nums text-[#0066B3]" aria-live="polite">{form.progress}%</span>
+        {/* UPDATE PROGRESS — KUMULATIF "Tambah Realisasi Hari Ini" (solo edit, Plan existing) */}
+        {program ? (
+          <div className="rounded-xl border border-[#DCE5EF] bg-[#FBFDFE] p-3">
+            <div className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wide text-slate-500 mb-2">
+              <CheckSquare className="h-3.5 w-3.5 text-[#0066B3]" /> Update Progress (Kumulatif)
             </div>
-            <input
-              id="program-progress"
-              type="range"
-              value={form.progress}
-              min={0}
-              max={100}
-              step={1}
-              aria-label="Progress Program Kerja"
-              onChange={(event) => handleProgressChange(Number(event.target.value))}
-              className="h-5 w-full cursor-pointer accent-[#0066B3] touch-none"
-            />
-            <div className="flex justify-between text-[9px] font-bold text-slate-400"><span>0%</span><span>100%</span></div>
+            <div className="grid grid-cols-2 gap-x-3 gap-y-2 text-[11px] sm:grid-cols-4">
+              <div><span className="block text-[9px] font-black uppercase tracking-wide text-slate-400">Plan</span><div className="font-black tabular-nums text-[#0B3568]">{metrics ? fmtNumber(metrics.plan) : '—'}</div></div>
+              <div><span className="block text-[9px] font-black uppercase tracking-wide text-slate-400">Realisasi Saat Ini</span><div className="font-black tabular-nums text-emerald-700">{metrics ? fmtNumber(metrics.realization) : '—'}</div></div>
+              <div><span className="block text-[9px] font-black uppercase tracking-wide text-slate-400">Sisa</span><div className="font-black tabular-nums text-slate-600">{metrics ? fmtNumber(metrics.remaining) : '—'}</div></div>
+              <div><span className="block text-[9px] font-black uppercase tracking-wide text-slate-400">Progress</span><div className="font-black tabular-nums text-[#F58220]">{metrics ? `${fmtPercent(metrics.progress)}%` : '—'}</div></div>
+            </div>
+            <div className="mt-2.5 grid gap-2.5 sm:grid-cols-[1fr_2fr]">
+              <div>
+                <label htmlFor="today-completed" className="mb-0.5 block text-[9.5px] font-bold uppercase tracking-wide text-slate-500">Realisasi Hari Ini <span className="text-emerald-600">+</span></label>
+                <input id="today-completed" type="number" className="field w-full" value={todayCompleted} min={0} max={9999} step={1} onChange={(e) => setTodayCompleted(Math.max(0, Math.round(Number(e.target.value) || 0)))} />
+                {metrics && metrics.remaining <= 0 && <p className="mt-0.5 text-[9.5px] font-semibold text-amber-600">Program sudah terealisasi penuh — jangan menambahkan realisasi.</p>}
+              </div>
+              <div>
+                <label htmlFor="today-note" className="mb-0.5 block text-[9.5px] font-bold uppercase tracking-wide text-slate-500">Catatan Update (opsional)</label>
+                <input id="today-note" type="text" className="field w-full" value={todayNote} onChange={(e) => setTodayNote(e.target.value)} placeholder="cth. +1 pekerjaan selesai hari ini" />
+              </div>
+            </div>
+            <p className="mt-1.5 text-[9.5px] font-semibold text-slate-400">Realisasi kumulatif: setiap simpan menambahkan jumlah di atas terhadap nilai lama (tidak pernah menimpa sebelumnya), dikunci maksimal = Plan.</p>
           </div>
-        </div>
-
-        <div>
-          <label className="mb-1 block text-[10px] font-bold uppercase tracking-wide text-slate-500">Status</label>
-          <select className="field w-full" value={form.status} onChange={(e) => set('status', e.target.value as ProgramStatus)}>
-            {Object.entries(STATUS_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-          </select>
-        </div>
+        ) : (
+          <div className="rounded-xl border border-[#DCE5EF] bg-slate-50/60 px-3 py-2.5 text-[10.5px] text-slate-500">
+            Progress/realisasi di-track setelah program dipungu via Import Excel (Plan/Realisasi per bulan) — kemudian dibuka &ldquo;Perbarui&rdquo; untuk Update Progress kumulatif.
+          </div>
+        )}
 
 {program && program.tasks.length > 0 && (
           <div className="rounded-xl border border-[#DCE5EF] bg-slate-50/70 p-3">

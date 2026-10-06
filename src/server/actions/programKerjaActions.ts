@@ -11,13 +11,15 @@ import {
   setTaskDone,
   updateProgramProgress,
   submitProgramUpdate,
+  addProgramRealization,
 } from '../services/programKerjaService';
-import type { ProgramUpdateSubmitInput } from '@/lib/validation';
+import type { ProgramRealizationAddInput, ProgramUpdateSubmitInput } from '@/lib/validation';
 import {
   programKerjaCreateSchema,
   programKerjaUpdateSchema,
   programKerjaProgressSchema,
   programUpdateSubmitSchema,
+  programRealizationAddSchema,
   ProgramKerjaCreateInput,
   ProgramKerjaUpdateInput,
 } from '@/lib/validation';
@@ -121,6 +123,19 @@ export async function submitProgramUpdateAction(input: ProgramUpdateSubmitInput)
     // masih belum direferensikan — jangan biarkan file yatim.
     if (storagePathForRollback) await rollbackBlobIfUnreferenced(storagePathForRollback).catch(() => {});
     return { success: false as const, error: error instanceof Error ? error.message : 'Gagal mengirim update' };
+  }
+}
+
+export async function addProgramRealizationAction(input: ProgramRealizationAddInput) {
+  try {
+    const user = await requireRole([...ALLOWED_ROLES]);
+    const parse = programRealizationAddSchema.safeParse(input);
+    if (!parse.success) return { success: false as const, error: parse.error.issues[0]?.message || 'Data tidak valid' };
+    const program = await addProgramRealization(parse.data.programId, parse.data.amount, user.id, parse.data.note);
+    revalidateProgramKerja();
+    return { success: true as const, program };
+  } catch (error: unknown) {
+    return { success: false as const, error: error instanceof Error ? error.message : 'Gagal menambahkan realisasi.' };
   }
 }
 

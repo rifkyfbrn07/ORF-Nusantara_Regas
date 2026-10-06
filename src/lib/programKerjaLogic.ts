@@ -17,7 +17,8 @@ import { ProgramStatus } from '@prisma/client';
 export type ComputedProgramStatus =
   | 'PLAN'
   | 'ON_PROGRESS'
-  | 'REALISASI';
+  | 'REALISASI'
+  | 'BELUM_TEREALISASI';
 
 export interface ProgramKerjaMonthLike {
   month?: number;
@@ -143,6 +144,7 @@ export interface StatusSummary {
   PLAN: number;
   ON_PROGRESS: number;
   REALISASI: number;
+  BELUM_TEREALISASI: number;
 }
 
 /**
@@ -150,7 +152,7 @@ export interface StatusSummary {
  * (resolver yang sama dengan tabel). Total kategori = jumlah program.
  */
 export function calculateStatusSummary(programs: ProgramKerjaLike[]): StatusSummary {
-  const summary: StatusSummary = { PLAN: 0, ON_PROGRESS: 0, REALISASI: 0 };
+  const summary: StatusSummary = { PLAN: 0, ON_PROGRESS: 0, REALISASI: 0, BELUM_TEREALISASI: 0 };
   for (const program of programs) {
     summary[getProgramStatus(program)] += 1;
   }
@@ -209,23 +211,29 @@ export function calculateMonthlyDistribution(
 // komponen lain (single source of truth).
 // ============================================================================
 
-/** Program apa pun yang memiliki `months` (cukup untuk hitung metrik). */
-export type ProgramMetricsLike = { months?: ProgramKerjaMonthLike[] };
+/** Program apa pun yang memiliki `months` (+ `year`/`deadline` untuk jatuh tempo). */
+export type ProgramMetricsLike = {
+  months?: ProgramKerjaMonthLike[];
+  year?: number;
+  deadline?: Date | string | null;
+};
 
 export interface ProgramMetrics {
   /** Jumlah unit Plan (periode minggu ber-target) dalam scope — baseline. */
   plan: number;
-  /** Jumlah unit Plan yang terealisasi (nilai R/100 per periode) dalam scope. */
+  /** Jumlah unit Plan yang terealisasi (nilai R/100 per periode) — KUMULATIF. */
   realization: number;
   /** Sisa Plan = max(plan - realization, 0). Tidak pernah negatif. */
   remaining: number;
   /** progress = plan > 0 ? (realization / plan) * 100 : 0. Tidak pernah NaN/Infinity. */
   progress: number;
   /**
-   * Status turunan dari progress:
-   *   progress === 0      → PLAN
-   *   0 < progress < 100  → ON PROGRESS
-   *   progress >= 100     → REALISASI (label UI: TEREALISASI)
+   * Status turunan dari REALISASI (jumlah) vs Plan (source of truth):
+   *   realization >= plan    → REALISASI (label UI: TEREALISASI)
+   *   0 < realization < plan → ON PROGRESS
+   *   realization === 0:
+   *     periode sudah lewat  → BELUM_TEREALISASI (label UI: TIDAK TEREALISASI)
+   *     else                 → PLAN
    */
   status: ComputedProgramStatus;
 }
@@ -233,12 +241,41 @@ export interface ProgramMetrics {
 export const ALL_MONTHS = Array.from({ length: 12 }, (_, i) => i + 1);
 
 /**
+ * Apakah Plan program sudah JATUH TEMPO (bila realization masih 0): bulan
+ * target terakhir dalam scope < bulan berjalan, ATAU deadline sudah lewat.
+ * Bulan target yang masih di depan / berjalan → belum jatuh tempo (PLAN).
+ */
+export function isProgramLapsed(
+  p: ProgramMetricsLike,
+  months?: number[],
+  now: Date = new Date()
+): boolean {
+  if (p.deadline) {
+    const d = p.deadline instanceof Date ? p.deadline : new Date(p.deadline);
+    if (!Number.isNaN(d.getTime()) && d < now) return true;
+  }
+
+  const scope = months && months.length > 0 ? new Set(months) : null;
+  let maxPlannedMonth = 0;
+  for (const m of p.months ?? []) {
+    if (m.target === null || m.target === undefined) continue;
+    if (scope && !scope.has(m.month ?? -1)) continue;
+    if ((m.month ?? 0) > maxPlannedMonth) maxPlannedMonth = m.month ?? 0;
+  }
+  if (maxPlannedMonth === 0) return false;
+
+  const year = p.year ?? now.getFullYear();
+  return year * 12 + maxPlannedMonth < now.getFullYear() * 12 + (now.getMonth() + 1);
+}
+
+/**
  * Hitung metrik Plan/Realisasi sebuah program pada `months` (null/undefined =
  * seluruh Januari–Desember). Plan tetap dipertahankan meskipun sudah 100%.
  */
 export function getProgramMetrics(
   p: ProgramMetricsLike,
-  months?: number[]
+  months?: number[],
+  now: Date = new Date()
 ): ProgramMetrics {
   const scope = months && months.length > 0 ? new Set(months) : null;
   let plan = 0;
@@ -260,12 +297,19 @@ export function getProgramMetrics(
   const remaining = Math.max(plan - realization, 0);
   // Progress dikunci maksimal 100% (realisasi > plan tetap 100%).
   const progress = plan > 0 ? Math.min(100, (realization / plan) * 100) : 0;
+
+  let status: ComputedProgramStatus;
+  if (plan > 0 && realization >= plan) status = ProgramStatus.REALISASI;
+  else if (realization > 0) status = ProgramStatus.ON_PROGRESS;
+  else if (isProgramLapsed(p, months, now)) status = ProgramStatus.BELUM_TEREALISASI;
+  else status = ProgramStatus.PLAN;
+
   return {
     plan,
     realization,
     remaining,
     progress,
-    status: getProgramStatus({ progress }),
+    status,
   };
 }
 export interface ProgramAggregateMetrics {
@@ -295,6 +339,7 @@ export function getAggregateProgramMetrics(
     PLAN: 0,
     ON_PROGRESS: 0,
     REALISASI: 0,
+    BELUM_TEREALISASI: 0,
   };
 
   for (const program of programs) {
@@ -360,4 +405,80 @@ export function normalizeProgramsWithMetrics<T extends ProgramMetricsLike>(
   months?: number[]
 ): NormalizedProgramMetrics<T>[] {
   return programs.map((p) => ({ ...p, metrics: getProgramMetrics(p, months) }));
+}
+// ============================================================================
+// CUMULATIVE REALISATION — Update Progress (Tambah Realisasi Hari Ini)
+// ----------------------------------------------------------------------------
+// Plan adalah baseline (jumlah unit). Update Progress TIDAK menimpa nilai
+// lama: user menambahkan N unit → realization = oldRealization + N
+// (dikunci maksimal = Plan). Helper pure ini testable tanpa database.
+// ============================================================================
+
+export interface RealizationPeriodUpdate {
+  month: number;
+  week: number;
+  /** Nilai R (0..100) baru untuk periode tsb setelah penambahan. */
+  realization: number;
+}
+
+export interface RealizationAddResult {
+  plan: number;
+  realization: number;
+  remaining: number;
+  progress: number;
+  status: ProgramStatus;
+  /** Periode yang benar-benar berubah (dipakai untuk UPDATE database). */
+  updates: RealizationPeriodUpdate[];
+}
+
+/**
+ * Menambahkan `amount` unit realisasi secara KUMULATIF terhadap `months`.
+ * Periode plan diisi dari yang teroldest (bulan, minggu) — setiap periode
+ * plan = 1 unit; nilai R partial (mis. 50) dihitung sebagai 0.5 unit.
+ * Nilai realisasi tidak pernah melebihi Plan. Melempar jika program tidak
+ * punya Plan afa jumlah <= 0.
+ */
+export function addRealizationUnits(
+  months: ProgramKerjaMonthLike[],
+  amount: number
+): RealizationAddResult {
+  if (!Number.isFinite(amount) || amount <= 0) {
+    throw new Error('Jumlah realisasi minimal 1.');
+  }
+
+  const planned = months
+    .filter((m) => m.target !== null && m.target !== undefined)
+    .sort((a, b) => ((a.month ?? 0) - (b.month ?? 0)) || ((a.week ?? 0) - (b.week ?? 0)));
+
+  const plan = planned.length;
+  if (plan === 0) {
+    throw new Error('Program tidak memiliki Plan untuk menerima realisasi.');
+  }
+
+  const currentUnits = planned.reduce(
+    (sum, m) => sum + Math.min(1, Math.max(0, (m.realization ?? 0) / 100)),
+    0
+  );
+  const target = Math.min(plan, currentUnits + amount);
+  const remaining = Math.max(plan - target, 0);
+  const progress = plan > 0 ? (target / plan) * 100 : 0;
+  let status: ProgramStatus;
+  if (target >= plan) status = ProgramStatus.REALISASI;
+  else if (target > 0) status = ProgramStatus.ON_PROGRESS;
+  else status = ProgramStatus.PLAN;
+
+  let toAdd = target - currentUnits;
+  const updates: RealizationPeriodUpdate[] = [];
+  for (const m of planned) {
+    if (toAdd <= 1e-9) break;
+    const currentUnitsPerPeriod = Math.min(1, Math.max(0, (m.realization ?? 0) / 100));
+    const capacity = 1 - currentUnitsPerPeriod;
+    if (capacity <= 1e-9) continue;
+    const add = Math.min(capacity, toAdd);
+    const newValue = Math.min(100, Math.round((currentUnitsPerPeriod + add) * 100));
+    updates.push({ month: m.month ?? 1, week: m.week ?? 1, realization: newValue });
+    toAdd -= add;
+  }
+
+  return { plan, realization: target, remaining, progress, status, updates };
 }

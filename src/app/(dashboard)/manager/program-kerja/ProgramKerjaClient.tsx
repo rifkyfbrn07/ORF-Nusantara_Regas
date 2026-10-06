@@ -10,11 +10,11 @@ import { ProgramKerjaImportModal } from './ProgramKerjaImportModal';
 import { ProgramDetailModal } from './ProgramDetailModal';
 import { ProgramListView } from './ProgramListView';
 import { ProgramTimelineView } from './ProgramTimelineView';
-import { CATEGORY_LABELS, MONTH_SHORT, STATUS_COLORS, STATUS_FILTER_OPTIONS, STATUS_LABELS, fmtNumber, fmtPercent, getProgramMonthStatus } from './shared';
+import { CATEGORY_LABELS, MONTH_SHORT, STATUS_COLORS, STATUS_FILTER_OPTIONS, STATUS_LABELS, fmtNumber, fmtPercent } from './shared';
 import {
   ALL_MONTHS,
   getAggregateProgramMetrics,
-  getProgramCurrentStatus,
+  getMonthlyBreakdown,
   getProgramMetrics,
   isActiveInMonth,
 } from '@/lib/programKerjaLogic';
@@ -87,9 +87,9 @@ export function ProgramKerjaClient({ programs, stats, years, picUsers }: Program
       // PER BULAN — program harus memiliki aktivitas (Plan/Realisasi) pada bulan tsb.
       if (filterMonth !== 'all' && !isActiveInMonth(p, Number(filterMonth))) return false;
 
-      // Status filter mengikuti status PROGRAM yang sebenarnya (progress tersimpan
-      // + TIDAK TEREALISASI existing) — konsisten dengan badge tabel & donut.
-      if (filterStatus !== 'all' && getProgramCurrentStatus(p) !== filterStatus) return false;
+      // Status filter mengikuti status PROGRAM (realisation vs Plan + jatuh tempo),
+      // konsisten dengan badge tabel & donut.
+      if (filterStatus !== 'all' && p.metrics.status !== filterStatus) return false;
 
       if (q) {
         const haystack = `${p.name} ${CATEGORY_LABELS[p.category]} ${p.plan ?? ''} ${p.notes ?? ''}`.toLowerCase();
@@ -99,59 +99,43 @@ export function ProgramKerjaClient({ programs, stats, years, picUsers }: Program
     });
   }, [normalizedPrograms, filterYear, filterCategory, filterStatus, filterMonth, query]);
 
-  // KPI / tabel / filter tetap memakai `getAggregateProgramMetrics` & `getProgramMetrics`
-  // yang SAMA (tidak diubah). Bar chart memakai agregasi per-bulan Program-count.
+  // KPI / tabel / filter memakai layer kalkulasi yang SAMA
+  // (`getProgramMetrics` / `getAggregateProgramMetrics`).
   const aggregate = useMemo(() => getAggregateProgramMetrics(filtered, scopeMonths), [filtered, scopeMonths]);
 
-  // Grouped bar "Plan vs Realisasi per Bulan":
-  //   Plan        = jumlah Program yang punya Plan pada bulan tsb (baseline —
-  //                 tidak pernah berkurang meskipun sudah terealisasi).
-  //   Realisasi   = periode bulan tsb R=100, ATAU Program sekarang TEREALISASI
-  //                 dan bulan tsb punya catatan realisasi > 0 (mengikuti update).
-  //   Tidak       = periode bulan tsb R=0 (TIDAK TEREALISASI) selama Program
-  //                 TIDAK sedang ON PROGRESS / sudah TEREALISASI.
-  // Program ON PROGRESS TIDAK dihitung sebagai Tidak Terealisasi.
-  const bar = useMemo<ChartMonthPoint[]>(() => {
-    return scopeMonths.map((m) => {
-      let plan = 0;
-      let realization = 0;
-      let notRealized = 0;
-      for (const p of filtered) {
-        const hasPlan = (p.months ?? []).some((x) => x.month === m && x.target !== null);
-        if (!hasPlan) continue;
-        plan += 1;
-        const monthStatus = getProgramMonthStatus(p, m);
-        const currentStatus = getProgramCurrentStatus(p);
-        const monthRealVals = (p.months ?? []).filter((x) => x.month === m && x.realization !== null).map((x) => x.realization as number);
-        if (monthStatus === 'REALISASI' || (currentStatus === 'REALISASI' && monthRealVals.some((v) => v > 0))) {
-          realization += 1;
-        } else if (monthStatus === 'BELUM_TEREALISASI' && currentStatus !== 'ON_PROGRESS' && currentStatus !== 'REALISASI') {
-          notRealized += 1;
-        }
-      }
-      return { month: MONTH_SHORT[m - 1], m, plan, realization, notRealized };
-    });
-  }, [filtered, scopeMonths]);
+  // Grouped bar "Plan vs Realisasi per Bulan" — QUANTITY unit Plan/Realisasi:
+  //   Plan      = jumlah unit Plan pada bulan tsb (baseline — tidak pernah berkurang).
+  //   Realisasi = jumlah unit realisasi pada bulan tsb (kumulatif).
+  //   Tidak     = sisa unit (remaining) pada bulan tsb.
+  // 1 Program ≠ 1 Plan — nilai Plan berasal dari periode ber-target (quantity).
+  const bar = useMemo<ChartMonthPoint[]>(
+    () =>
+      getMonthlyBreakdown(filtered, scopeMonths).map((b) => ({
+        month: b.month,
+        m: b.m,
+        plan: b.plan,
+        realization: b.realization,
+        notRealized: b.remaining,
+      })),
+    [filtered, scopeMonths]
+  );
 
-  // Donut — distribusi STATUS Program (mengikuti data status Program yang
-  // sebenarnya: progress 0 → PLAN, 0<x<100 → ON PROGRESS, 100 → TEREALISASI,
-  // TIDAK TEREALISASI dari status existing saat progress 0).
+  // Donut — distribusi STATUS program (mutually exclusive, total = jumlah program)
+  // dari `aggregate.statusSummary` (status = realisation vs Plan + jatuh tempo).
   const donut = useMemo<DonutSlice[]>(() => {
-    const total = filtered.length;
-    const counts: Record<ProgramStatus, number> = { PLAN: 0, ON_PROGRESS: 0, REALISASI: 0, BELUM_TEREALISASI: 0 };
-    for (const p of filtered) counts[getProgramCurrentStatus(p)] += 1;
+    const total = aggregate.total;
     return (
       (['PLAN', 'ON_PROGRESS', 'REALISASI', 'BELUM_TEREALISASI'] as const)
         .map((s) => ({
           id: s,
           name: STATUS_LABELS[s],
-          value: counts[s],
-          percent: total > 0 ? (counts[s] / total) * 100 : 0,
+          value: aggregate.statusSummary[s] ?? 0,
+          percent: total > 0 ? ((aggregate.statusSummary[s] ?? 0) / total) * 100 : 0,
           color: STATUS_COLORS[s],
         }))
         .filter((slice) => slice.value > 0)
     );
-  }, [filtered]);
+  }, [aggregate]);
 
   const year = filterYear !== 'all' ? Number(filterYear) : (programs[0]?.year ?? 2026);
   const monthOnly = filterMonth !== 'all' ? MONTH_SHORT[Number(filterMonth) - 1] : null;

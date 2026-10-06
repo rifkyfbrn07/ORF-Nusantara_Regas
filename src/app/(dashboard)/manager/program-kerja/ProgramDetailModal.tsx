@@ -7,7 +7,7 @@ import { Modal } from '@/components/ui/Modal';
 import { EvidenceViewer } from '@/components/ui/EvidenceViewer';
 import type { ProgramKerjaDTO, ProgramUpdateDTO } from '@/server/services/programKerjaService';
 import { CATEGORY_LABELS, MONTH_SHORT, StatusBadge, fmtNumber, fmtPercent } from './shared';
-import { getProgramCurrentStatus, getProgramMetrics } from '@/lib/programKerjaLogic';
+import { getProgramMetrics } from '@/lib/programKerjaLogic';
 import { ProgramUpdateFormModal } from './ProgramUpdateFormModal';
 import type { ProgramUpdateStatus } from '@prisma/client';
 
@@ -286,7 +286,7 @@ export function ProgramDetailModal({ program, canSubmit = true, onClose }: Progr
             <Field label="Deadline" value={program.deadline ? program.deadline.slice(0, 10) : '—'} />
             <div>
               <span className="block text-[9px] font-black uppercase tracking-wide text-slate-400">Status</span>
-              <div className="mt-1"><StatusBadge status={getProgramCurrentStatus(program)} /></div>
+              <div className="mt-1"><StatusBadge status={metrics.status} /></div>
             </div>
             <Field label="Plan (P)" value={fmtNumber(metrics.plan)} />
             <Field label="Realisasi (R)" value={fmtNumber(metrics.realization)} />
@@ -295,10 +295,10 @@ export function ProgramDetailModal({ program, canSubmit = true, onClose }: Progr
           <div className="rounded-xl border border-[#DCE5EF] bg-[#FBFDFE] p-3">
             <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-wide text-slate-400">
               <span>Progress</span>
-              <span className="tabular-nums text-[#0B3568]">{fmtPercent(program.progress)}%</span>
+              <span className="tabular-nums text-[#0B3568]">{fmtPercent(metrics.progress)}%</span>
             </div>
             <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-slate-100">
-              <div className={`h-full rounded-full ${program.progress >= 100 ? 'bg-emerald-500' : program.progress > 0 ? 'bg-[#F58220]' : 'bg-red-400'}`} style={{ width: `${Math.min(100, Math.round(program.progress))}%` }} />
+              <div className={`h-full rounded-full ${metrics.progress >= 100 ? 'bg-emerald-500' : metrics.progress > 0 ? 'bg-[#F58220]' : 'bg-red-400'}`} style={{ width: `${Math.min(100, Math.round(metrics.progress))}%` }} />
             </div>
           </div>
           {program.plan && (

@@ -344,3 +344,14 @@ export const programUpdateSubmitSchema = z
   });
 
 export type ProgramUpdateSubmitInput = z.infer<typeof programUpdateSubmitSchema>;
+
+// ============================================================================
+// UPDATE PROGRESS KUMULATIF — "Tambah Realisasi Hari Ini"
+// ============================================================================
+export const programRealizationAddSchema = z.object({
+  programId: z.string().min(1, 'Program wajib dipilih.'),
+  amount: z.number().int().min(1, 'Jumlah realisasi hari ini minimal 1.').max(9999, 'Jumlah realisasi maksimal 9999.'),
+  note: z.string().trim().max(500, 'Catatan update maksimal 500 karakter').optional(),
+});
+
+export type ProgramRealizationAddInput = z.infer<typeof programRealizationAddSchema>;
