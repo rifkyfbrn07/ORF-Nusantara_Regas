@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { LogIn, LogOut, CheckCircle, MapPin, AlertCircle, Clock, ShieldAlert } from 'lucide-react';
 import { checkInAction, checkOutAction } from '@/server/actions/attendanceActions';
 import { formatJakartaTime } from '@/lib/time';
@@ -40,6 +41,7 @@ interface CheckInButtonProps {
 }
 
 export function CheckInButton({ statusData }: CheckInButtonProps) {
+  const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notes, setNotes] = useState('');
@@ -64,6 +66,7 @@ export function CheckInButton({ statusData }: CheckInButtonProps) {
       setError(res.error || 'Gagal melakukan check-in.');
     } else {
       setSuccessMsg('Check-in berhasil dicatat oleh server!');
+      router.refresh();
     }
   };
 
@@ -83,6 +86,7 @@ export function CheckInButton({ statusData }: CheckInButtonProps) {
       setError(res.error || 'Gagal melakukan check-out.');
     } else {
       setSuccessMsg('Check-out berhasil dicatat. Selamat beristirahat!');
+      router.refresh();
     }
   };
 

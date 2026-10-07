@@ -527,8 +527,8 @@ const filtered = React.useMemo(() => {
                     const fin = dayFinalStatus(leaveOverlay, selectedUser.id, cell);
                     return (
                       <tr key={cell.date} className="hover:bg-[#F8FBFE]">
-                        <td className="px-3 py-2 font-mono font-bold text-[#0B3568]">{cell.date}</td>
-                        <td className="px-3 py-2 font-semibold text-slate-500">{cell.weekday}, {cell.date.slice(8, 10)} {['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'][month - 1]}</td>
+                        <td className={`px-3 py-2 font-mono font-bold ${cell.isHoliday ? 'text-[#DC2626]' : 'text-[#0B3568]'}`}>{cell.date}{cell.isHoliday ? <span className="ml-1.5 rounded border border-red-200 bg-red-50 px-1 py-0.5 text-[8px] font-black text-[#DC2626]">Sab/Minggu/merah</span> : null}</td>
+                        <td className={`px-3 py-2 font-semibold ${cell.isHoliday ? 'text-red-500' : 'text-slate-500'}`}>{cell.weekday}, {cell.date.slice(8, 10)} {['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'][month - 1]}</td>
                         <td className="px-3 py-2 font-bold text-[#123D70]">{fin === 'OFF' ? '—' : (cell.shiftName ?? '—')}</td>
                         <td className="px-3 py-2 font-mono text-slate-500">{fin === 'OFF' ? '—' : cell.startTime && cell.endTime ? `${cell.startTime} - ${cell.endTime}` : '—'}</td>
                         <td className="px-3 py-2"><FinalBadge finalStatus={fin} /></td>

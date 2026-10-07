@@ -1,6 +1,6 @@
 import { prisma } from '@/lib/db/prisma';
 import { AttendanceStatus, ScheduleStatus } from '@prisma/client';
-import { formatJakartaDate } from '@/lib/time';
+import { formatJakartaDate, isRedDate } from '@/lib/time';
 import { getOperatorWorkStatus } from './workStatusService';
 
 /**
@@ -101,14 +101,10 @@ const MONTH_NAMES_ID = [
 ];
 
 /**
- * Hari libur nasional. Sumber dokumen roster (September-Oktbr 2026_Rev.pdf)
- * memiliki legend "Hari libur Nasional" namun tidak menandai tanggal libur
- * apa pun pada September/Oktober 2026 — sehingga tidak ada tanggal yang
- * dikarang di sini. Tambahkan entri "YYYY-MM-DD": "Nama Libur" bila ada
- * data resmi.
+ * Penanda tanggal merah (isHoliday = isRedDate) memakai helper terpusat di
+ * `@/lib/time` — Sabtu, Minggu, dan hari libur nasional.
+ * HANYA INDIKATOR TANGGAL: tidak mengubah ON/OFF/shift operator.
  */
-const NATIONAL_HOLIDAYS: Record<string, string> = {};
-
 function weekdayOf(dateStr: string): string {
   const d = new Date(`${dateStr}T00:00:00Z`);
   return WEEKDAYS_ID[d.getUTCDay()];
@@ -288,7 +284,7 @@ export async function getRosterMonth(options: {
       pagi: schedules.filter((s) => s.date === date && shiftKeyOf(s.shift.code) === 'PAGI').length,
       malam: schedules.filter((s) => s.date === date && shiftKeyOf(s.shift.code) === 'MALAM').length,
       off: schedules.filter((s) => s.date === date && shiftKeyOf(s.shift.code) === 'OFF').length,
-      isHoliday: Boolean(NATIONAL_HOLIDAYS[date]),
+      isHoliday: isRedDate(date),
       isToday: date === today,
     });
   }
@@ -434,7 +430,7 @@ async function buildOperatorRow(params: BuildRowParams): Promise<RosterOperatorR
         endTime: s?.shift.endTime ?? null,
         status: s?.status ?? ScheduleStatus.OFF,
         notes: s?.notes ?? null,
-        isHoliday: Boolean(NATIONAL_HOLIDAYS[date]),
+        isHoliday: isRedDate(date),
         isToday: date === today,
       });
       continue;
@@ -451,7 +447,7 @@ async function buildOperatorRow(params: BuildRowParams): Promise<RosterOperatorR
       endTime: s?.shift.endTime ?? null,
       status: s?.status ?? ScheduleStatus.OFF,
       notes: s?.notes ?? null,
-      isHoliday: Boolean(NATIONAL_HOLIDAYS[date]),
+      isHoliday: isRedDate(date),
       isToday: date === today,
     });
   }

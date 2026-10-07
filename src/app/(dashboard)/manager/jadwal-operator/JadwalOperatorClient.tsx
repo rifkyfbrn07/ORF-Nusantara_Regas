@@ -270,7 +270,7 @@ export function JadwalOperatorClient({ data, monthNames, showContacts }: JadwalO
           <ShieldCheck className="h-3 w-3 text-[#F58220]" /> * = HSSE Marshall
         </span>
         <span className="flex items-center gap-1 text-[9.5px] font-semibold text-slate-500">
-          <span className="h-2.5 w-2.5 rounded border border-red-300 bg-red-50" /> Hari libur nasional
+          <span className="h-2.5 w-2.5 rounded border border-red-300 bg-red-50" /> Sabtu/Minggu/tanggal merah (indikator tanggal)
         </span>
         <span className="flex items-center gap-1 text-[9.5px] font-semibold text-slate-500">
           <span className="h-2.5 w-2.5 rounded border border-[#F59E0B] bg-[#FEF3C7]" /> Hari ini

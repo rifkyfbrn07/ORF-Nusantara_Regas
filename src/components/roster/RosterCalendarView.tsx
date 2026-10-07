@@ -2,6 +2,7 @@
 
 import React, { useMemo } from 'react';
 import type { RosterOperatorRow } from '@/server/services/rosterService';
+import { isRedDate } from '@/lib/time';
 
 /**
  * RosterCalendarView — tampilan kalender bulanan (Sen s.d. Min).
@@ -59,13 +60,14 @@ export function RosterCalendarView({
     const list: {
       day: number;
       isToday: boolean;
+      isRedDate: boolean;
       personalShift?: string | null;
       counts?: { pagi: number; malam: number; off: number };
       initials?: { pagi: string[]; malam: string[] };
     }[] = [];
     for (let d = 1; d <= daysInMonth; d++) {
       const date = `${year}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-      const base = { day: d, isToday: date === today };
+      const base = { day: d, isToday: date === today, isRedDate: isRedDate(date) };
       if (personal && focus) {
         const cell = focus.days.find((x) => x.day === d);
         list.push({ ...base, personalShift: cell ? cell.shiftKey : null });
@@ -106,10 +108,10 @@ export function RosterCalendarView({
           <div
             key={cell.day}
             className={`min-h-[54px] sm:min-h-[64px] rounded-lg border p-1 sm:p-1.5 flex flex-col ${
-              cell.isToday ? 'border-[#F59E0B] bg-[#FFFBEB]' : 'border-[#EDF2F7] bg-white'
+              cell.isToday ? 'border-[#F59E0B] bg-[#FFFBEB]' : cell.isRedDate ? 'border-red-200 bg-red-50' : 'border-[#EDF2F7] bg-white'
             }`}
           >
-            <span className={`text-[10.5px] sm:text-[11px] font-black ${cell.isToday ? 'text-amber-700' : 'text-[#0B3568]'}`}>
+            <span className={`text-[10.5px] sm:text-[11px] font-black ${cell.isToday ? 'text-amber-700' : cell.isRedDate ? 'text-red-600' : 'text-[#0B3568]'}`}>
               {cell.day}
             </span>
 
@@ -163,6 +165,9 @@ export function RosterCalendarView({
         </span>
         <span className="flex items-center gap-1 text-[9.5px] font-semibold text-slate-500">
           <span className={`inline-flex items-center justify-center w-5 h-4 rounded border text-[8px] font-black ${SHIFT_CHIP.OFF}`}>O</span> Off (Libur)
+        </span>
+        <span className="flex items-center gap-1 text-[9.5px] font-semibold text-slate-500">
+          <span className="h-2.5 w-2.5 rounded border border-red-300 bg-red-50" /> Sabtu/Minggu/tanggal merah (indikator tanggal)
         </span>
       </div>
     </div>

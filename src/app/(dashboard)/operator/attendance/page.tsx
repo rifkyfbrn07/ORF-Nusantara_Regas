@@ -1,13 +1,18 @@
 import React from 'react';
 import { requireAuth } from '@/lib/auth/session';
 import { getOperatorAttendanceHistory } from '@/server/services/attendanceService';
+import { getOperatorWorkStatus } from '@/server/services/workStatusService';
 import { StatusBadge } from '@/components/ui/StatusBadge';
+import { CheckInButton } from '@/components/attendance/CheckInButton';
 import { formatJakartaTime } from '@/lib/time';
 import { PageHeader } from '@/components/ui/PageHeader';
 
 export default async function OperatorAttendancePage() {
   const user = await requireAuth();
-  const attendances = await getOperatorAttendanceHistory(user.id, 50);
+  const [statusData, attendances] = await Promise.all([
+    getOperatorWorkStatus(user.id),
+    getOperatorAttendanceHistory(user.id, 50),
+  ]);
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto dashboard-enter">
@@ -16,6 +21,9 @@ export default async function OperatorAttendancePage() {
         title="Absensi Saya"
         description="Riwayat lengkap catatan waktu masuk, keluar, dan kepatuhan presensi shift kerja Anda di ORF Muara Karang."
       />
+
+      {/* Check-in / Check-out hari ini (status dari engine yang sama) */}
+      <CheckInButton statusData={statusData} />
 
       <div className="bg-white rounded-2xl border border-[#DCE5EF] shadow-xs overflow-hidden">
         <div className="overflow-x-auto">
