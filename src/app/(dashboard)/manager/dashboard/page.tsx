@@ -13,6 +13,7 @@ import { RecentActivityCard } from '@/components/dashboard/RecentActivityCard';
 import { CurrentShiftCard } from '@/components/dashboard/CurrentShiftCard';
 import { OperationalAlertsCard } from '@/components/dashboard/OperationalAlertsCard';
 import { OperatorStatusTable } from '@/components/dashboard/OperatorStatusTable';
+import { InfoOrfWidget } from '@/components/dashboard/InfoOrfWidget';
 
 export default async function ManagerDashboardPage() {
   const manager = await requireRole(['MANAGER', 'ADMIN']);
@@ -82,6 +83,8 @@ export default async function ManagerDashboardPage() {
         facilityName="ORF Muara Karang"
         facilityStatus="OCC READY"
       />
+
+      <InfoOrfWidget href="/manager/info-orf" />
 
       {/* 2. Primary Command Center Row 1 (Workforce Overview, Operational Pulse, Facility Status) */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">

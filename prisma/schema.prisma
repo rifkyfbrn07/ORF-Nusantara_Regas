@@ -186,6 +186,9 @@ model User {
   createdAnnouncements   Announcement[]      @relation("CreatedAnnouncements")
   uploadedReports        OperationalReport[] @relation("UploadedReports")
   dataImports            DataImport[]        @relation("DataImportActors")
+  infoOrfReports         InfoOrfReport[]     @relation("InfoOrfRecordedBy")
+  nextCargoUpdates       NextCargo[]         @relation("NextCargoUpdaters")
+
   createdAt              DateTime            @default(now())
   updatedAt              DateTime            @updatedAt
 
@@ -618,4 +621,102 @@ model OperationalReport {
   @@index([reportType])
   @@index([periodDate])
   @@index([uploadedById])
+}
+
+// ============================================================================
+// INFO ORF — DATA OPERASIONAL PER JAM (WIB)
+// ----------------------------------------------------------------------------
+// Setiap TANGGAL dapat memiliki BANYAK laporan (satu per jam pencatatan).
+//   - Unik per (reportDate, reportHour) → mencegah duplikasi periode pencatatan.
+//   - reportTime = timestamp WIB (date + hour) untuk sortir kronologis.
+//   - Nilai metrik/line disimpan APA ADANYA (Decimal + satuan) — TIDAK
+//     dijumlahkan lintas jam. Tampilan memakai nilai laporan pada jam terpilih.
+//   - NextCargo adalah entitas TERPISAH yang diperbarui lewat mekanismenya
+//     sendiri (bukan otomatis berubah setiap jam).
+// ============================================================================
+
+enum InfoOrfSection {
+  UPSTREAM
+  TOTAL
+  FSRU
+}
+
+enum NextCargoStatus {
+  SCHEDULED
+  DISCHARGING
+  COMPLETED
+  CANCELLED
+}
+
+model InfoOrfReport {
+  id           String           @id @default(cuid())
+  reportDate   String // YYYY-MM-DD (WIB)
+  reportHour   String // 'HH' 00–23 (WIB) — periode pencatatan
+  reportTime   DateTime // timestamp WIB (date + hour) untuk sortir/display
+  note         String?
+  recordedById String
+  recordedBy   User             @relation("InfoOrfRecordedBy", fields: [recordedById], references: [id], onDelete: Restrict)
+  nextCargoId  String?
+  nextCargo    NextCargo?       @relation("InfoOrfNextCargo", fields: [nextCargoId], references: [id], onDelete: SetNull)
+  metrics      InfoOrfMetric[]
+  lines        InfoOrfLine[]
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  @@unique([reportDate, reportHour])
+  @@index([reportDate])
+  @@index([reportTime])
+}
+
+model InfoOrfMetric {
+  id        String          @id @default(cuid())
+  reportId  String
+  report    InfoOrfReport   @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  section   InfoOrfSection
+  key       String // identifier field (e.g. 'TOTAL_FLOW')
+  label     String // label tampilan (e.g. 'Total Penyaluran Gas')
+  value     Decimal         @db.Decimal(18, 4)
+  unit      String // satuan (e.g. 'MMSCFD', 'psig', 'm³', '%', '°C')
+  sortOrder Int             @default(0)
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+
+  @@index([reportId])
+}
+
+model InfoOrfLine {
+  id         String        @id @default(cuid())
+  reportId   String
+  report     InfoOrfReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  lineCode   String // kode line (e.g. 'LINE-01')
+  lineName   String // nama line / pelanggan (e.g. 'PLN Nusantara Power')
+  flowRate   Decimal?      @db.Decimal(18, 4) // MMSCFD
+  volume     Decimal?      @db.Decimal(18, 4) // m³
+  energy     Decimal?      @db.Decimal(18, 4) // MMBTU
+  flowUnit   String        @default("MMSCFD")
+  volumeUnit String        @default("m³")
+  energyUnit String        @default("MMBTU")
+  sortOrder  Int           @default(0)
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+
+  @@index([reportId])
+}
+
+model NextCargo {
+  id              String           @id @default(cuid())
+  eta             DateTime // WIB
+  cargoCode       String
+  vesselName      String?
+  volumeLng       Decimal?         @db.Decimal(18, 2) // m³
+  note            String?
+  status          NextCargoStatus  @default(SCHEDULED)
+  lastUpdatedById String?
+  lastUpdatedBy   User?            @relation("NextCargoUpdaters", fields: [lastUpdatedById], references: [id], onDelete: SetNull)
+  infoOrfReports  InfoOrfReport[]  @relation("InfoOrfNextCargo")
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  @@index([status])
+  @@index([eta])
 }

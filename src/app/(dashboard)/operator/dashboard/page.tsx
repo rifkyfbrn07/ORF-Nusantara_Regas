@@ -12,6 +12,7 @@ import { getProgramStatus } from '@/lib/programKerjaLogic';
 import { formatIndonesianDate, formatJakartaDate, getJakartaNow } from '@/lib/time';
 import { UserAvatar } from '@/components/ui/UserAvatar';
 import { OperatorDashboardCharts } from './OperatorDashboardCharts';
+import { InfoOrfWidget } from '@/components/dashboard/InfoOrfWidget';
 
 function getGreeting() {
   const hour = getJakartaNow().getHours();
@@ -111,6 +112,8 @@ export default async function OperatorDashboardPage() {
           </div>
         </div>
       </section>
+
+      <InfoOrfWidget href="/operator/info-orf" />
 
       {/* 2. JADWAL HARI INI */}
       <section className="rounded-2xl border border-[rgba(15,62,105,0.10)] dark:border-[#1E456A] bg-white dark:bg-[#102B45] p-5 shadow-[0_2px_12px_rgba(15,49,90,0.03)]">

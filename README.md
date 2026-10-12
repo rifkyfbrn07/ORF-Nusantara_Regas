@@ -15,6 +15,7 @@ Sistem manajemen tenaga kerja operasional, penjadwalan shift, ringkasan kehadira
 - **Work Pattern** — Regular Operator: 3 Pagi → 3 Malam → 4 Off; Field/Pemantau: 4 Pagi → 2 Off. Pattern ditentukan berdasarkan posisi/job function/work pattern, bukan role.
 - **Jadwal Operator** — kalender bulanan dan roster personal. Warna schedule: Pagi = blue, Malam = navy, OFF = red.
 - **Program Kerja / Target** — Plan, Realisasi, Progress, Deadline, PIC, checklist, status, catatan alasan untuk `BELUM_TEREALISASI`, dan grafik tahunan berbasis database.
+- **Info ORF per jam** — laporan Up Stream, line distribusi, total penyaluran, dan FSRU disimpan per tanggal dan jam WIB; Manager/Admin dapat membuat dan mengoreksi laporan tanpa menimpa periode lain. Operator dapat melihat riwayat. Nilai ditampilkan per laporan tanpa agregasi lintas jam; Next Cargo diperbarui terpisah.
 - **Notifikasi Personal** — recipient-specific notification dengan unread count, preview, detail, dan mark as read.
 - **Search Global** — pencarian username, nama, employee ID, menu, dan program kerja sesuai permission.
 - **Profil** — data user dinamis dari session/database, foto profil dari device, preview, validasi MIME/ukuran, dan fallback initials.
@@ -47,3 +48,5 @@ npm run build
 ```
 
 Jangan menggunakan `npx prisma migrate reset` pada production.
+
+Migration Info ORF menyiapkan tabel dan unique key `(reportDate, reportHour)` pada database PostgreSQL yang dikonfigurasi melalui `DATABASE_URL`. Jalankan `npx prisma migrate deploy` setelah konfigurasi database resmi tersedia. Fitur ini tidak mengambil data operasional secara real-time otomatis.

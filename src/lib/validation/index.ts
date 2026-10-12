@@ -355,3 +355,93 @@ export const programRealizationAddSchema = z.object({
 });
 
 export type ProgramRealizationAddInput = z.infer<typeof programRealizationAddSchema>;
+
+// ============================================================================
+// INFO ORF — LAPORAN OPERASIONAL PER JAM
+// ----------------------------------------------------------------------------
+// Setiap tanggal dapat memiliki banyak laporan (satu per jam pencatatan).
+// Validasi angka/satuan TIDAK mengubah nilai asli yang diinput.
+// ============================================================================
+export const infoOrfSectionEnum = z.enum(['UPSTREAM', 'TOTAL', 'FSRU'] as const);
+
+export const infoOrfDateSchema = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, 'Format tanggal YYYY-MM-DD')
+  .refine((value) => {
+    const date = new Date(`${value}T00:00:00.000Z`);
+    return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value;
+  }, 'Tanggal laporan tidak valid.');
+
+function infoOrfDecimal(precision: number, scale: number, label: string) {
+  const scaleFactor = 10 ** scale;
+  const maxInteger = 10 ** (precision - scale);
+  return z
+    .number()
+    .finite(`${label} harus berupa angka valid`)
+    .min(0, `${label} tidak boleh negatif`)
+    .refine(
+      (value) => Math.abs(value) < maxInteger && Number.isSafeInteger(value * scaleFactor),
+      `${label} tidak dapat disimpan tepat dengan presisi database (maksimal ${scale} angka desimal).`
+    );
+}
+
+export const infoOrfMetricInputSchema = z.object({
+  section: infoOrfSectionEnum,
+  key: z.string().trim().min(1, 'Kode metrik wajib diisi').max(80),
+  label: z.string().trim().min(1, 'Label metrik wajib diisi').max(120),
+  value: infoOrfDecimal(18, 4, 'Nilai'),
+  unit: z.string().trim().min(1, 'Satuan wajib diisi').max(20),
+  sortOrder: z.number().int().min(0).max(999).default(0),
+});
+
+export const infoOrfLineInputSchema = z.object({
+  lineCode: z.string().trim().min(1, 'Kode line wajib diisi').max(40),
+  lineName: z.string().trim().min(1, 'Nama line wajib diisi').max(120),
+  flowRate: infoOrfDecimal(18, 4, 'Flow').nullable().optional(),
+  volume: infoOrfDecimal(18, 4, 'Volume').nullable().optional(),
+  energy: infoOrfDecimal(18, 4, 'Energi').nullable().optional(),
+  flowUnit: z.string().trim().min(1, 'Satuan flow wajib diisi').max(20).default('MMSCFD'),
+  volumeUnit: z.string().trim().min(1, 'Satuan volume wajib diisi').max(20).default('m³'),
+  energyUnit: z.string().trim().min(1, 'Satuan energi wajib diisi').max(20).default('MMBTU'),
+  sortOrder: z.number().int().min(0).max(999).default(0),
+}).refine(
+  (line) => line.flowRate != null || line.volume != null || line.energy != null,
+  { message: 'Isi minimal satu nilai flow, volume, atau energy untuk setiap line.', path: ['flowRate'] }
+);
+
+export const infoOrfReportSchema = z.object({
+  reportDate: infoOrfDateSchema,
+  reportHour: z.string().regex(/^([01]\d|2[0-3])$/, 'Jam pencatatan harus 00–23'),
+  note: z.string().trim().max(500, 'Catatan maksimal 500 karakter').nullable().optional(),
+  nextCargoId: z.string().trim().min(1).nullable().optional(),
+  metrics: z.array(infoOrfMetricInputSchema).min(1, 'Minimal satu data metrik harus diisi'),
+  lines: z.array(infoOrfLineInputSchema).min(1, 'Minimal satu line penyaluran harus diisi').max(50, 'Maksimal 50 line penyaluran'),
+}).superRefine((report, context) => {
+  for (const section of infoOrfSectionEnum.options) {
+    if (!report.metrics.some((metric) => metric.section === section)) {
+      context.addIssue({
+        code: 'custom',
+        path: ['metrics'],
+        message: `Minimal satu metrik untuk bagian ${section} wajib diisi.`,
+      });
+    }
+  }
+});
+
+export const infoOrfReportUpdateSchema = infoOrfReportSchema.extend({
+  id: z.string().min(1, 'ID laporan wajib disertakan'),
+});
+
+export const nextCargoSchema = z.object({
+  id: z.string().trim().min(1).nullable().optional(),
+  eta: z.string().datetime({ offset: true, message: 'ETA harus format datetime ISO (mis. 2026-10-20T08:00:00+07:00)' }),
+  cargoCode: z.string().trim().min(1, 'Kode cargo wajib diisi').max(60),
+  vesselName: z.string().trim().max(120).nullable().optional(),
+  volumeLng: infoOrfDecimal(18, 2, 'Volume LNG').nullable().optional(),
+  status: z.enum(['SCHEDULED', 'DISCHARGING', 'COMPLETED', 'CANCELLED'] as const),
+  note: z.string().trim().max(500, 'Catatan maksimal 500 karakter').nullable().optional(),
+});
+
+export type InfoOrfReportInput = z.infer<typeof infoOrfReportSchema>;
+export type InfoOrfReportUpdateInput = z.infer<typeof infoOrfReportUpdateSchema>;
+export type NextCargoInput = z.infer<typeof nextCargoSchema>;
