@@ -23,9 +23,11 @@ export interface InfoOrfLineDTO {
   flowRate: number | null;
   volume: number | null;
   energy: number | null;
+  temperature: number | null;
   flowUnit: string;
   volumeUnit: string;
   energyUnit: string;
+  temperatureUnit: string;
   sortOrder: number;
 }
 

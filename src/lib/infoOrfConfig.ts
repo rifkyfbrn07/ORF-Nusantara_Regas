@@ -21,6 +21,13 @@ export const INFO_ORF_ALLOWED_UNITS = [
   'MSCFD',
   'm³',
   'm³/h',
+  'Mscf/h',
+  'MMscfd',
+  'Mmbtu/h',
+  'M3/H',
+  'M3',
+  'Barg',
+  'Deg F',
   'psig',
   'bar',
   'mbar',
@@ -44,13 +51,11 @@ export interface InfoOrfMetricTemplate {
 
 /** Template metrik default yang dimuat saat form laporan baru dibuka. */
 export const INFO_ORF_METRIC_TEMPLATE: InfoOrfMetricTemplate[] = [
-  { section: 'UPSTREAM', key: 'SUPPLY_FLOW', label: 'Flow Gas Masuk (Upstream)', unit: 'MMSCFD' },
-  { section: 'UPSTREAM', key: 'INLET_PRESSURE', label: 'Tekanan Inlet', unit: 'psig' },
-  { section: 'TOTAL', key: 'TOTAL_FLOW', label: 'Total Penyaluran Gas', unit: 'MMSCFD' },
-  { section: 'TOTAL', key: 'TOTAL_VOLUME', label: 'Volume Kumulatif', unit: 'm³' },
-  { section: 'FSRU', key: 'LNG_LEVEL', label: 'Level LNG Storage', unit: '%' },
-  { section: 'FSRU', key: 'SENDOUT', label: 'Sendout / Regasifikasi', unit: 'MMSCFD' },
-  { section: 'FSRU', key: 'TANK_PRESSURE', label: 'Tekanan Tank', unit: 'mbar' },
+  { section: 'UPSTREAM', key: 'PRESSURE', label: 'Pressure Up Stream', unit: 'Barg' },
+  { section: 'UPSTREAM', key: 'TEMPERATURE', label: 'Temperature Up Stream', unit: 'Deg F' },
+  { section: 'TOTAL', key: 'TOTAL_FLOW', label: 'Total MK + TP + MTW', unit: 'MMscfd' },
+  { section: 'FSRU', key: 'LNG_FLOW', label: 'LNG Flow', unit: 'M3/H' },
+  { section: 'FSRU', key: 'ROB_LNG', label: 'ROB LNG', unit: 'M3' },
 ];
 
 export interface InfoOrfLineTemplate {
@@ -60,9 +65,12 @@ export interface InfoOrfLineTemplate {
 
 /** Template line penyaluran default (bisa ditambah/diubah/dihapus di form). */
 export const INFO_ORF_LINE_TEMPLATE: InfoOrfLineTemplate[] = [
-  { lineCode: 'LINE-01', lineName: 'PLN (Pembangkit)' },
-  { lineCode: 'LINE-02', lineName: 'Jargas (Rumah Tangga)' },
-  { lineCode: 'LINE-03', lineName: 'Industri' },
+  { lineCode: 'LINE-350-PLN-IP-PRIOK', lineName: 'Line 350 Psig — PLN IP Priok PGU' },
+  { lineCode: 'LINE-350-PLN-NP-MK', lineName: 'Line 350 Psig — PLN NP MK' },
+  { lineCode: 'LINE-620-PLN-NP-MK', lineName: 'Line 620 Psig — PLN NP MK' },
+  { lineCode: 'LINE-PERTAGAS-PLN-NP-MTW', lineName: 'Line Pertagas — PLN NP MTW' },
+  { lineCode: 'LINE-PEAKER-PLN-NP-MK', lineName: 'Line Peaker — PLN NP MK' },
+  { lineCode: 'LINE-PGN', lineName: 'Line PGN' },
 ];
 
 export const INFO_ORF_HOURS: string[] = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0'));

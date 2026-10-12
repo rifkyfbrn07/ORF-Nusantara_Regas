@@ -31,6 +31,8 @@ interface LineRow {
   volumeUnit: string;
   energy: string;
   energyUnit: string;
+  temperature: string;
+  temperatureUnit: string;
   sortOrder: number;
 }
 
@@ -63,6 +65,8 @@ function lineTemplateRows() {
     volumeUnit: 'm³',
     energy: '',
     energyUnit: 'MMBTU',
+    temperature: '',
+    temperatureUnit: '°F',
     sortOrder: i,
   }));
 }
@@ -81,6 +85,8 @@ function lineRowsFromReport(report: InfoOrfReportDTO): LineRow[] {
     volumeUnit: l.volumeUnit,
     energy: l.energy != null ? String(l.energy) : '',
     energyUnit: l.energyUnit,
+    temperature: l.temperature != null ? String(l.temperature) : '',
+    temperatureUnit: l.temperatureUnit,
     sortOrder: l.sortOrder,
   }));
 }
@@ -120,6 +126,8 @@ export function InfoOrfReportFormModal({ open, onClose, report, defaultDate, nex
           volumeUnit: 'm³',
           energy: '',
           energyUnit: 'MMBTU',
+          temperature: '',
+          temperatureUnit: '°F',
           sortOrder: prev.length,
         },
       ]);
@@ -174,6 +182,8 @@ export function InfoOrfReportFormModal({ open, onClose, report, defaultDate, nex
       volumeUnit: string;
       energy: number | null;
       energyUnit: string;
+      temperature: number | null;
+      temperatureUnit: string;
       sortOrder: number;
     }[] = [];
     for (const l of lines) {
@@ -184,11 +194,12 @@ export function InfoOrfReportFormModal({ open, onClose, report, defaultDate, nex
       const flowRate = numberOrNull(l.flowRate);
       const volume = numberOrNull(l.volume);
       const energy = numberOrNull(l.energy);
-      if ((l.flowRate.trim() !== '' && flowRate === null) || (l.volume.trim() !== '' && volume === null) || (l.energy.trim() !== '' && energy === null)) {
+      const temperature = numberOrNull(l.temperature);
+      if ((l.flowRate.trim() !== '' && flowRate === null) || (l.volume.trim() !== '' && volume === null) || (l.energy.trim() !== '' && energy === null) || (l.temperature.trim() !== '' && temperature === null)) {
         setError(`Data line "${l.lineName}" harus berupa angka valid.`);
         return;
       }
-      if ([flowRate, volume, energy].some((value) => value != null && value < 0)) {
+      if ([flowRate, volume, energy, temperature].some((value) => value != null && value < 0)) {
         setError(`Nilai line "${l.lineName}" tidak boleh negatif.`);
         return;
       }
@@ -209,6 +220,8 @@ export function InfoOrfReportFormModal({ open, onClose, report, defaultDate, nex
         volumeUnit: l.volumeUnit.trim(),
         energy,
         energyUnit: l.energyUnit.trim(),
+        temperature,
+        temperatureUnit: l.temperatureUnit.trim(),
         sortOrder: l.sortOrder,
       });
     }
@@ -402,6 +415,7 @@ export function InfoOrfReportFormModal({ open, onClose, report, defaultDate, nex
                     ['Flow', 'flowRate', 'flowUnit', l.flowRate, l.flowUnit],
                     ['Volume', 'volume', 'volumeUnit', l.volume, l.volumeUnit],
                     ['Energy', 'energy', 'energyUnit', l.energy, l.energyUnit],
+                    ['Temperature', 'temperature', 'temperatureUnit', l.temperature, l.temperatureUnit],
                   ] as const).map(([label, valueKey, unitKey, value, unit]) => (
                     <div key={valueKey} className="flex gap-1.5">
                       <input

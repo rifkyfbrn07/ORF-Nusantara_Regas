@@ -3,6 +3,7 @@ import { requireRole } from '@/lib/auth/session';
 import { prisma } from '@/lib/db/prisma';
 import { getManagerSchedules } from '@/server/services/scheduleService';
 import { formatJakartaDate } from '@/lib/time';
+import { getIndonesianHolidayCalendar } from '@/server/services/indonesianHolidayService';
 import { ScheduleManagerClient } from './ScheduleManagerClient';
 import { SchedulePageTools } from './SchedulePageTools';
 import { PageHeader } from '@/components/ui/PageHeader';
@@ -12,7 +13,7 @@ export default async function ManagerSchedulesPage() {
   const canEditSchedules = session.role === 'ADMIN';
   const today = formatJakartaDate();
 
-  const [schedules, shifts, operators, locations] = await Promise.all([
+  const [schedules, shifts, operators, locations, holidayCalendar] = await Promise.all([
     getManagerSchedules({
       startDate: '2026-09-01',
       endDate: '2026-09-30',
@@ -20,6 +21,7 @@ export default async function ManagerSchedulesPage() {
     prisma.shift.findMany({ where: { isActive: true }, orderBy: { startTime: 'asc' } }),
     prisma.user.findMany({ where: { role: 'OPERATOR', isActive: true }, orderBy: { name: 'asc' } }),
     prisma.location.findMany(),
+    getIndonesianHolidayCalendar(2026),
   ]);
 
   return (
@@ -44,6 +46,8 @@ export default async function ManagerSchedulesPage() {
         locations={locations}
         today={today}
         canEdit={canEditSchedules}
+        holidayNames={holidayCalendar.holidays}
+        holidayCalendarError={holidayCalendar.error}
       />
     </div>
   );

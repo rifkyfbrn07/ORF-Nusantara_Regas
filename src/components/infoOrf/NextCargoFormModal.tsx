@@ -8,7 +8,7 @@ import { upsertNextCargoAction } from '@/server/actions/infoOrfActions';
 import { TIMEZONE_JAKARTA } from '@/lib/time';
 import { toZonedTime, format as formatTz } from 'date-fns-tz';
 
-interface Props {
+interface NextCargoFormModalProps {
   open: boolean;
   onClose: () => void;
   cargo: NextCargoDTO | null;
@@ -20,7 +20,7 @@ function toDatetimeLocal(iso: string): string {
   return formatTz(zoned, "yyyy-MM-dd'T'HH:mm", { timeZone: TIMEZONE_JAKARTA });
 }
 
-export function NextCargoFormModal({ open, onClose, cargo, onSaved }: Props) {
+export function NextCargoFormModal({ open, onClose, cargo, onSaved }: NextCargoFormModalProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [eta, setEta] = useState(cargo ? toDatetimeLocal(cargo.eta) : '');

@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, CalendarDays, Clock, Users, Bell, Target, Menu } from 'lucide-react';
+import { LayoutDashboard, CalendarDays, Clock, Users, Bell, Target, Menu, Activity } from 'lucide-react';
 import { clsx } from 'clsx';
 import { SessionUser } from '@/lib/auth/session';
 
@@ -22,12 +22,14 @@ export function MobileNav({ user, unreadCount = 0, onOpenDrawer }: MobileNavProp
     { label: 'Home', href: '/manager/dashboard', icon: LayoutDashboard },
     { label: 'Jadwal', href: '/manager/schedules', icon: CalendarDays },
     { label: 'Manpower', href: '/manager/workforce', icon: Users },
+    { label: 'Monitoring ORF', href: '/manager/monitoring-orf', icon: Activity },
     { label: 'Notifikasi', href: '/notifications', icon: Bell, badge: unreadCount },
   ];
 
   const operatorLinks = [
     { label: 'Home', href: '/operator/dashboard', icon: LayoutDashboard },
     { label: 'Jadwal Saya', href: '/operator/jadwal-saya', icon: CalendarDays },
+    { label: 'Monitoring ORF', href: '/operator/monitoring-orf', icon: Activity },
     { label: 'Program', href: '/operator/program-kerja', icon: Target },
     { label: 'Absensi', href: '/operator/attendance', icon: Clock },
     { label: 'Notifikasi', href: '/notifications', icon: Bell, badge: unreadCount },

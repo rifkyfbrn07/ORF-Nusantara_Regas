@@ -10,7 +10,7 @@ import { getInfoOrfReportsForDateAction } from '@/server/actions/infoOrfActions'
 import { InfoOrfReportView } from '@/components/infoOrf/InfoOrfReportView';
 import { NextCargoPanel } from '@/components/infoOrf/NextCargoPanel';
 import { InfoOrfReportFormModal } from './InfoOrfReportFormModal';
-import { NextCargoFormModal } from './NextCargoFormModal';
+import { NextCargoFormModal } from '@/components/infoOrf/NextCargoFormModal';
 
 interface Props {
   initialData: InfoOrfDashboardDTO;

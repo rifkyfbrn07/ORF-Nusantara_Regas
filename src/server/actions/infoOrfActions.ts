@@ -5,6 +5,8 @@ import {
   infoOrfDateSchema,
   infoOrfReportSchema,
   infoOrfReportUpdateSchema,
+  monitoringOrfReportSchema,
+  monitoringOrfReportUpdateSchema,
   nextCargoSchema,
   InfoOrfReportInput,
   InfoOrfReportUpdateInput,
@@ -16,11 +18,19 @@ import {
   updateInfoOrfReport,
   upsertNextCargo,
   getInfoOrfReportsForDate,
+  getInfoOrfReportsInRange,
   InfoOrfDuplicateError,
 } from '../services/infoOrfService';
 import { revalidatePath } from 'next/cache';
 
-const INFO_ORF_PATHS = ['/manager/info-orf', '/operator/info-orf', '/manager/dashboard', '/operator/dashboard'];
+const INFO_ORF_PATHS = [
+  '/manager/info-orf',
+  '/operator/info-orf',
+  '/manager/monitoring-orf',
+  '/operator/monitoring-orf',
+  '/manager/dashboard',
+  '/operator/dashboard',
+];
 
 type ActionError = { success: false; error: string; code?: string };
 type InfoOrfReportActionResult = { success: true; report: InfoOrfReportDTO } | ActionError;
@@ -67,7 +77,6 @@ export async function updateInfoOrfReportAction(input: InfoOrfReportUpdateInput)
     if (!parse.success) {
       return { success: false, error: parse.error.issues[0]?.message || 'Data laporan tidak valid.' };
     }
-
     const { id, ...data } = parse.data;
     const report = await updateInfoOrfReport({ ...data, id, updatedById: user.id });
 
@@ -77,6 +86,51 @@ export async function updateInfoOrfReportAction(input: InfoOrfReportUpdateInput)
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Gagal memperbarui laporan Info ORF.',
+    };
+  }
+}
+
+export async function saveMonitoringOrfReportAction(
+  input: InfoOrfReportInput & { nextCargoCode?: string | null; nextCargoEta?: string | null; id?: string }
+): Promise<InfoOrfReportActionResult> {
+  try {
+    const user = await requireRole(['MANAGER', 'ADMIN']);
+    let report: InfoOrfReportDTO;
+    if (input.id) {
+      const parse = monitoringOrfReportUpdateSchema.safeParse(input);
+      if (!parse.success) {
+        return { success: false, error: parse.error.issues[0]?.message || 'Data Monitoring ORF tidak valid.' };
+      }
+      const { id, nextCargoCode, nextCargoEta, ...data } = parse.data;
+      const nextCargo = nextCargoCode && nextCargoEta
+        ? { cargoCode: nextCargoCode, eta: new Date(nextCargoEta) }
+        : undefined;
+      report = await updateInfoOrfReport({ ...data, id, nextCargo, updatedById: user.id });
+    } else {
+      const parse = monitoringOrfReportSchema.safeParse(input);
+      if (!parse.success) {
+        return { success: false, error: parse.error.issues[0]?.message || 'Data Monitoring ORF tidak valid.' };
+      }
+      const { nextCargoCode, nextCargoEta, ...data } = parse.data;
+      const nextCargo = nextCargoCode && nextCargoEta
+        ? { cargoCode: nextCargoCode, eta: new Date(nextCargoEta) }
+        : undefined;
+      report = await createInfoOrfReport({ ...data, nextCargo, recordedById: user.id });
+    }
+
+    revalidateInfoOrf();
+    return { success: true, report };
+  } catch (error: unknown) {
+    if (error instanceof InfoOrfDuplicateError) {
+      return {
+        success: false,
+        error: 'Laporan pada tanggal dan jam tersebut sudah ada. Muat laporan yang ada untuk mengoreksi.',
+        code: 'DUPLICATE_REPORT',
+      };
+    }
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Gagal menyimpan laporan Monitoring ORF.',
     };
   }
 }
@@ -115,12 +169,47 @@ export async function getInfoOrfReportsForDateAction(
     if (!parsedDate.success) {
       return { success: false, error: parsedDate.error.issues[0]?.message || 'Tanggal laporan tidak valid.' };
     }
+
     const reports = await getInfoOrfReportsForDate(parsedDate.data);
     return { success: true, reports };
   } catch (error: unknown) {
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Gagal memuat laporan Info ORF.',
+    };
+  }
+}
+
+export async function getInfoOrfReportsInRangeAction(input: {
+  startDate: string;
+  endDate: string;
+  startHour: string;
+  endHour: string;
+}) {
+  try {
+    await requireAuth();
+    const startDate = infoOrfDateSchema.safeParse(input.startDate);
+    const endDate = infoOrfDateSchema.safeParse(input.endDate);
+    if (!startDate.success || !endDate.success || startDate.data > endDate.data) {
+      return { success: false as const, error: 'Rentang tanggal laporan tidak valid.' };
+    }
+    if (!/^([01]\d|2[0-3])$/.test(input.startHour) || !/^([01]\d|2[0-3])$/.test(input.endHour) || input.startHour > input.endHour) {
+      return { success: false as const, error: 'Rentang jam harus valid dan jam awal tidak boleh melewati jam akhir.' };
+    }
+    const dayCount = (Date.parse(`${endDate.data}T00:00:00Z`) - Date.parse(`${startDate.data}T00:00:00Z`)) / 86_400_000 + 1;
+    if (dayCount > 90) return { success: false as const, error: 'Rentang histori maksimal 90 hari.' };
+
+    const reports = await getInfoOrfReportsInRange({
+      startDate: startDate.data,
+      endDate: endDate.data,
+      startHour: input.startHour,
+      endHour: input.endHour,
+    });
+    return { success: true as const, reports };
+  } catch (error: unknown) {
+    return {
+      success: false as const,
+      error: error instanceof Error ? error.message : 'Gagal memuat histori Monitoring ORF.',
     };
   }
 }

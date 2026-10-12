@@ -84,7 +84,7 @@ export default async function ManagerDashboardPage() {
         facilityStatus="OCC READY"
       />
 
-      <InfoOrfWidget href="/manager/info-orf" />
+      <InfoOrfWidget href="/manager/monitoring-orf" />
 
       {/* 2. Primary Command Center Row 1 (Workforce Overview, Operational Pulse, Facility Status) */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">

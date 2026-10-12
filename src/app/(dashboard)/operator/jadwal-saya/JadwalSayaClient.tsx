@@ -7,6 +7,7 @@ import type { RosterMonthData, RosterOperatorRow, RosterDayCell } from '@/server
 import type { FinalDayState, FinalDayKind } from '@/server/services/workStatisticsService';
 import { RosterMatrix } from '@/components/roster/RosterMatrix';
 import { RosterCalendarView } from '@/components/roster/RosterCalendarView';
+import { isRedDate } from '@/lib/time';
 
 interface JadwalSayaClientProps {
   data: RosterMonthData;
@@ -80,6 +81,11 @@ export function JadwalSayaClient({
 
       {activeTab === 'saya' && (
         <>
+      {data.holidayCalendarError && (
+        <div role="status" className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+          Kalender hari libur nasional tidak dapat dimuat. Penanda akhir pekan tetap aktif; data libur nasional mungkin belum lengkap.
+        </div>
+      )}
       {/* Header bulan + navigasi */}
       <div className="bg-white rounded-xl border border-[#DCE5EF] shadow-xs p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -147,7 +153,7 @@ export function JadwalSayaClient({
           </div>
 
           {view === 'table' ? (
-            <ScheduleTable days={days} />
+            <ScheduleTable days={days} holidayNames={data.nationalHolidays} />
           ) : view === 'calendar' ? (
             <RosterCalendarView
               operators={[me]}
@@ -155,6 +161,7 @@ export function JadwalSayaClient({
               month={data.month}
               daysInMonth={data.daysInMonth}
               focusOperatorId={me.id}
+              holidayNames={data.nationalHolidays}
             />
           ) : (
             <RosterMatrix operators={[me]} daysInMonth={data.daysInMonth} showContacts={false} />
@@ -224,7 +231,7 @@ function ViewTab({ active, onClick, label }: { active: boolean; onClick: () => v
   );
 }
 
-function ScheduleTable({ days }: { days: FinalDayState[] }) {
+function ScheduleTable({ days, holidayNames }: { days: FinalDayState[]; holidayNames: Record<string, string> }) {
   const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
   return (
     <div className="overflow-hidden rounded-xl border border-[#DCE5EF] bg-white shadow-xs">
@@ -245,8 +252,8 @@ function ScheduleTable({ days }: { days: FinalDayState[] }) {
               const isLeave = day.finalStatus === 'CUTI' || day.finalStatus === 'IZIN' || day.finalStatus === 'SAKIT';
               return (
                 <tr key={day.date} className={day.changed ? 'bg-amber-50/40' : 'hover:bg-[#F8FBFE]'}>
-                  <td className="px-3 py-2 font-mono font-bold text-[#0B3568]">{day.date}</td>
-                  <td className="px-3 py-2 font-semibold text-slate-500">{day.weekday}, {day.date.slice(8, 10)} {MONTHS[Number(day.date.slice(5, 7)) - 1]}</td>
+                  <td title={holidayNames[day.date] || (isRedDate(day.date) ? 'Akhir pekan' : undefined)} className={`px-3 py-2 font-mono font-bold ${isRedDate(day.date, holidayNames) ? 'text-red-600' : 'text-[#0B3568]'}`}>{day.date}</td>
+                  <td title={holidayNames[day.date] || (isRedDate(day.date) ? 'Akhir pekan' : undefined)} className={`px-3 py-2 font-semibold ${isRedDate(day.date, holidayNames) ? 'text-red-600' : 'text-slate-500'}`}>{day.weekday}, {day.date.slice(8, 10)} {MONTHS[Number(day.date.slice(5, 7)) - 1]}</td>
                   <td className="px-3 py-2 font-bold text-[#123D70]">
                     {day.finalStatus === 'OFF' ? '—' : day.shiftName ?? '—'}
                   </td>

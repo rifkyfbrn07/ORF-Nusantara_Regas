@@ -31,9 +31,11 @@ export interface InfoOrfLineInput {
   flowRate?: number | null;
   volume?: number | null;
   energy?: number | null;
+  temperature?: number | null;
   flowUnit: string;
   volumeUnit: string;
   energyUnit: string;
+  temperatureUnit: string;
   sortOrder: number;
 }
 
@@ -42,6 +44,7 @@ export interface InfoOrfReportInput {
   reportHour: string;
   note?: string | null;
   nextCargoId?: string | null;
+  nextCargo?: { cargoCode: string; eta: Date };
   metrics: InfoOrfMetricInput[];
   lines: InfoOrfLineInput[];
 }
@@ -98,9 +101,11 @@ function serializeReport(r: ReportRow) {
       flowRate: l.flowRate === null ? null : toNumber(l.flowRate),
       volume: l.volume === null ? null : toNumber(l.volume),
       energy: l.energy === null ? null : toNumber(l.energy),
+      temperature: l.temperature === null ? null : toNumber(l.temperature),
       flowUnit: l.flowUnit,
       volumeUnit: l.volumeUnit,
       energyUnit: l.energyUnit,
+      temperatureUnit: l.temperatureUnit,
       sortOrder: l.sortOrder,
     })),
     nextCargo: r.nextCargo ? serializeNextCargo(r.nextCargo) : null,
@@ -136,7 +141,7 @@ function isUniqueConstraintError(error: unknown): boolean {
 }
 
 export async function createInfoOrfReport(input: InfoOrfReportInput & { recordedById: string }) {
-  const { reportDate, reportHour, note, nextCargoId, metrics, lines, recordedById } = input;
+  const { reportDate, reportHour, note, nextCargoId, nextCargo, metrics, lines, recordedById } = input;
   const reportTime = buildReportTime(reportDate, reportHour);
 
   const existing = await prisma.infoOrfReport.findUnique({
@@ -147,6 +152,17 @@ export async function createInfoOrfReport(input: InfoOrfReportInput & { recorded
 
   try {
     return await prisma.$transaction(async (tx) => {
+      const nextCargoSnapshot = nextCargo
+        ? await tx.nextCargo.create({
+            data: {
+              cargoCode: nextCargo.cargoCode,
+              eta: nextCargo.eta,
+              status: 'SCHEDULED',
+              lastUpdatedById: recordedById,
+            },
+            select: { id: true },
+          })
+        : null;
       const report = await tx.infoOrfReport.create({
         data: {
           reportDate,
@@ -154,7 +170,7 @@ export async function createInfoOrfReport(input: InfoOrfReportInput & { recorded
           reportTime,
           note: note ?? null,
           recordedById,
-          nextCargoId: nextCargoId || null,
+          nextCargoId: nextCargoSnapshot?.id ?? nextCargoId ?? null,
           metrics: {
             create: metrics.map((m, i) => ({
               section: m.section,
@@ -172,9 +188,11 @@ export async function createInfoOrfReport(input: InfoOrfReportInput & { recorded
               flowRate: l.flowRate == null ? null : new Prisma.Decimal(l.flowRate),
               volume: l.volume == null ? null : new Prisma.Decimal(l.volume),
               energy: l.energy == null ? null : new Prisma.Decimal(l.energy),
+              temperature: l.temperature == null ? null : new Prisma.Decimal(l.temperature),
               flowUnit: l.flowUnit,
               volumeUnit: l.volumeUnit,
               energyUnit: l.energyUnit,
+              temperatureUnit: l.temperatureUnit,
               sortOrder: l.sortOrder ?? i,
             })),
           },
@@ -201,7 +219,7 @@ export async function createInfoOrfReport(input: InfoOrfReportInput & { recorded
 }
 
 export async function updateInfoOrfReport(input: InfoOrfReportInput & { id: string; updatedById: string }) {
-  const { id, reportDate, reportHour, note, nextCargoId, metrics, lines, updatedById } = input;
+  const { id, reportDate, reportHour, note, nextCargoId, nextCargo, metrics, lines, updatedById } = input;
   const reportTime = buildReportTime(reportDate, reportHour);
 
   return prisma.$transaction(async (tx) => {
@@ -214,6 +232,18 @@ export async function updateInfoOrfReport(input: InfoOrfReportInput & { id: stri
       throw new Error('Tanggal dan jam pencatatan tidak dapat diubah saat mengoreksi laporan.');
     }
 
+    const nextCargoSnapshot = nextCargo
+      ? await tx.nextCargo.create({
+          data: {
+            cargoCode: nextCargo.cargoCode,
+            eta: nextCargo.eta,
+            status: 'SCHEDULED',
+            lastUpdatedById: updatedById,
+          },
+          select: { id: true },
+        })
+      : null;
+
     const report = await tx.infoOrfReport.update({
       where: { id },
       data: {
@@ -221,7 +251,7 @@ export async function updateInfoOrfReport(input: InfoOrfReportInput & { id: stri
         reportHour,
         reportTime,
         note: note ?? null,
-        nextCargoId: nextCargoId || null,
+        nextCargoId: nextCargoSnapshot?.id ?? (nextCargo ? null : nextCargoId || null),
         metrics: {
           deleteMany: {},
           create: metrics.map((m, i) => ({
@@ -241,9 +271,11 @@ export async function updateInfoOrfReport(input: InfoOrfReportInput & { id: stri
             flowRate: l.flowRate == null ? null : new Prisma.Decimal(l.flowRate),
             volume: l.volume == null ? null : new Prisma.Decimal(l.volume),
             energy: l.energy == null ? null : new Prisma.Decimal(l.energy),
+            temperature: l.temperature == null ? null : new Prisma.Decimal(l.temperature),
             flowUnit: l.flowUnit,
             volumeUnit: l.volumeUnit,
             energyUnit: l.energyUnit,
+            temperatureUnit: l.temperatureUnit,
             sortOrder: l.sortOrder ?? i,
           })),
         },
@@ -286,6 +318,24 @@ export async function getInfoOrfReportsForDate(reportDate: string) {
     orderBy: { reportTime: 'asc' },
   });
   return reports.map(serializeReport);
+}
+
+export async function getInfoOrfReportsInRange(input: {
+  startDate: string;
+  endDate: string;
+  startHour: string;
+  endHour: string;
+}) {
+  const rows = await prisma.infoOrfReport.findMany({
+    where: {
+      reportDate: { gte: input.startDate, lte: input.endDate },
+      reportHour: { gte: input.startHour, lte: input.endHour },
+    },
+    include: REPORT_INCLUDE,
+    orderBy: [{ reportDate: 'asc' }, { reportTime: 'asc' }],
+    take: 2_200,
+  });
+  return rows.map(serializeReport);
 }
 
 /** Daftar tanggal yang memiliki laporan (terbaru dulu), terbatas. */
@@ -399,6 +449,11 @@ export async function getLatestInfoOrfSummary() {
         orderBy: { sortOrder: 'asc' },
         select: { section: true, key: true, label: true, value: true, unit: true },
       },
+      lines: {
+        orderBy: { sortOrder: 'asc' },
+        take: 1,
+        select: { lineName: true, flowRate: true, flowUnit: true },
+      },
     },
   });
   if (!latest) return null;
@@ -408,7 +463,15 @@ export async function getLatestInfoOrfSummary() {
     reportHour: latest.reportHour,
     reportTime: latest.reportTime.toISOString(),
     updatedAt: latest.updatedAt.toISOString(),
-    totalFlow: latest.metrics.find((m) => m.section === 'TOTAL' && m.key === 'TOTAL_FLOW') ?? null,
+    totalFlow: (() => {
+      const metric = latest.metrics.find((m) => m.section === 'TOTAL' && m.key === 'TOTAL_FLOW');
+      return metric ? { label: metric.label, value: toNumber(metric.value), unit: metric.unit } : null;
+    })(),
+    lineFlow: latest.lines[0] ? {
+      lineName: latest.lines[0].lineName,
+      value: latest.lines[0].flowRate === null ? null : toNumber(latest.lines[0].flowRate),
+      unit: latest.lines[0].flowUnit,
+    } : null,
     metrics: latest.metrics.map((m) => ({
       section: m.section,
       key: m.key,

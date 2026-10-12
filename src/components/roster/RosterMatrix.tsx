@@ -198,7 +198,7 @@ export function RosterMatrix({ operators, daysInMonth, showContacts, emptyLabel 
                     cell.isToday ? 'border-[#F59E0B] bg-[#FEF3C7]' : cell.isHoliday ? 'border-red-200 bg-red-50' : 'border-[#EDF2F7] bg-white'
                   }`}
                 >
-                  <span className="text-[10px] font-bold text-slate-500 tabular-nums">
+                  <span className={`text-[10px] font-bold tabular-nums ${cell.isHoliday ? 'text-red-600' : 'text-slate-500'}`}>
                     {cell.day} {cell.weekday}
                   </span>
                   <span className={`text-[10px] font-black px-1.5 py-0.5 rounded-md border ${shiftCellClass(cell)}`}>

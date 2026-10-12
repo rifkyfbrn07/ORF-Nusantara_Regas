@@ -35,12 +35,14 @@ export function RosterCalendarView({
   month,
   daysInMonth,
   focusOperatorId,
+  holidayNames = {},
 }: {
   operators: RosterOperatorRow[];
   year: number;
   month: number;
   daysInMonth: number;
   focusOperatorId?: string | null;
+  holidayNames?: Record<string, string>;
 }) {
   const personal = Boolean(focusOperatorId) || operators.length === 1;
   const focus = focusOperatorId
@@ -61,13 +63,19 @@ export function RosterCalendarView({
       day: number;
       isToday: boolean;
       isRedDate: boolean;
+      holidayName?: string;
       personalShift?: string | null;
       counts?: { pagi: number; malam: number; off: number };
       initials?: { pagi: string[]; malam: string[] };
     }[] = [];
     for (let d = 1; d <= daysInMonth; d++) {
       const date = `${year}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-      const base = { day: d, isToday: date === today, isRedDate: isRedDate(date) };
+      const base = {
+        day: d,
+        isToday: date === today,
+        isRedDate: isRedDate(date, holidayNames),
+        holidayName: holidayNames[date],
+      };
       if (personal && focus) {
         const cell = focus.days.find((x) => x.day === d);
         list.push({ ...base, personalShift: cell ? cell.shiftKey : null });
@@ -85,7 +93,7 @@ export function RosterCalendarView({
       }
     }
     return list;
-  }, [personal, focus, operators, daysInMonth, year, month, today]);
+  }, [personal, focus, operators, daysInMonth, year, month, today, holidayNames]);
 
   return (
     <div className="bg-white rounded-xl border border-[#DCE5EF] shadow-xs p-3 sm:p-4">
@@ -107,6 +115,7 @@ export function RosterCalendarView({
         {cells.map((cell) => (
           <div
             key={cell.day}
+            title={cell.holidayName || undefined}
             className={`min-h-[54px] sm:min-h-[64px] rounded-lg border p-1 sm:p-1.5 flex flex-col ${
               cell.isToday ? 'border-[#F59E0B] bg-[#FFFBEB]' : cell.isRedDate ? 'border-red-200 bg-red-50' : 'border-[#EDF2F7] bg-white'
             }`}
@@ -169,6 +178,7 @@ export function RosterCalendarView({
         <span className="flex items-center gap-1 text-[9.5px] font-semibold text-slate-500">
           <span className="h-2.5 w-2.5 rounded border border-red-300 bg-red-50" /> Sabtu/Minggu/tanggal merah (indikator tanggal)
         </span>
+        <span className="text-[9px] text-slate-400">Data hari libur: APIHariLibur (diperbarui harian)</span>
       </div>
     </div>
   );

@@ -693,9 +693,11 @@ model InfoOrfLine {
   flowRate   Decimal?      @db.Decimal(18, 4) // MMSCFD
   volume     Decimal?      @db.Decimal(18, 4) // m³
   energy     Decimal?      @db.Decimal(18, 4) // MMBTU
+  temperature Decimal?     @db.Decimal(18, 4) // Deg F
   flowUnit   String        @default("MMSCFD")
   volumeUnit String        @default("m³")
   energyUnit String        @default("MMBTU")
+  temperatureUnit String   @default("°F")
   sortOrder  Int           @default(0)
   createdAt  DateTime      @default(now())
   updatedAt  DateTime      @updatedAt

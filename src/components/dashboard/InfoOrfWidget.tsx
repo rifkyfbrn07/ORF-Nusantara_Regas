@@ -12,6 +12,22 @@ import { formatIndonesianDate, formatJakartaDate, formatJakartaTime } from '@/li
 
 export async function InfoOrfWidget({ href }: { href: string }) {
   const latest = await getLatestInfoOrfSummary();
+  const metricFor = (key: string) => {
+    const metric = latest?.metrics.find((item) => item.key === key);
+    return metric ? { key, label: metric.label, value: metric.value, unit: metric.unit } : null;
+  };
+  const summaryMetrics = latest
+    ? [
+        latest.totalFlow ? { key: 'total', ...latest.totalFlow } : null,
+        metricFor('PRESSURE'),
+        metricFor('TEMPERATURE'),
+        metricFor('LNG_FLOW'),
+        metricFor('ROB_LNG'),
+        !latest.totalFlow && latest.lineFlow
+          ? { key: 'flow', label: latest.lineFlow.lineName, value: latest.lineFlow.value, unit: latest.lineFlow.unit }
+          : null,
+      ].filter((metric): metric is { key: string; label: string; value: number | null; unit: string } => metric !== null)
+    : [];
 
   return (
     <div className="rounded-2xl border border-[rgba(15,62,105,0.10)] dark:border-[#1E456A] bg-white dark:bg-[#102B45] p-5 shadow-[0_2px_12px_rgba(15,49,90,0.03)]">
@@ -48,13 +64,13 @@ export async function InfoOrfWidget({ href }: { href: string }) {
         </Link>
       </div>
 
-      {latest && latest.metrics.length > 0 && (
-        <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
-          {latest.metrics.slice(0, 3).map((m) => (
-            <div key={`${m.section}-${m.key}`} className="rounded-xl border border-[#E2E8F0] dark:border-[#1A3F63] bg-[#F8FAFC] dark:bg-[#0D2339] p-3">
+      {summaryMetrics.length > 0 && (
+        <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-5">
+          {summaryMetrics.map((m) => (
+            <div key={m.key} className="rounded-xl border border-[#E2E8F0] dark:border-[#1A3F63] bg-[#F8FAFC] dark:bg-[#0D2339] p-3">
               <p className="text-[9.5px] font-bold uppercase tracking-wider text-[#5F718A] dark:text-[#8EA7BD]">{m.label}</p>
               <p className="mt-1 text-lg font-black text-[#092B57] dark:text-[#F8FAFC] tabular-nums">
-                {m.value.toLocaleString('id-ID', { maximumFractionDigits: 2 })}
+                {m.value == null ? '—' : m.value.toLocaleString('id-ID', { maximumFractionDigits: 2 })}
                 <span className="ml-1 text-[10px] font-bold text-[#0077C8]">{m.unit}</span>
               </p>
             </div>

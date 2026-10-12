@@ -17,6 +17,7 @@ import {
   Table as TableIcon,
 } from 'lucide-react';
 import { StatusBadge } from '@/components/ui/StatusBadge';
+import { isRedDate } from '@/lib/time';
 import { UserAvatar } from '@/components/ui/UserAvatar';
 import { Modal } from '@/components/ui/Modal';
 import {
@@ -80,6 +81,8 @@ interface ScheduleManagerClientProps {
   locations: LocationManagerItem[];
   today: string;
   canEdit: boolean;
+  holidayNames: Record<string, string>;
+  holidayCalendarError: string | null;
 }
 
 export function ScheduleManagerClient({
@@ -89,6 +92,8 @@ export function ScheduleManagerClient({
   locations,
   today,
   canEdit,
+  holidayNames,
+  holidayCalendarError,
 }: ScheduleManagerClientProps) {
   const router = useRouter();
   const [selectedDate, setSelectedDate] = useState(today);
@@ -225,6 +230,11 @@ export function ScheduleManagerClient({
 
   return (
     <div className="space-y-4 sm:space-y-5 dashboard-enter max-w-[1400px] mx-auto w-full">
+      {holidayCalendarError && (
+        <div role="status" className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+          Kalender hari libur nasional tidak dapat dimuat. Penanda akhir pekan tetap aktif; data libur nasional mungkin belum lengkap.
+        </div>
+      )}
       {/* Alert Notification */}
       {success && (
         <div className="p-3.5 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold rounded-2xl flex items-center justify-between shadow-xs">
@@ -489,7 +499,10 @@ export function ScheduleManagerClient({
                 ) : (
                   filteredSchedules.map((s) => (
                     <tr key={s.id} className="hover:bg-[#F8FBFE] transition-colors">
-                      <td className="px-5 py-3.5 font-mono font-bold text-[#0F315A]">
+                      <td
+                        title={holidayNames[s.date] || (isRedDate(s.date) ? 'Akhir pekan' : undefined)}
+                        className={`px-5 py-3.5 font-mono font-bold ${isRedDate(s.date, holidayNames) ? 'text-red-600' : 'text-[#0F315A]'}`}
+                      >
                         {s.date}
                       </td>
                       <td className="px-5 py-3.5">
@@ -576,7 +589,12 @@ export function ScheduleManagerClient({
                   </div>
 
                   <div className="flex items-center justify-between pt-1 border-t border-slate-200/60 text-xs">
-                    <span className="font-mono text-slate-500 font-bold">{s.date}</span>
+                    <span
+                      title={holidayNames[s.date] || (isRedDate(s.date) ? 'Akhir pekan' : undefined)}
+                      className={`font-mono font-bold ${isRedDate(s.date, holidayNames) ? 'text-red-600' : 'text-slate-500'}`}
+                    >
+                      {s.date}
+                    </span>
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => handleOpenEdit(s)}

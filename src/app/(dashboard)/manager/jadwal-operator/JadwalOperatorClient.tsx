@@ -258,7 +258,13 @@ export function JadwalOperatorClient({ data, monthNames, showContacts }: JadwalO
           month={data.month}
           daysInMonth={data.daysInMonth}
           focusOperatorId={operatorFilter !== 'all' ? operatorFilter : null}
+          holidayNames={data.nationalHolidays}
         />
+      )}
+      {data.holidayCalendarError && (
+        <div role="status" className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+          Kalender hari libur nasional tidak dapat dimuat. Penanda akhir pekan tetap aktif; data libur nasional mungkin belum lengkap.
+        </div>
       )}
 
       {/* ===== LEGEND ===== */}

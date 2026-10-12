@@ -380,7 +380,10 @@ function infoOrfDecimal(precision: number, scale: number, label: string) {
     .finite(`${label} harus berupa angka valid`)
     .min(0, `${label} tidak boleh negatif`)
     .refine(
-      (value) => Math.abs(value) < maxInteger && Number.isSafeInteger(value * scaleFactor),
+      (value) => {
+        const scaled = value * scaleFactor;
+        return Math.abs(value) < maxInteger && Math.abs(scaled - Math.round(scaled)) < Number.EPSILON * Math.max(1, Math.abs(scaled)) * 4;
+      },
       `${label} tidak dapat disimpan tepat dengan presisi database (maksimal ${scale} angka desimal).`
     );
 }
@@ -400,9 +403,11 @@ export const infoOrfLineInputSchema = z.object({
   flowRate: infoOrfDecimal(18, 4, 'Flow').nullable().optional(),
   volume: infoOrfDecimal(18, 4, 'Volume').nullable().optional(),
   energy: infoOrfDecimal(18, 4, 'Energi').nullable().optional(),
+  temperature: infoOrfDecimal(18, 4, 'Temperature').nullable().optional(),
   flowUnit: z.string().trim().min(1, 'Satuan flow wajib diisi').max(20).default('MMSCFD'),
   volumeUnit: z.string().trim().min(1, 'Satuan volume wajib diisi').max(20).default('m³'),
   energyUnit: z.string().trim().min(1, 'Satuan energi wajib diisi').max(20).default('MMBTU'),
+  temperatureUnit: z.string().trim().min(1, 'Satuan temperature wajib diisi').max(20).default('°F'),
   sortOrder: z.number().int().min(0).max(999).default(0),
 }).refine(
   (line) => line.flowRate != null || line.volume != null || line.energy != null,
@@ -428,7 +433,60 @@ export const infoOrfReportSchema = z.object({
   }
 });
 
-export const infoOrfReportUpdateSchema = infoOrfReportSchema.extend({
+export const infoOrfReportUpdateSchema = infoOrfReportSchema.safeExtend({
+  id: z.string().min(1, 'ID laporan wajib disertakan'),
+});
+
+const monitoringLineSchema = infoOrfLineInputSchema.safeExtend({
+  flowRate: infoOrfDecimal(18, 4, 'Flow'),
+  volume: infoOrfDecimal(18, 4, 'Volume'),
+  energy: infoOrfDecimal(18, 4, 'Energy'),
+  temperature: infoOrfDecimal(18, 4, 'Temperature'),
+});
+
+const MONITORING_LINE_CODES = [
+  'LINE-350-PLN-IP-PRIOK',
+  'LINE-350-PLN-NP-MK',
+  'LINE-620-PLN-NP-MK',
+  'LINE-PERTAGAS-PLN-NP-MTW',
+  'LINE-PEAKER-PLN-NP-MK',
+  'LINE-PGN',
+] as const;
+
+const MONITORING_METRIC_KEYS = ['PRESSURE', 'TEMPERATURE', 'TOTAL_FLOW', 'LNG_FLOW', 'ROB_LNG'] as const;
+
+export const monitoringOrfReportSchema = z.object({
+  reportDate: infoOrfDateSchema,
+  reportHour: z.string().regex(/^([01]\d|2[0-3])$/, 'Jam pencatatan harus 00–23'),
+  note: z.string().trim().max(500, 'Catatan maksimal 500 karakter').nullable().optional(),
+  nextCargoCode: z.string().trim().max(60).nullable().optional(),
+  nextCargoEta: z.string().datetime({ offset: true, message: 'ETA Next Cargo harus memiliki zona waktu.' }).nullable().optional(),
+  metrics: z.array(infoOrfMetricInputSchema).length(MONITORING_METRIC_KEYS.length),
+  lines: z.array(monitoringLineSchema).length(MONITORING_LINE_CODES.length),
+}).superRefine((report, context) => {
+  if (Boolean(report.nextCargoCode) !== Boolean(report.nextCargoEta)) {
+    context.addIssue({
+      code: 'custom',
+      path: ['nextCargoCode'],
+      message: 'Kode cargo dan ETA harus diisi bersamaan.',
+    });
+  }
+  if (report.metrics.length !== new Set(report.metrics.map((metric) => metric.key)).size) {
+    context.addIssue({ code: 'custom', path: ['metrics'], message: 'Kode parameter laporan tidak boleh duplikat.' });
+  }
+  for (const key of MONITORING_METRIC_KEYS) {
+    if (!report.metrics.some((metric) => metric.key === key)) {
+      context.addIssue({ code: 'custom', path: ['metrics'], message: `Data ${key} wajib diisi.` });
+    }
+  }
+  const submittedCodes = report.lines.map((line) => line.lineCode);
+  if (new Set(submittedCodes).size !== MONITORING_LINE_CODES.length ||
+      MONITORING_LINE_CODES.some((code) => !submittedCodes.includes(code))) {
+    context.addIssue({ code: 'custom', path: ['lines'], message: 'Semua enam line Monitoring ORF harus diisi tepat satu kali.' });
+  }
+});
+
+export const monitoringOrfReportUpdateSchema = monitoringOrfReportSchema.safeExtend({
   id: z.string().min(1, 'ID laporan wajib disertakan'),
 });
 

@@ -88,6 +88,11 @@ export function RosterOperatorClient({ data }: RosterOperatorClientProps) {
 
   return (
     <div className="space-y-4">
+      {data.holidayCalendarError && (
+        <div role="status" className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+          Kalender hari libur nasional tidak dapat dimuat. Penanda akhir pekan tetap aktif; data libur nasional mungkin belum lengkap.
+        </div>
+      )}
       {/* ===== Navigasi bulan + filter ===== */}
       <div className="rounded-xl border border-[#DCE5EF] bg-white p-4 shadow-xs">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">

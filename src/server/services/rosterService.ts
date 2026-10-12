@@ -2,6 +2,7 @@ import { prisma } from '@/lib/db/prisma';
 import { AttendanceStatus, ScheduleStatus } from '@prisma/client';
 import { formatJakartaDate, isRedDate } from '@/lib/time';
 import { getOperatorWorkStatus } from './workStatusService';
+import { getIndonesianHolidayCalendar } from './indonesianHolidayService';
 
 /**
  * ============================================================================
@@ -34,6 +35,7 @@ export interface RosterDayCell {
   status: ScheduleStatus;
   notes: string | null;
   isHoliday: boolean;
+  holidayName: string | null;
   isToday: boolean;
 }
 
@@ -63,6 +65,7 @@ export interface RosterDayCoverage {
   malam: number;
   off: number;
   isHoliday: boolean;
+  holidayName: string | null;
   isToday: boolean;
 }
 
@@ -92,6 +95,8 @@ export interface RosterMonthData {
     endTime: string;
     requiredCount: number;
   }[];
+  nationalHolidays: Record<string, string>;
+  holidayCalendarError: string | null;
 }
 
 const WEEKDAYS_ID = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
@@ -171,6 +176,8 @@ export async function getRosterMonth(options: {
 
   // Validasi bulan agar tidak out-of-range
   if (month < 1 || month > 12) throw new Error('Bulan tidak valid.');
+  const holidayCalendar = await getIndonesianHolidayCalendar(year);
+  const holidayNames = holidayCalendar.holidays;
 
   const dateWhere: { gte: string; lte: string } = { gte: monthStart, lte: monthEnd };
   if (options.onlyUserId) {
@@ -199,6 +206,7 @@ export async function getRosterMonth(options: {
       today,
       includeTodayStatus: options.includeTodayStatus,
       includeContacts: options.includeContacts,
+      holidayNames,
     });
 
     return {
@@ -211,6 +219,8 @@ export async function getRosterMonth(options: {
       coverage: [],
       todaySummary: null,
       shiftRequirements: [],
+      nationalHolidays: holidayNames,
+      holidayCalendarError: holidayCalendar.error,
     };
   }
 
@@ -267,6 +277,7 @@ export async function getRosterMonth(options: {
           includeTodayStatus: options.includeTodayStatus,
           includeContacts: options.includeContacts,
           shiftFilter: options.shiftFilter,
+          holidayNames,
         })
       )
     )
@@ -284,7 +295,8 @@ export async function getRosterMonth(options: {
       pagi: schedules.filter((s) => s.date === date && shiftKeyOf(s.shift.code) === 'PAGI').length,
       malam: schedules.filter((s) => s.date === date && shiftKeyOf(s.shift.code) === 'MALAM').length,
       off: schedules.filter((s) => s.date === date && shiftKeyOf(s.shift.code) === 'OFF').length,
-      isHoliday: isRedDate(date),
+      isHoliday: isRedDate(date, holidayNames),
+      holidayName: holidayNames[date] ?? null,
       isToday: date === today,
     });
   }
@@ -357,6 +369,8 @@ export async function getRosterMonth(options: {
     coverage,
     todaySummary,
     shiftRequirements,
+    nationalHolidays: holidayNames,
+    holidayCalendarError: holidayCalendar.error,
   };
 }
 
@@ -395,10 +409,11 @@ interface BuildRowParams {
   includeTodayStatus: boolean;
   includeContacts: boolean;
   shiftFilter?: RosterShiftKey | 'ALL';
+  holidayNames: Record<string, string>;
 }
 
 async function buildOperatorRow(params: BuildRowParams): Promise<RosterOperatorRow | null> {
-  const { user, schedules, daysInMonth, year, month, today } = params;
+  const { user, schedules, daysInMonth, year, month, today, holidayNames } = params;
 
   // Metadata roster dari notes baris mana pun milik operator ini
   const meta = schedules
@@ -430,7 +445,8 @@ async function buildOperatorRow(params: BuildRowParams): Promise<RosterOperatorR
         endTime: s?.shift.endTime ?? null,
         status: s?.status ?? ScheduleStatus.OFF,
         notes: s?.notes ?? null,
-        isHoliday: isRedDate(date),
+        isHoliday: isRedDate(date, holidayNames),
+        holidayName: holidayNames[date] ?? null,
         isToday: date === today,
       });
       continue;
@@ -447,7 +463,8 @@ async function buildOperatorRow(params: BuildRowParams): Promise<RosterOperatorR
       endTime: s?.shift.endTime ?? null,
       status: s?.status ?? ScheduleStatus.OFF,
       notes: s?.notes ?? null,
-      isHoliday: isRedDate(date),
+      isHoliday: isRedDate(date, holidayNames),
+      holidayName: holidayNames[date] ?? null,
       isToday: date === today,
     });
   }

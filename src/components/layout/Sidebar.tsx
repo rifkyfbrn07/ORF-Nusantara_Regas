@@ -20,6 +20,7 @@ import {
   Megaphone,
   Settings,
   Target,
+  Activity,
   X,
   ChevronRight,
 } from 'lucide-react';
@@ -72,6 +73,7 @@ export function Sidebar({
         { label: 'Jadwal Kerja', href: '/manager/schedules', icon: CalendarDays, hasSub: true },
         { label: 'Jadwal Operator', href: '/manager/jadwal-operator', icon: CalendarClock, hasSub: true },
         { label: 'Absensi', href: '/manager/attendance', icon: Clock, hasSub: true },
+        { label: 'Monitoring ORF', href: '/manager/monitoring-orf', icon: Activity },
         { label: 'Monitoring Manpower', href: '/manager/workforce', icon: Grid2X2 },
         { label: 'Operator Roster', href: '/manager/operators', icon: Users, hasSub: true },
       ],
@@ -117,6 +119,7 @@ export function Sidebar({
         { label: 'Jadwal Kerja', href: '/manager/schedules', icon: CalendarDays, hasSub: true },
         { label: 'Jadwal Operator', href: '/manager/jadwal-operator', icon: CalendarClock, hasSub: true },
         { label: 'Absensi', href: '/manager/attendance', icon: Clock, hasSub: true },
+        { label: 'Monitoring ORF', href: '/manager/monitoring-orf', icon: Activity },
         { label: 'Monitoring Manpower', href: '/manager/workforce', icon: Grid2X2 },
         { label: 'Operator Roster', href: '/manager/operators', icon: Users, hasSub: true },
         { label: 'Pergantian Shift', href: '/manager/requests?tab=shift', icon: ArrowLeftRight },
@@ -162,6 +165,7 @@ export function Sidebar({
       items: [
         { label: 'Jadwal Saya', href: '/operator/jadwal-saya', icon: CalendarDays, hasSub: true },
         { label: 'Roster', href: '/operator/roster', icon: CalendarClock },
+        { label: 'Monitoring ORF', href: '/operator/monitoring-orf', icon: Activity },
         { label: 'Absensi Saya', href: '/operator/attendance', icon: Clock },
         { label: 'Pergantian Shift', href: '/operator/shift-exchange', icon: ArrowLeftRight },
       ],
