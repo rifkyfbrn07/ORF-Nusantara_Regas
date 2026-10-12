@@ -95,6 +95,7 @@ export const APPLICATIONS: ApplicationLink[] = [
     description: 'Permit to Work',
     url: 'https://ptw.nusantararegas.com/login',
   },
+  
   {
     id: 'activox',
     name: 'ActivoX',
