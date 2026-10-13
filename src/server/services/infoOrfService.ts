@@ -311,6 +311,20 @@ export async function getInfoOrfReportByDateTime(reportDate: string, reportHour:
   return report ? serializeReport(report) : null;
 }
 
+export async function getPreviousInfoOrfReport(reportDate: string, reportHour: string) {
+  const report = await prisma.infoOrfReport.findFirst({
+    where: {
+      OR: [
+        { reportDate: { lt: reportDate } },
+        { reportDate, reportHour: { lt: reportHour } },
+      ],
+    },
+    include: REPORT_INCLUDE,
+    orderBy: [{ reportDate: 'desc' }, { reportHour: 'desc' }],
+  });
+  return report ? serializeReport(report) : null;
+}
+
 export async function getInfoOrfReportsForDate(reportDate: string) {
   const reports = await prisma.infoOrfReport.findMany({
     where: { reportDate },

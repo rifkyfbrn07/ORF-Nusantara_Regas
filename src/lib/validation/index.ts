@@ -459,6 +459,7 @@ export const monitoringOrfReportSchema = z.object({
   reportDate: infoOrfDateSchema,
   reportHour: z.string().regex(/^([01]\d|2[0-3])$/, 'Jam pencatatan harus 00–23'),
   note: z.string().trim().max(500, 'Catatan maksimal 500 karakter').nullable().optional(),
+  nextCargoId: z.string().trim().min(1).nullable().optional(),
   nextCargoCode: z.string().trim().max(60).nullable().optional(),
   nextCargoEta: z.string().datetime({ offset: true, message: 'ETA Next Cargo harus memiliki zona waktu.' }).nullable().optional(),
   metrics: z.array(infoOrfMetricInputSchema).length(MONITORING_METRIC_KEYS.length),

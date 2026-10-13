@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { InfoOrfReportDTO } from '@/lib/infoOrfTypes';
 import {
   INFO_ORF_HOURS,
@@ -8,7 +8,7 @@ import {
   INFO_ORF_METRIC_TEMPLATE,
   INFO_ORF_SECTION_LABELS,
 } from '@/lib/infoOrfConfig';
-import { saveMonitoringOrfReportAction } from '@/server/actions/infoOrfActions';
+import { getPreviousInfoOrfReportAction, saveMonitoringOrfReportAction } from '@/server/actions/infoOrfActions';
 import { formatJakartaDate, formatJakartaTime } from '@/lib/time';
 
 interface Props {
@@ -142,10 +142,45 @@ export function MonitoringOrfReportForm({ report, defaultDate, onCancel, onSaved
   const [lines, setLines] = useState<LineValues[]>(() => linesFromReport(report));
   const [nextCargoCode, setNextCargoCode] = useState(report?.nextCargo?.cargoCode || '');
   const [nextCargoEta, setNextCargoEta] = useState(() => reportEta(report));
+  const [nextCargoId, setNextCargoId] = useState(report?.nextCargo?.id || null);
   const [note, setNote] = useState(report?.note || '');
   const [loading, setLoading] = useState(false);
+  const [prefillLoading, setPrefillLoading] = useState(!report);
+  const [sourceReport, setSourceReport] = useState<InfoOrfReportDTO | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+
+  useEffect(() => {
+    if (report) return;
+
+    let active = true;
+    getPreviousInfoOrfReportAction({ reportDate, reportHour })
+      .then((result) => {
+        if (!active) return;
+        if (!result.success) {
+          setError(result.error);
+          return;
+        }
+        const previous = result.report;
+        setSourceReport(previous);
+        setMetrics(metricsFromReport(previous));
+        setLines(linesFromReport(previous));
+        setNextCargoCode(previous?.nextCargo?.cargoCode || '');
+        setNextCargoEta(reportEta(previous));
+        setNextCargoId(previous?.nextCargo?.id || null);
+        setNote(previous?.note || '');
+      })
+      .catch((caught: unknown) => {
+        if (active) setError(caught instanceof Error ? caught.message : 'Gagal memuat nilai laporan sebelumnya.');
+      })
+      .finally(() => {
+        if (active) setPrefillLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [report, reportDate, reportHour]);
 
   function setMetric(key: keyof NumericFields, value: string) {
     setMetrics((previous) => ({ ...previous, [key]: value }));
@@ -195,6 +230,7 @@ export function MonitoringOrfReportForm({ report, defaultDate, onCancel, onSaved
         reportDate,
         reportHour,
         note: note.trim() || null,
+        nextCargoId,
         nextCargoCode: nextCargoCode.trim() || null,
         nextCargoEta: nextCargoEta ? `${nextCargoEta}:00+07:00` : null,
         metrics: metricEntries.map(({ template, value, sortOrder }) => ({
@@ -244,17 +280,30 @@ export function MonitoringOrfReportForm({ report, defaultDate, onCancel, onSaved
       <section className="grid grid-cols-1 gap-3 rounded-xl border border-[#DCE5EF] bg-white p-4 sm:grid-cols-2">
         <label className="text-[10px] font-bold uppercase tracking-wide text-[#5F718A]">
           Tanggal laporan (WIB)
-          <input type="date" required disabled={!!report} value={reportDate} onChange={(event) => setReportDate(event.target.value)} className={`${inputClass} mt-1`} />
+          <input type="date" required disabled={!!report} value={reportDate} onChange={(event) => { setPrefillLoading(true); setError(null); setReportDate(event.target.value); }} className={`${inputClass} mt-1`} />
         </label>
         <label className="text-[10px] font-bold uppercase tracking-wide text-[#5F718A]">
           Jam laporan (WIB)
-          <select required disabled={!!report} value={reportHour} onChange={(event) => setReportHour(event.target.value)} className={`${inputClass} mt-1`}>
+          <select required disabled={!!report} value={reportHour} onChange={(event) => { setPrefillLoading(true); setError(null); setReportHour(event.target.value); }} className={`${inputClass} mt-1`}>
             {INFO_ORF_HOURS.map((hour) => <option key={hour} value={hour}>{hour}:00 WIB</option>)}
           </select>
         </label>
         {report && <p className="sm:col-span-2 text-[11px] text-[#5F718A]">Saat mengoreksi, tanggal dan jam pencatatan tidak dapat diubah.</p>}
       </section>
 
+      {!report && (
+        <p role={error ? 'alert' : 'status'} className={`rounded-lg border px-3 py-2 text-[11px] font-semibold ${
+          error ? 'border-red-200 bg-red-50 text-red-700' : 'border-[#DCE5EF] bg-[#F7FAFD] text-[#52677F]'
+        }`}>
+          {prefillLoading
+            ? 'Memuat nilai awal dari laporan terakhir sebelum waktu yang dipilih…'
+            : sourceReport
+              ? `Nilai awal dari laporan ${sourceReport.reportDate} pukul ${sourceReport.reportHour}:00 WIB. Perubahan hanya tersimpan setelah tombol Simpan Laporan ditekan.`
+              : 'Belum ada laporan sebelumnya pada waktu ini. Form menggunakan nilai kosong; data laporan yang lebih baru tidak digunakan.'}
+        </p>
+      )}
+
+      <fieldset disabled={loading || prefillLoading} className="space-y-5 disabled:opacity-70">
       <section className="rounded-xl border border-[#DCE5EF] bg-white p-4">
         <h3 className="mb-3 text-xs font-black uppercase tracking-wide text-[#092B57]">{INFO_ORF_SECTION_LABELS.UPSTREAM}</h3>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -296,12 +345,12 @@ export function MonitoringOrfReportForm({ report, defaultDate, onCancel, onSaved
 
       <section className="grid grid-cols-1 gap-3 rounded-xl border border-[#DCE5EF] bg-white p-4 sm:grid-cols-2">
         <label className="text-[10px] font-bold uppercase tracking-wide text-[#5F718A]">
-          Kode Next Cargo (opsional)
-          <input value={nextCargoCode} onChange={(event) => setNextCargoCode(event.target.value)} maxLength={60} className={`${inputClass} mt-1`} />
+          ETA Next Cargo (WIB)
+          <input type="datetime-local" value={nextCargoEta} onChange={(event) => { setNextCargoEta(event.target.value); setNextCargoId(null); }} className={`${inputClass} mt-1`} />
         </label>
         <label className="text-[10px] font-bold uppercase tracking-wide text-[#5F718A]">
-          ETA Next Cargo (WIB)
-          <input type="datetime-local" value={nextCargoEta} onChange={(event) => setNextCargoEta(event.target.value)} className={`${inputClass} mt-1`} />
+          Kode Next Cargo (opsional)
+          <input value={nextCargoCode} onChange={(event) => { setNextCargoCode(event.target.value); setNextCargoId(null); }} maxLength={60} className={`${inputClass} mt-1`} />
         </label>
         <label className="text-[10px] font-bold uppercase tracking-wide text-[#5F718A] sm:col-span-2">
           Catatan (opsional)
@@ -309,12 +358,13 @@ export function MonitoringOrfReportForm({ report, defaultDate, onCancel, onSaved
         </label>
       </section>
 
+      </fieldset>
       <div className="flex justify-end gap-2">
         <button type="button" onClick={onCancel} disabled={loading} className="rounded-lg border border-[#DCE5EF] px-4 py-2 text-xs font-bold text-[#52677F] hover:bg-[#F4F8FC] disabled:opacity-50">
           Batal
         </button>
-        <button type="submit" disabled={loading} className="rounded-lg bg-[#0066B3] px-4 py-2 text-xs font-bold text-white hover:bg-[#005091] disabled:opacity-50">
-          {loading ? 'Menyimpan…' : report ? 'Simpan Koreksi' : 'Simpan Laporan'}
+        <button type="submit" disabled={loading || prefillLoading} className="rounded-lg bg-[#0066B3] px-4 py-2 text-xs font-bold text-white hover:bg-[#005091] disabled:opacity-50">
+          {loading ? 'Menyimpan…' : report ? 'Simpan Perubahan' : 'Simpan Laporan Baru'}
         </button>
       </div>
     </form>

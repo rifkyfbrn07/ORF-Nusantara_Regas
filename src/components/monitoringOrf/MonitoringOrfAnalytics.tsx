@@ -34,6 +34,11 @@ export function MonitoringOrfAnalytics({
   const [startHour, setStartHour] = useState('00');
   const [endHour, setEndHour] = useState('23');
   const [reports, setReports] = useState(initialReports);
+  const [graphDate, setGraphDate] = useState(initialDate);
+  const [graphStartHour, setGraphStartHour] = useState('00');
+  const [graphEndHour, setGraphEndHour] = useState('23');
+  const [graphAllDay, setGraphAllDay] = useState(true);
+  const [graphReports, setGraphReports] = useState(initialReports);
   const [page, setPage] = useState(0);
   const [selectedReport, setSelectedReport] = useState<InfoOrfReportDTO | null>(null);
   const [loading, setLoading] = useState(false);
@@ -49,6 +54,18 @@ export function MonitoringOrfAnalytics({
   }, [reports, latestReport, startDate, endDate, startHour, endHour]);
   const pageCount = Math.ceil(orderedReports.length / PAGE_SIZE);
   const currentReports = orderedReports.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
+  const chartReports = useMemo(() => {
+    const start = graphAllDay ? '00' : graphStartHour;
+    const end = graphAllDay ? '23' : graphEndHour;
+    const merged = new Map(graphReports
+      .filter((report) => report.reportDate === graphDate && report.reportHour >= start && report.reportHour <= end)
+      .map((report) => [report.id, report]));
+    if (latestReport && latestReport.reportDate === graphDate &&
+        latestReport.reportHour >= start && latestReport.reportHour <= end) {
+      merged.set(latestReport.id, latestReport);
+    }
+    return [...merged.values()].sort((a, b) => a.reportTime.localeCompare(b.reportTime));
+  }, [graphReports, latestReport, graphDate, graphAllDay, graphStartHour, graphEndHour]);
 
   async function applyFilters(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -65,6 +82,29 @@ export function MonitoringOrfAnalytics({
       setPage(0);
     } catch (caught: unknown) {
       setError(caught instanceof Error ? caught.message : 'Gagal memuat histori Monitoring ORF.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function applyGraphFilters(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError(null);
+    setLoading(true);
+    try {
+      const result = await getInfoOrfReportsInRangeAction({
+        startDate: graphDate,
+        endDate: graphDate,
+        startHour: graphAllDay ? '00' : graphStartHour,
+        endHour: graphAllDay ? '23' : graphEndHour,
+      });
+      if (!result.success) {
+        setError(result.error);
+        return;
+      }
+      setGraphReports(result.reports);
+    } catch (caught: unknown) {
+      setError(caught instanceof Error ? caught.message : 'Gagal memuat data grafik Monitoring ORF.');
     } finally {
       setLoading(false);
     }
@@ -103,7 +143,39 @@ export function MonitoringOrfAnalytics({
 
       {error && <p role="alert" className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-bold text-red-700">{error}</p>}
 
-      <MonitoringOrfCharts reports={orderedReports} />
+      <form onSubmit={applyGraphFilters} className="space-y-3 rounded-xl border border-[#DCE5EF] bg-white p-4">
+        <div>
+          <h2 className="text-xs font-black uppercase tracking-wide text-[#123D70]">Filter Grafik</h2>
+          <p className="mt-1 text-[10px] text-[#73869A]">Grafik menampilkan nilai tersimpan per jam, tanpa menjumlahkan nilai antarjam.</p>
+        </div>
+        <div className="flex flex-wrap items-end gap-3">
+          <label className="text-[10px] font-bold uppercase text-[#5F718A]">
+            Tanggal laporan
+            <input type="date" value={graphDate} onChange={(event) => setGraphDate(event.target.value)} className={`${fieldClass} mt-1 block`} required />
+          </label>
+          <label className="flex items-center gap-2 pb-2 text-[10px] font-bold text-[#5F718A]">
+            <input type="checkbox" checked={graphAllDay} onChange={(event) => setGraphAllDay(event.target.checked)} />
+            Seluruh hari
+          </label>
+          <label className="text-[10px] font-bold uppercase text-[#5F718A]">
+            Jam mulai (WIB)
+            <select disabled={graphAllDay} value={graphStartHour} onChange={(event) => setGraphStartHour(event.target.value)} className={`${fieldClass} mt-1 block disabled:bg-slate-50`}>
+              {Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0')).map((hour) => <option key={hour} value={hour}>{hour}:00</option>)}
+            </select>
+          </label>
+          <label className="text-[10px] font-bold uppercase text-[#5F718A]">
+            Jam akhir (WIB)
+            <select disabled={graphAllDay} value={graphEndHour} onChange={(event) => setGraphEndHour(event.target.value)} className={`${fieldClass} mt-1 block disabled:bg-slate-50`}>
+              {Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0')).map((hour) => <option key={hour} value={hour}>{hour}:00</option>)}
+            </select>
+          </label>
+          <button type="submit" disabled={loading} className="rounded-lg bg-[#0066B3] px-4 py-2 text-xs font-bold text-white disabled:opacity-50">
+            {loading ? 'Memuat…' : 'Terapkan Filter Grafik'}
+          </button>
+        </div>
+      </form>
+
+      <MonitoringOrfCharts reports={chartReports} />
 
       <section className="rounded-xl border border-[#DCE5EF] bg-white p-4">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">

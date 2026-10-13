@@ -84,7 +84,7 @@ export function MonitoringOrfClient({
       {activeTab === 'input' && (
         canEdit ? (
           <div className="space-y-3">
-            <div><h2 className="text-base font-black text-[#123D70]">{formReport ? 'Koreksi Laporan' : 'Input Laporan Monitoring ORF'}</h2><p className="mt-1 text-[11px] text-[#718399]">Nilai dicatat sesuai waktu input (WIB). Tidak terhubung otomatis ke sumber operasional.</p></div>
+            <div><h2 className="text-base font-black text-[#123D70]">{formReport ? 'Edit Laporan yang Sudah Ada' : 'Buat Laporan Baru'}</h2><p className="mt-1 text-[11px] text-[#718399]">{formReport ? `Mengubah record ${formReport.reportDate} pukul ${formReport.reportHour}:00 WIB.` : 'Nilai dicatat sesuai waktu input (WIB). Nilai awal berasal dari laporan lebih awal dan belum tersimpan sampai Anda menekan Simpan.'}</p></div>
             <MonitoringOrfReportForm
               key={formKey}
               report={formReport}

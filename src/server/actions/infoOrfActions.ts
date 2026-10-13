@@ -19,6 +19,7 @@ import {
   upsertNextCargo,
   getInfoOrfReportsForDate,
   getInfoOrfReportsInRange,
+  getPreviousInfoOrfReport,
   InfoOrfDuplicateError,
 } from '../services/infoOrfService';
 import { revalidatePath } from 'next/cache';
@@ -91,7 +92,7 @@ export async function updateInfoOrfReportAction(input: InfoOrfReportUpdateInput)
 }
 
 export async function saveMonitoringOrfReportAction(
-  input: InfoOrfReportInput & { nextCargoCode?: string | null; nextCargoEta?: string | null; id?: string }
+  input: InfoOrfReportInput & { nextCargoId?: string | null; nextCargoCode?: string | null; nextCargoEta?: string | null; id?: string }
 ): Promise<InfoOrfReportActionResult> {
   try {
     const user = await requireRole(['MANAGER', 'ADMIN']);
@@ -101,21 +102,21 @@ export async function saveMonitoringOrfReportAction(
       if (!parse.success) {
         return { success: false, error: parse.error.issues[0]?.message || 'Data Monitoring ORF tidak valid.' };
       }
-      const { id, nextCargoCode, nextCargoEta, ...data } = parse.data;
-      const nextCargo = nextCargoCode && nextCargoEta
+      const { id, nextCargoId, nextCargoCode, nextCargoEta, ...data } = parse.data;
+      const nextCargo = !nextCargoId && nextCargoCode && nextCargoEta
         ? { cargoCode: nextCargoCode, eta: new Date(nextCargoEta) }
         : undefined;
-      report = await updateInfoOrfReport({ ...data, id, nextCargo, updatedById: user.id });
+      report = await updateInfoOrfReport({ ...data, id, nextCargoId, nextCargo, updatedById: user.id });
     } else {
       const parse = monitoringOrfReportSchema.safeParse(input);
       if (!parse.success) {
         return { success: false, error: parse.error.issues[0]?.message || 'Data Monitoring ORF tidak valid.' };
       }
-      const { nextCargoCode, nextCargoEta, ...data } = parse.data;
-      const nextCargo = nextCargoCode && nextCargoEta
+      const { nextCargoId, nextCargoCode, nextCargoEta, ...data } = parse.data;
+      const nextCargo = !nextCargoId && nextCargoCode && nextCargoEta
         ? { cargoCode: nextCargoCode, eta: new Date(nextCargoEta) }
         : undefined;
-      report = await createInfoOrfReport({ ...data, nextCargo, recordedById: user.id });
+      report = await createInfoOrfReport({ ...data, nextCargoId, nextCargo, recordedById: user.id });
     }
 
     revalidateInfoOrf();
@@ -176,6 +177,27 @@ export async function getInfoOrfReportsForDateAction(
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Gagal memuat laporan Info ORF.',
+    };
+  }
+}
+
+export async function getPreviousInfoOrfReportAction(input: {
+  reportDate: string;
+  reportHour: string;
+}): Promise<{ success: true; report: InfoOrfReportDTO | null } | ActionError> {
+  try {
+    await requireAuth();
+    const parsedDate = infoOrfDateSchema.safeParse(input.reportDate);
+    if (!parsedDate.success || !/^([01]\d|2[0-3])$/.test(input.reportHour)) {
+      return { success: false, error: 'Tanggal atau jam laporan tidak valid.' };
+    }
+
+    const report = await getPreviousInfoOrfReport(parsedDate.data, input.reportHour);
+    return { success: true, report };
+  } catch (error: unknown) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Gagal memuat nilai laporan sebelumnya.',
     };
   }
 }
