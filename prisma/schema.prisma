@@ -648,11 +648,18 @@ enum NextCargoStatus {
   CANCELLED
 }
 
+enum InfoOrfReportSource {
+  MANUAL
+  AUTOMATIC
+}
+
 model InfoOrfReport {
   id           String           @id @default(cuid())
   reportDate   String // YYYY-MM-DD (WIB)
   reportHour   String // 'HH' 00–23 (WIB) — periode pencatatan
   reportTime   DateTime // timestamp WIB (date + hour) untuk sortir/display
+  source       InfoOrfReportSource @default(MANUAL)
+  wasEdited    Boolean            @default(false)
   note         String?
   recordedById String
   recordedBy   User             @relation("InfoOrfRecordedBy", fields: [recordedById], references: [id], onDelete: Restrict)

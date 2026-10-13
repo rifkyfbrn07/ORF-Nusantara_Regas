@@ -73,6 +73,30 @@ export const INFO_ORF_LINE_TEMPLATE: InfoOrfLineTemplate[] = [
   { lineCode: 'LINE-PGN', lineName: 'Line PGN' },
 ];
 
+export const INFO_ORF_INITIAL_DATA = {
+  reportDate: '2026-10-13',
+  reportHour: '08',
+  metrics: {
+    PRESSURE: 51.76,
+    TEMPERATURE: 81.24,
+    TOTAL_FLOW: 352.655,
+    LNG_FLOW: 825,
+    ROB_LNG: 99370,
+  },
+  lines: [
+    { lineCode: 'LINE-350-PLN-IP-PRIOK', flowRate: 181.55, volume: 7564.61, energy: 7862.26, temperature: 63.53 },
+    { lineCode: 'LINE-350-PLN-NP-MK', flowRate: 63.60, volume: 2650.03, energy: 2754.44, temperature: 59.73 },
+    { lineCode: 'LINE-620-PLN-NP-MK', flowRate: 36.43, volume: 1517.93, energy: 1577.57, temperature: 74.58 },
+    { lineCode: 'LINE-PERTAGAS-PLN-NP-MTW', flowRate: 14.10, volume: 587.54, energy: 610.61, temperature: 81.21 },
+    { lineCode: 'LINE-PEAKER-PLN-NP-MK', flowRate: 56.97, volume: 2373.83, energy: 2468.19, temperature: 81.46 },
+    { lineCode: 'LINE-PGN', flowRate: 0, volume: 0, energy: 0, temperature: 78.67 },
+  ],
+  nextCargo: {
+    cargoCode: 'LN40',
+    etaDate: '2026-10-16',
+  },
+} as const;
+
 export const INFO_ORF_HOURS: string[] = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0'));
 
 export const NEXT_CARGO_STATUS_LABELS: Record<string, string> = {

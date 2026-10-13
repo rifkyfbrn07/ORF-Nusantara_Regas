@@ -7,6 +7,7 @@ import {
   INFO_ORF_LINE_TEMPLATE,
   INFO_ORF_METRIC_TEMPLATE,
   INFO_ORF_SECTION_LABELS,
+  INFO_ORF_INITIAL_DATA,
 } from '@/lib/infoOrfConfig';
 import { getPreviousInfoOrfReportAction, saveMonitoringOrfReportAction } from '@/server/actions/infoOrfActions';
 import { formatJakartaDate, formatJakartaTime } from '@/lib/time';
@@ -14,6 +15,7 @@ import { formatJakartaDate, formatJakartaTime } from '@/lib/time';
 interface Props {
   report: InfoOrfReportDTO | null;
   defaultDate: string;
+  defaultHour: string;
   onCancel: () => void;
   onSaved: (report: InfoOrfReportDTO) => void;
   onDuplicate: (date: string, hour: string) => void;
@@ -72,6 +74,16 @@ function metricsFromReport(report: InfoOrfReportDTO | null): NumericFields {
   return values;
 }
 
+function metricsFromInitialData(): NumericFields {
+  return {
+    PRESSURE: String(INFO_ORF_INITIAL_DATA.metrics.PRESSURE),
+    TEMPERATURE: String(INFO_ORF_INITIAL_DATA.metrics.TEMPERATURE),
+    TOTAL_FLOW: String(INFO_ORF_INITIAL_DATA.metrics.TOTAL_FLOW),
+    LNG_FLOW: String(INFO_ORF_INITIAL_DATA.metrics.LNG_FLOW),
+    ROB_LNG: String(INFO_ORF_INITIAL_DATA.metrics.ROB_LNG),
+  };
+}
+
 function linesFromReport(report: InfoOrfReportDTO | null): LineValues[] {
   if (report) {
     const existing = new Map(report.lines.map((line) => [line.lineCode, line]));
@@ -96,6 +108,23 @@ function linesFromReport(report: InfoOrfReportDTO | null): LineValues[] {
     temperature: '',
     sortOrder,
   }));
+}
+
+function linesFromInitialData(): LineValues[] {
+  const values = new Map<string, (typeof INFO_ORF_INITIAL_DATA.lines)[number]>(
+    INFO_ORF_INITIAL_DATA.lines.map((line) => [line.lineCode, line])
+  );
+  return INFO_ORF_LINE_TEMPLATE.map((template, sortOrder) => {
+    const line = values.get(template.lineCode);
+    return {
+      ...template,
+      flowRate: String(line?.flowRate ?? ''),
+      volume: String(line?.volume ?? ''),
+      energy: String(line?.energy ?? ''),
+      temperature: String(line?.temperature ?? ''),
+      sortOrder,
+    };
+  });
 }
 
 function reportEta(report: InfoOrfReportDTO | null): string {
@@ -135,9 +164,9 @@ function NumberInput({
   );
 }
 
-export function MonitoringOrfReportForm({ report, defaultDate, onCancel, onSaved, onDuplicate }: Props) {
+export function MonitoringOrfReportForm({ report, defaultDate, defaultHour, onCancel, onSaved, onDuplicate }: Props) {
   const [reportDate, setReportDate] = useState(report?.reportDate || defaultDate);
-  const [reportHour, setReportHour] = useState(report?.reportHour || '08');
+  const [reportHour, setReportHour] = useState(report?.reportHour || defaultHour);
   const [metrics, setMetrics] = useState<NumericFields>(() => metricsFromReport(report));
   const [lines, setLines] = useState<LineValues[]>(() => linesFromReport(report));
   const [nextCargoCode, setNextCargoCode] = useState(report?.nextCargo?.cargoCode || '');
@@ -147,6 +176,7 @@ export function MonitoringOrfReportForm({ report, defaultDate, onCancel, onSaved
   const [loading, setLoading] = useState(false);
   const [prefillLoading, setPrefillLoading] = useState(!report);
   const [sourceReport, setSourceReport] = useState<InfoOrfReportDTO | null>(null);
+  const [usingInitialData, setUsingInitialData] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
@@ -163,12 +193,16 @@ export function MonitoringOrfReportForm({ report, defaultDate, onCancel, onSaved
         }
         const previous = result.report;
         setSourceReport(previous);
-        setMetrics(metricsFromReport(previous));
-        setLines(linesFromReport(previous));
+        const useInitial = !previous &&
+          reportDate === INFO_ORF_INITIAL_DATA.reportDate &&
+          reportHour === INFO_ORF_INITIAL_DATA.reportHour;
+        setUsingInitialData(useInitial);
+        setMetrics(useInitial ? metricsFromInitialData() : metricsFromReport(previous));
+        setLines(useInitial ? linesFromInitialData() : linesFromReport(previous));
         setNextCargoCode(previous?.nextCargo?.cargoCode || '');
         setNextCargoEta(reportEta(previous));
         setNextCargoId(previous?.nextCargo?.id || null);
-        setNote(previous?.note || '');
+        setNote(previous?.note || (useInitial ? 'Nilai awal yang diberikan; bukan data real-time.' : ''));
       })
       .catch((caught: unknown) => {
         if (active) setError(caught instanceof Error ? caught.message : 'Gagal memuat nilai laporan sebelumnya.');
@@ -299,6 +333,8 @@ export function MonitoringOrfReportForm({ report, defaultDate, onCancel, onSaved
             ? 'Memuat nilai awal dari laporan terakhir sebelum waktu yang dipilih…'
             : sourceReport
               ? `Nilai awal dari laporan ${sourceReport.reportDate} pukul ${sourceReport.reportHour}:00 WIB. Perubahan hanya tersimpan setelah tombol Simpan Laporan ditekan.`
+              : usingInitialData
+                ? 'Form memakai data awal yang diberikan untuk pukul 08:00 WIB. Nilai belum tersimpan sebagai laporan; Next Cargo dikelola terpisah.'
               : 'Belum ada laporan sebelumnya pada waktu ini. Form menggunakan nilai kosong; data laporan yang lebih baru tidak digunakan.'}
         </p>
       )}
@@ -352,6 +388,7 @@ export function MonitoringOrfReportForm({ report, defaultDate, onCancel, onSaved
           Kode Next Cargo (opsional)
           <input value={nextCargoCode} onChange={(event) => { setNextCargoCode(event.target.value); setNextCargoId(null); }} maxLength={60} className={`${inputClass} mt-1`} />
         </label>
+        {usingInitialData && <p className="text-[10px] text-[#73869A] sm:col-span-2">Data awal Next Cargo: LN40 · ETA 16 Oktober 2026 (jam tidak diberikan). Catat melalui panel Next Cargo agar entitas cargo tetap terpisah dari laporan operasional.</p>}
         <label className="text-[10px] font-bold uppercase tracking-wide text-[#5F718A] sm:col-span-2">
           Catatan (opsional)
           <textarea rows={2} value={note} onChange={(event) => setNote(event.target.value)} className={`${inputClass} mt-1`} />

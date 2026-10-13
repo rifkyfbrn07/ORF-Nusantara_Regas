@@ -1,0 +1,7 @@
+CREATE TYPE "InfoOrfReportSource" AS ENUM ('MANUAL', 'AUTOMATIC');
+
+ALTER TABLE "InfoOrfReport"
+ADD COLUMN "source" "InfoOrfReportSource" NOT NULL DEFAULT 'MANUAL';
+
+ALTER TABLE "InfoOrfReport"
+ADD COLUMN "wasEdited" BOOLEAN NOT NULL DEFAULT false;

@@ -45,6 +45,7 @@ export interface InfoOrfReportInput {
   note?: string | null;
   nextCargoId?: string | null;
   nextCargo?: { cargoCode: string; eta: Date };
+  source?: 'MANUAL' | 'AUTOMATIC';
   metrics: InfoOrfMetricInput[];
   lines: InfoOrfLineInput[];
 }
@@ -83,6 +84,8 @@ function serializeReport(r: ReportRow) {
     reportDate: r.reportDate,
     reportHour: r.reportHour,
     reportTime: r.reportTime.toISOString(),
+    source: r.source,
+    wasEdited: r.wasEdited,
     note: r.note,
     recordedBy: r.recordedBy,
     metrics: r.metrics.map((m) => ({
@@ -141,7 +144,7 @@ function isUniqueConstraintError(error: unknown): boolean {
 }
 
 export async function createInfoOrfReport(input: InfoOrfReportInput & { recordedById: string }) {
-  const { reportDate, reportHour, note, nextCargoId, nextCargo, metrics, lines, recordedById } = input;
+  const { reportDate, reportHour, note, nextCargoId, nextCargo, source, metrics, lines, recordedById } = input;
   const reportTime = buildReportTime(reportDate, reportHour);
 
   const existing = await prisma.infoOrfReport.findUnique({
@@ -168,6 +171,7 @@ export async function createInfoOrfReport(input: InfoOrfReportInput & { recorded
           reportDate,
           reportHour,
           reportTime,
+          source: source ?? 'MANUAL',
           note: note ?? null,
           recordedById,
           nextCargoId: nextCargoSnapshot?.id ?? nextCargoId ?? null,
@@ -202,11 +206,11 @@ export async function createInfoOrfReport(input: InfoOrfReportInput & { recorded
 
       await recordAuditLog(
         {
-          userId: recordedById,
+          userId: source === 'AUTOMATIC' ? null : recordedById,
           action: 'CREATE',
           entity: 'InfoOrfReport',
           entityId: report.id,
-          metadata: { reportDate, reportHour, metricCount: metrics.length, lineCount: lines.length },
+          metadata: { reportDate, reportHour, source: source ?? 'MANUAL', metricCount: metrics.length, lineCount: lines.length },
         },
         tx
       );
@@ -250,6 +254,7 @@ export async function updateInfoOrfReport(input: InfoOrfReportInput & { id: stri
         reportDate,
         reportHour,
         reportTime,
+        wasEdited: true,
         note: note ?? null,
         nextCargoId: nextCargoSnapshot?.id ?? (nextCargo ? null : nextCargoId || null),
         metrics: {
@@ -352,6 +357,134 @@ export async function getInfoOrfReportsInRange(input: {
   return rows.map(serializeReport);
 }
 
+type HourlySnapshotResult =
+  | { status: 'created'; reportDate: string; reportHour: string; reportId: string }
+  | { status: 'already_exists'; reportDate: string; reportHour: string }
+  | { status: 'outside_window'; reportDate: string; reportHour: string }
+  | { status: 'no_source_report'; reportDate: string; reportHour: string };
+
+async function writeHourlySchedulerLog(action: string, metadata: Record<string, unknown>) {
+  const result = await recordAuditLog({
+    action,
+    entity: 'MonitoringOrfHourlyScheduler',
+    metadata,
+  });
+  if (!result) throw new Error('Gagal menulis log eksekusi scheduler Monitoring ORF.');
+}
+
+export async function logMonitoringOrfSchedulerFailure(error: unknown) {
+  console.error('Monitoring ORF hourly scheduler failure:', error);
+  await writeHourlySchedulerLog('FAILED', {
+    message: 'Scheduler execution failed; inspect server logs.',
+  });
+}
+
+export async function createCurrentHourlyMonitoringOrfSnapshot(now = new Date()): Promise<HourlySnapshotResult> {
+  const jakartaParts = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Asia/Jakarta',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(now);
+  const part = (type: Intl.DateTimeFormatPartTypes) => jakartaParts.find((item) => item.type === type)?.value;
+  const reportDate = `${part('year')}-${part('month')}-${part('day')}`;
+  const reportHour = part('hour') || '00';
+  const minute = Number(part('minute') || '0');
+  const base = { reportDate, reportHour };
+
+  if (minute > 10) {
+    await writeHourlySchedulerLog('SKIPPED', { ...base, reason: 'outside_schedule_window', minute });
+    return { status: 'outside_window', ...base };
+  }
+
+  const existing = await prisma.infoOrfReport.findUnique({
+    where: { reportDate_reportHour: base },
+    select: { id: true },
+  });
+  if (existing) {
+    await writeHourlySchedulerLog('SKIPPED', { ...base, reason: 'period_already_exists', reportId: existing.id });
+    return { status: 'already_exists', ...base };
+  }
+
+  const previous = await prisma.infoOrfReport.findFirst({
+    where: {
+      OR: [
+        { reportDate: { lt: reportDate } },
+        { reportDate, reportHour: { lt: reportHour } },
+      ],
+    },
+    include: REPORT_INCLUDE,
+    orderBy: [{ reportDate: 'desc' }, { reportHour: 'desc' }],
+  });
+
+  if (!previous) {
+    await writeHourlySchedulerLog('SKIPPED', { ...base, reason: 'no_previous_report' });
+    return { status: 'no_source_report', ...base };
+  }
+
+  try {
+    const report = await createInfoOrfReport({
+      reportDate,
+      reportHour,
+      note: `Pencatatan otomatis berdasarkan laporan ${previous.reportDate} pukul ${previous.reportHour}:00 WIB.`,
+      recordedById: previous.recordedById,
+      nextCargoId: previous.nextCargoId,
+      source: 'AUTOMATIC',
+      metrics: previous.metrics.map((metric) => ({
+        section: metric.section,
+        key: metric.key,
+        label: metric.label,
+        value: toNumber(metric.value),
+        unit: metric.unit,
+        sortOrder: metric.sortOrder,
+      })),
+      lines: previous.lines.map((line) => ({
+        lineCode: line.lineCode,
+        lineName: line.lineName,
+        flowRate: line.flowRate === null ? null : toNumber(line.flowRate),
+        volume: line.volume === null ? null : toNumber(line.volume),
+        energy: line.energy === null ? null : toNumber(line.energy),
+        temperature: line.temperature === null ? null : toNumber(line.temperature),
+        flowUnit: line.flowUnit,
+        volumeUnit: line.volumeUnit,
+        energyUnit: line.energyUnit,
+        temperatureUnit: line.temperatureUnit,
+        sortOrder: line.sortOrder,
+      })),
+    });
+    await writeHourlySchedulerLog('SUCCEEDED', {
+      ...base,
+      reason: 'report_created',
+      reportId: report.id,
+      sourceReportId: previous.id,
+    });
+    return { status: 'created', ...base, reportId: report.id };
+  } catch (error: unknown) {
+    if (error instanceof InfoOrfDuplicateError) {
+      await writeHourlySchedulerLog('SKIPPED', { ...base, reason: 'period_already_exists_after_race' });
+      return { status: 'already_exists', ...base };
+    }
+    throw error;
+  }
+}
+
+export async function getLatestMonitoringOrfSchedulerRun() {
+  const run = await prisma.auditLog.findFirst({
+    where: { entity: 'MonitoringOrfHourlyScheduler' },
+    orderBy: { createdAt: 'desc' },
+    select: { action: true, metadata: true, createdAt: true },
+  });
+  if (!run) return null;
+  return {
+    action: run.action,
+    metadata: run.metadata,
+    createdAt: run.createdAt.toISOString(),
+  };
+}
+
 /** Daftar tanggal yang memiliki laporan (terbaru dulu), terbatas. */
 export async function getInfoOrfAvailableDates(limit = 60) {
   const groups = await prisma.infoOrfReport.groupBy({
@@ -428,15 +561,17 @@ export interface InfoOrfDashboardData {
   reportsForSelectedDate: ReturnType<typeof serializeReport>[];
   selectedDate: string;
   totalReports: number;
+  schedulerLastRun: Awaited<ReturnType<typeof getLatestMonitoringOrfSchedulerRun>>;
 }
 
 /** Data utama halaman Info ORF (server component). */
 export async function getInfoOrfDashboard(selectedDate?: string): Promise<InfoOrfDashboardData> {
-  const [latest, nextCargo, availableDates, totalReports] = await Promise.all([
+  const [latest, nextCargo, availableDates, totalReports, schedulerLastRun] = await Promise.all([
     prisma.infoOrfReport.findFirst({ orderBy: { reportTime: 'desc' }, include: REPORT_INCLUDE }),
     getNextCargoActive(),
     getInfoOrfAvailableDates(),
     prisma.infoOrfReport.count(),
+    getLatestMonitoringOrfSchedulerRun(),
   ]);
 
   const todayStr = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Jakarta' });
@@ -451,6 +586,7 @@ export async function getInfoOrfDashboard(selectedDate?: string): Promise<InfoOr
     reportsForSelectedDate,
     selectedDate: resolvedDate,
     totalReports,
+    schedulerLastRun,
   };
 }
 

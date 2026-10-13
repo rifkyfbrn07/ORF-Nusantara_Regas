@@ -5,6 +5,7 @@
 
 export type InfoOrfSection = 'UPSTREAM' | 'TOTAL' | 'FSRU';
 export type NextCargoStatus = 'SCHEDULED' | 'DISCHARGING' | 'COMPLETED' | 'CANCELLED';
+export type InfoOrfReportSource = 'MANUAL' | 'AUTOMATIC';
 
 export interface InfoOrfMetricDTO {
   id: string;
@@ -49,6 +50,8 @@ export interface InfoOrfReportDTO {
   reportDate: string;
   reportHour: string;
   reportTime: string; // ISO (WIB)
+  source: InfoOrfReportSource;
+  wasEdited: boolean;
   note: string | null;
   recordedBy: { id: string; name: string; position: string };
   metrics: InfoOrfMetricDTO[];
@@ -65,4 +68,9 @@ export interface InfoOrfDashboardDTO {
   reportsForSelectedDate: InfoOrfReportDTO[];
   selectedDate: string;
   totalReports: number;
+  schedulerLastRun: {
+    action: string;
+    metadata: string | null;
+    createdAt: string;
+  } | null;
 }
