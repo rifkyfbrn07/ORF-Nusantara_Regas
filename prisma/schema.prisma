@@ -164,6 +164,10 @@ model User {
   position               String
   phone                  String?
   avatarUrl              String?
+  /** Tim roster ORF (A | B | C) — dipakai untuk pemetaan Reviewer/Team Lead approval cuti. */
+  team                   String?
+  /** Tanggal masuk kerja (YYYY-MM-DD) untuk auto-fill Formulir Permohonan Cuti. */
+  joinedDate             String?
   isActive               Boolean             @default(true)
   departmentId           String?
   department             Department?         @relation(fields: [departmentId], references: [id], onDelete: SetNull)
@@ -266,16 +270,55 @@ model LeaveRequest {
   evidenceCleanupStatus String?
   evidenceCleanupAt   DateTime?
   status           RequestStatus @default(PENDING)
+  /**
+   * Workflow approval berurutan 3 tahap: REVIEWER -> TEAM_LEAD -> MANAGER.
+   * approvalStage = tahap yang SEDANG berjalan (menunggu). Nilai: REVIEWER | TEAM_LEAD | MANAGER.
+   */
+  approvalStage    String        @default("REVIEWER")
+  // Tahap 1 — Reviewer (tim sendiri)
+  reviewerId       String?
+  reviewerName     String?
+  reviewerApprovedAt DateTime?
+  reviewerNote     String?
+  // Tahap 2 — Team Lead
+  teamLeadId       String?
+  teamLeadName     String?
+  teamLeadApprovedAt DateTime?
+  teamLeadNote     String?
+  // Tahap 3 — Manager (keputusan akhir)
+  managerId        String?
+  managerName      String?
+  managerApprovedAt DateTime?
+  managerNote      String?
+  /** Waktu evidence difinalisasi (setelah approval Manager). */
+  finalizedAt      DateTime?
+  /** Kolom kompatibilitas lama — diisi kembali saat keputusan final (Manager). */
   reviewedById     String?
   reviewedBy       User?         @relation("ManagerReviewedLeaves", fields: [reviewedById], references: [id])
   reviewedAt       DateTime?
-  reviewerNote     String?
   createdAt        DateTime      @default(now())
   updatedAt        DateTime      @updatedAt
 
   @@index([userId, status])
   @@index([startDate, endDate])
   @@index([status])
+  @@index([approvalStage])
+}
+
+/**
+ * Konfigurasi pemetaan Reviewer & Team Lead per tim roster (A/B/C).
+ * Dipakai oleh workflow approval cuti — dikelola oleh Admin.
+ * reviewerId/teamLeadId/managerId menyimpan User.id (tanpa FK agar ringan).
+ */
+model TeamConfig {
+  id         String   @id @default(cuid())
+  code       String   @unique // 'A' | 'B' | 'C'
+  name       String
+  reviewerId String?
+  teamLeadId String?
+  managerId  String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 }
 
 model ShiftExchange {

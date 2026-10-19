@@ -356,7 +356,7 @@ async function main() {
       status: RequestStatus.APPROVED,
       reviewedById: managerUser.id,
       reviewedAt: new Date('2026-09-01T10:30:00+07:00'),
-      reviewerNote: 'Disetujui. Pastikan handover proses safety diserahkan.',
+      managerNote: 'Disetujui. Pastikan handover proses safety diserahkan.',
     },
   });
 
@@ -492,7 +492,7 @@ async function main() {
       status: RequestStatus.APPROVED,
       reviewedById: managerUser.id,
       reviewedAt: new Date('2026-09-02T14:00:00+07:00'),
-      reviewerNote: 'Disetujui. Lampirkan sertifikat kehadiran setelah selesai.',
+      managerNote: 'Disetujui. Lampirkan sertifikat kehadiran setelah selesai.',
     },
   });
 

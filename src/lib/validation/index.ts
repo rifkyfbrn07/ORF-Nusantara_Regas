@@ -45,7 +45,10 @@ export const leaveRequestSchema = z.object({
   type: z.enum(['LEAVE', 'PERMISSION', 'SICK'] as const),
   startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Format tanggal mulai YYYY-MM-DD'),
   endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Format tanggal selesai YYYY-MM-DD'),
-  reason: z.string().min(5, 'Alasan pengajuan minimal 5 karakter'),
+  reason: z.string().min(3, 'Alasan pengajuan minimal 3 karakter'),
+  telepon: z.string().optional(),
+  alamatCuti: z.string().optional(),
+  penyerahanTugas: z.string().optional(),
   attachmentUrl: z.string().optional(),
   attachmentName: z.string().optional(),
   attachmentMime: z.string().optional(),
@@ -70,6 +73,15 @@ export const reviewLeaveSchema = z.object({
   requestId: z.string().min(1, 'ID Pengajuan wajib disertakan'),
   status: z.enum(['APPROVED', 'REJECTED'] as const),
   reviewerNote: z.string().optional(),
+});
+
+export const leaveApprovalSchema = z.object({
+  requestId: z.string().min(1, 'ID Pengajuan wajib disertakan'),
+  stage: z.enum(['REVIEWER', 'TEAM_LEAD', 'MANAGER'] as const, {
+    message: 'Tahap approval tidak valid',
+  }),
+  status: z.enum(['APPROVED', 'REJECTED'] as const),
+  note: z.string().optional(),
 });
 
 export const operationalReportSchema = z.object({

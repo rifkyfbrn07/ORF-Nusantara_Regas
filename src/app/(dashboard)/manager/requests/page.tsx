@@ -11,6 +11,7 @@ export default async function ManagerRequestsPage({
   searchParams: Promise<{ tab?: string }>;
 }) {
   await requireRole(['MANAGER', 'ADMIN']);
+  const sessionUser = await requireRole(['MANAGER', 'ADMIN']);
   const resolvedParams = await searchParams;
   const activeTab = resolvedParams.tab || 'leave';
 
@@ -24,13 +25,14 @@ export default async function ManagerRequestsPage({
       <PageHeader
         eyebrow="WORK REQUEST & APPROVAL CENTER"
         title="Persetujuan Cuti & Izin"
-        description="Tinjau pengajuan cuti resmi, izin kedinasan, surat sakit dokter, dan verifikasi pergantian shift antar operator."
+        description="Tinjau pengajuan cuti resmi, izin kedinasan, surat sakit dokter, dan verifikasi pergantian shift antar operator. Approval cuti berjalan berurutan: Reviewer → Team Lead → Manager."
       />
 
       <ManagerRequestsClient
         leaveRequests={leaveRequests}
         shiftExchanges={shiftExchanges}
         defaultTab={activeTab === 'shift' ? 'shift' : 'leave'}
+        currentUserRole={sessionUser.role}
       />
     </div>
   );

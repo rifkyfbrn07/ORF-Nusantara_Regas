@@ -14,15 +14,15 @@ import {
   ExternalLink,
   FileText,
   User,
-  Building,
-  Calendar,
   Send,
   Loader2,
+  FileDown,
 } from 'lucide-react';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { Modal } from '@/components/ui/Modal';
 import { FileUploadProof } from '@/components/ui/FileUploadProof';
-import { reviewLeaveAction, submitLeaveAction, searchEmployeesAction } from '@/server/actions/leaveActions';
+import { processLeaveApprovalAction, submitLeaveAction, searchEmployeesAction } from '@/server/actions/leaveActions';
+import { LeaveDocxViewer } from '@/components/leave/LeaveDocxViewer';
 import { reviewShiftExchangeAction } from '@/server/actions/shiftExchangeActions';
 import { useRouter } from 'next/navigation';
 
@@ -42,11 +42,21 @@ export interface ManagerLeaveRequestItem {
   storageProvider?: string | null;
   storagePath?: string | null;
   reviewerNote?: string | null;
+  approvalStage?: string | null;
+  reviewerName?: string | null;
+  reviewerApprovedAt?: string | Date | null;
+  teamLeadName?: string | null;
+  teamLeadApprovedAt?: string | Date | null;
+  teamLeadNote?: string | null;
+  managerName?: string | null;
+  managerApprovedAt?: string | Date | null;
+  managerNote?: string | null;
   user: {
     id?: string;
     name: string;
     username?: string | null;
     employeeId: string;
+    team?: string | null;
     department?: { name: string } | null;
   };
   reviewedBy?: {
@@ -97,12 +107,14 @@ interface ManagerRequestsClientProps {
   leaveRequests: ManagerLeaveRequestItem[];
   shiftExchanges: ManagerShiftExchangeItem[];
   defaultTab: 'leave' | 'shift';
+  currentUserRole?: 'ADMIN' | 'MANAGER' | 'OPERATOR';
 }
 
 export function ManagerRequestsClient({
   leaveRequests,
   shiftExchanges,
   defaultTab,
+  currentUserRole = 'MANAGER',
 }: ManagerRequestsClientProps) {
   const router = useRouter();
   const [tab, setTab] = useState<'leave' | 'shift'>(defaultTab);
@@ -110,6 +122,9 @@ export function ManagerRequestsClient({
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+
+  // Leave DOCX / PDF viewer modal state
+  const [docViewItem, setDocViewItem] = useState<ManagerLeaveRequestItem | null>(null);
 
   // Search Filter state
   const [searchQuery, setSearchQuery] = useState('');
@@ -121,8 +136,27 @@ export function ManagerRequestsClient({
     type: 'leave' | 'shift';
     decision: 'APPROVED' | 'REJECTED';
     title: string;
+    stage?: string;
   } | null>(null);
   const [reviewerNote, setReviewerNote] = useState('');
+
+  const getDisplayStatus = (r: ManagerLeaveRequestItem) => {
+    if (r.status === 'APPROVED') return 'Disetujui';
+    if (r.status === 'REJECTED') return 'Ditolak';
+    const map: Record<string, string> = {
+      REVIEWER: 'Menunggu Reviewer',
+      TEAM_LEAD: 'Menunggu Team Lead',
+      MANAGER: 'Menunggu Manager',
+    };
+    return map[r.approvalStage || 'REVIEWER'] || 'Menunggu Reviewer';
+  };
+
+  const canActOnStage = (r: ManagerLeaveRequestItem) => {
+    if (r.status !== 'PENDING') return false;
+    if (currentUserRole === 'ADMIN') return true;
+    // Manager hanya dapat memproses pada tahap MANAGER (tahap akhir).
+    return currentUserRole === 'MANAGER' && r.approvalStage === 'MANAGER';
+  };
 
   // Proof Preview Modal State
   const [previewItem, setPreviewItem] = useState<ManagerLeaveRequestItem | null>(null);
@@ -166,9 +200,10 @@ export function ManagerRequestsClient({
     id: string,
     type: 'leave' | 'shift',
     decision: 'APPROVED' | 'REJECTED',
-    title: string
+    title: string,
+    stage?: string
   ) => {
-    setReviewItem({ id, type, decision, title });
+    setReviewItem({ id, type, decision, title, stage });
     setReviewerNote('');
     setError(null);
   };
@@ -180,16 +215,17 @@ export function ManagerRequestsClient({
 
     try {
       if (reviewItem.type === 'leave') {
-        const res = await reviewLeaveAction({
+        const res = await processLeaveApprovalAction({
           requestId: reviewItem.id,
+          stage: (reviewItem.stage as 'REVIEWER' | 'TEAM_LEAD' | 'MANAGER') || 'MANAGER',
           status: reviewItem.decision,
-          reviewerNote: reviewerNote.trim() || undefined,
+          note: reviewerNote.trim() || undefined,
         });
         if (!res.success) throw new Error(res.error);
         setSuccess(
           `Pengajuan cuti/izin berhasil di-${
             reviewItem.decision === 'APPROVED' ? 'setujui' : 'tolak'
-          }.`
+          } pada tahap tersebut.`
         );
       } else {
         const res = await reviewShiftExchangeAction({
@@ -408,6 +444,7 @@ export function ManagerRequestsClient({
                     <th className="px-5 py-3">Jenis</th>
                     <th className="px-5 py-3">Periode Tanggal</th>
                     <th className="px-5 py-3">Alasan</th>
+                    <th className="px-5 py-3 text-center">Dokumen Resmi</th>
                     <th className="px-5 py-3 text-center">Bukti Surat</th>
                     <th className="px-5 py-3 text-center">Status</th>
                     <th className="px-5 py-3">Catatan Reviewer</th>
@@ -417,7 +454,7 @@ export function ManagerRequestsClient({
                 <tbody className="divide-y divide-slate-100 font-medium">
                   {filteredLeaveRequests.length === 0 ? (
                     <tr>
-                      <td colSpan={8} className="px-5 py-8 text-center text-slate-400">
+                      <td colSpan={9} className="px-5 py-8 text-center text-slate-400">
                         {searchQuery
                           ? 'Tidak ada data cuti yang sesuai dengan kata kunci pencarian.'
                           : 'Belum ada permohonan cuti atau izin.'}
@@ -426,6 +463,7 @@ export function ManagerRequestsClient({
                   ) : (
                     filteredLeaveRequests.map((r) => {
                       const hasProof = Boolean(r.attachmentUrl || r.driveWebViewLink || r.driveFileId || r.storagePath);
+                      const cleanReason = r.reason.includes('|||') ? r.reason.split('|||')[0].trim() : r.reason;
                       return (
                         <tr key={r.id} className="hover:bg-slate-50/70 transition">
                           <td className="px-5 py-3.5">
@@ -449,7 +487,36 @@ export function ManagerRequestsClient({
                             {r.startDate} s/d {r.endDate}
                           </td>
                           <td className="px-5 py-3.5 max-w-xs text-slate-700 leading-relaxed">
-                            {r.reason}
+                            {cleanReason}
+                          </td>
+
+                          {/* Dokumen Resmi Cuti (.docx) */}
+                          <td className="px-5 py-3.5 text-center">
+                            <div className="flex flex-col items-center gap-1.5">
+                              <a
+                                href={`/api/export/leave-docx?requestId=${r.id}`}
+                                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl border border-blue-200 bg-blue-50/80 hover:bg-blue-100 text-[#0B3568] text-[11px] font-bold transition shadow-2xs"
+                                title={
+                                  r.status === 'APPROVED'
+                                    ? 'Unduh Evidence Final Formulir Permohonan Cuti Resmi PT Permata Karya Jasa (.docx)'
+                                    : 'Unduh Draft Formulir Cuti (.docx) — belum disetujui final; bagian persetujuan diisi setelah approval Manager'
+                                }
+                              >
+                                <FileDown className="h-3.5 w-3.5" />
+                                <span>
+                                  {r.status === 'APPROVED' ? 'Evidence Final DOCX' : 'Draft DOCX'}
+                                </span>
+                              </a>
+                              <button
+                                type="button"
+                                onClick={() => setDocViewItem(r)}
+                                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl border border-slate-200 bg-white hover:bg-slate-100 text-slate-600 text-[11px] font-bold transition shadow-2xs cursor-pointer"
+                                title="Pratinjau dokumen cuti dan unduh PDF final (khusus pengajuan yang sudah disetujui)"
+                              >
+                                <FileText className="h-3.5 w-3.5" />
+                                <span>Pratinjau &amp; PDF</span>
+                              </button>
+                            </div>
                           </td>
 
                           {/* Bukti Surat Cuti Column */}
@@ -480,15 +547,32 @@ export function ManagerRequestsClient({
                           </td>
 
                           <td className="px-5 py-3.5 text-center">
-                            <StatusBadge status={r.status} size="sm" />
+                            <div className="flex flex-col items-center gap-1">
+                              <StatusBadge status={r.status} size="sm" />
+                              <span className="text-[10px] font-bold text-slate-500">
+                                {getDisplayStatus(r)}
+                              </span>
+                            </div>
                           </td>
                           <td className="px-5 py-3.5 text-[11px] text-slate-500 italic max-w-xs">
-                            {r.reviewerNote
-                              ? `"${r.reviewerNote}" (${r.reviewedBy?.name || 'Manager'})`
-                              : '—'}
+                            {r.status === 'REJECTED' ? (
+                              r.managerNote || r.reviewerNote ? (
+                                `"${r.managerNote || r.reviewerNote}" (${r.managerName || r.reviewedBy?.name || 'Approver'})`
+                              ) : (
+                                'Pengajuan ditolak'
+                              )
+                            ) : r.status === 'APPROVED' ? (
+                              r.managerNote ? (
+                                `"${r.managerNote}" (${r.managerName || r.reviewedBy?.name || 'Manager'})`
+                              ) : (
+                                'Dokumen evidence cuti final tersedia'
+                              )
+                            ) : (
+                              'Menunggu proses approval berurutan'
+                            )}
                           </td>
                           <td className="px-5 py-3.5 text-right">
-                            {r.status === 'PENDING' ? (
+                            {canActOnStage(r) ? (
                               <div className="flex items-center justify-end gap-1.5">
                                 <button
                                   onClick={() =>
@@ -496,7 +580,8 @@ export function ManagerRequestsClient({
                                       r.id,
                                       'leave',
                                       'APPROVED',
-                                      `${r.user.name} (${r.type})`
+                                      `${r.user.name} (${r.type})`,
+                                      r.approvalStage || 'MANAGER'
                                     )
                                   }
                                   className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] flex items-center gap-1 shadow-xs transition cursor-pointer"
@@ -510,7 +595,8 @@ export function ManagerRequestsClient({
                                       r.id,
                                       'leave',
                                       'REJECTED',
-                                      `${r.user.name} (${r.type})`
+                                      `${r.user.name} (${r.type})`,
+                                      r.approvalStage || 'MANAGER'
                                     )
                                   }
                                   className="px-2.5 py-1 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-bold text-[11px] flex items-center gap-1 shadow-xs transition cursor-pointer"
@@ -520,7 +606,9 @@ export function ManagerRequestsClient({
                                 </button>
                               </div>
                             ) : (
-                              <span className="text-[11px] font-bold text-slate-400">Selesai</span>
+                              <span className="text-[11px] font-bold text-slate-400">
+                                {r.status === 'PENDING' ? 'Tahap bukan kewenangan' : 'Selesai'}
+                              </span>
                             )}
                           </td>
                         </tr>
@@ -635,7 +723,9 @@ export function ManagerRequestsClient({
         <Modal
           open={Boolean(reviewItem)}
           onClose={() => setReviewItem(null)}
-          title={`Konfirmasi ${reviewItem.decision === 'APPROVED' ? 'Persetujuan' : 'Penolakan'}`}
+          title={`Konfirmasi ${reviewItem.decision === 'APPROVED' ? 'Persetujuan' : 'Penolakan'} — Tahap ${
+            reviewItem.stage === 'REVIEWER' ? 'Reviewer' : reviewItem.stage === 'TEAM_LEAD' ? 'Team Lead' : 'Manager'
+          }`}
           eyebrow="REVIEW DECISION"
           size="md"
           footer={
@@ -998,6 +1088,17 @@ export function ManagerRequestsClient({
             </div>
           </form>
         </Modal>
+      )}
+
+      {/* Leave DOCX / PDF Viewer */}
+      {docViewItem && (
+        <LeaveDocxViewer
+          open
+          onClose={() => setDocViewItem(null)}
+          requestId={docViewItem.id}
+          status={docViewItem.status}
+          statusLabel={getDisplayStatus(docViewItem)}
+        />
       )}
     </div>
   );

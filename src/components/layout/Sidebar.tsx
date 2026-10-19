@@ -88,6 +88,7 @@ export function Sidebar({
       title: 'REQUEST & OPS',
       items: [
         { label: 'Cuti & Izin', href: '/manager/requests', icon: UserCheck },
+        { label: 'Rekap & SPL Lembur', href: '/manager/lembur', icon: Clock },
         { label: 'Handover', href: '/manager/handover', icon: ClipboardList },
         { label: 'HSSE', href: '/manager/hsse', icon: ShieldCheck },
         { label: 'Pengumuman', href: '/manager/announcements', icon: Megaphone },
@@ -135,6 +136,7 @@ export function Sidebar({
       title: 'REQUEST & OPS',
       items: [
         { label: 'Cuti & Izin', href: '/manager/requests', icon: UserCheck },
+        { label: 'Rekap & SPL Lembur', href: '/manager/lembur', icon: Clock },
         { label: 'Handover', href: '/manager/handover', icon: ClipboardList },
         { label: 'HSSE', href: '/manager/hsse', icon: ShieldCheck },
         { label: 'Pengumuman', href: '/manager/announcements', icon: Megaphone },
@@ -180,6 +182,7 @@ export function Sidebar({
       title: 'REQUEST & OPS',
       items: [
         { label: 'Cuti & Izin', href: '/operator/requests', icon: UserCheck },
+        { label: 'Rekap & SPL Lembur', href: '/operator/lembur', icon: Clock },
         { label: 'Shift Handover', href: '/operator/handover', icon: ClipboardList },
         { label: 'HSSE Safety Form', href: '/operator/hsse', icon: ShieldCheck },
       ],
