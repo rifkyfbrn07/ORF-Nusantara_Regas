@@ -249,7 +249,6 @@ function OperatorMobileCard({ op, month, showTodayDot }: { op: RosterMonthData['
                 <Clock className="h-3.5 w-3.5 mr-1" /> Bukti Lembur
               </button>
             </div>
-          }
           {op.todayStatus && showTodayDot && (
             <span className="mt-1 inline-flex rounded-full border border-[#BBDFF5] bg-[#EAF4FC] px-2 py-0.5 text-[9px] font-black text-[#0066B3]">
               HARI INI: {op.todayStatus.statusLabel}
