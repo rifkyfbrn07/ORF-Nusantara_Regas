@@ -2,7 +2,7 @@
 
 import React, { useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { CalendarRange, ChevronLeft, ChevronRight, Search } from 'lucide-react';
+import { CalendarRange, ChevronLeft, ChevronRight, Search, FileText, Clock } from 'lucide-react';
 import type { RosterDayCell, RosterMonthData, RosterShiftKey } from '@/server/services/rosterService';
 import { RosterMatrix } from '@/components/roster/RosterMatrix';
 
@@ -60,6 +60,7 @@ export function RosterOperatorClient({ data }: RosterOperatorClientProps) {
   const [query, setQuery] = useState('');
   const [operatorFilter, setOperatorFilter] = useState('all');
   const [shiftFilter, setShiftFilter] = useState<RosterShiftKey | 'ALL'>('ALL');
+  const [canShowEvidenceButtons, setCanShowEvidenceButtons] = useState(true);
 
   const today = new Date();
 
@@ -71,6 +72,10 @@ export function RosterOperatorClient({ data }: RosterOperatorClientProps) {
   }
   function goToday() {
     goTo(today.getFullYear(), today.getMonth() + 1);
+  }
+
+  function handleEvidenceClick(opId: string, type: 'cuti' | 'lembur') {
+    router.push(`/operator/requests?operatorId=${opId}&type=${type}`);
   }
 
   // Filter client-side (nama/employeeId, operator, shift) terhadap dataset yang sama.
@@ -227,6 +232,24 @@ function OperatorMobileCard({ op, month, showTodayDot }: { op: RosterMonthData['
             {op.positionSuffix || op.position} · {op.employeeId}
             {op.hsseMarshall ? ' · HSSE Marshall' : ''}
           </div>
+          {/* Evidence Cuti/Lembur Buttons - only visible for operators with evidence or admin/manager roles */}
+          <div className="mt-2 flex gap-2 flex-wrap">
+              <button
+                onClick={() => window.location.href = `/operator/requests?operatorId=${op.id}&type=cuti`}
+                className="px-3 py-1.5 rounded-xl border border-[#0B3568] text-xs font-black text-[#0B3568] hover:bg-[#0B3568] hover:text-white transition shadow-xs"
+                title="Lihat Bukti Cuti"
+              >
+                <FileText className="h-3.5 w-3.5 mr-1" /> Bukti Cuti
+              </button>
+              <button
+                onClick={() => window.location.href = `/operator/requests?operatorId=${op.id}&type=lembur`}
+                className="px-3 py-1.5 rounded-xl border border-[#F58220] text-xs font-black text-[#F58220] hover:bg-[#F58220] hover:text-white transition shadow-xs"
+                title="Lihat Bukti Lembur"
+              >
+                <Clock className="h-3.5 w-3.5 mr-1" /> Bukti Lembur
+              </button>
+            </div>
+          }
           {op.todayStatus && showTodayDot && (
             <span className="mt-1 inline-flex rounded-full border border-[#BBDFF5] bg-[#EAF4FC] px-2 py-0.5 text-[9px] font-black text-[#0066B3]">
               HARI INI: {op.todayStatus.statusLabel}
