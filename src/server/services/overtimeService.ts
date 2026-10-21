@@ -200,6 +200,8 @@ export async function getMonthlyOvertimeReport(
       checkOut: checkOut || null,
       customNote: sched?.notes || null,
       supervisorName: OVERTIME_CONFIG.defaultAtasanLangsung,
+      // NEW: Use roster-based assumption when scheduled work (8 normal + 4 lembur assumption, not from actual attendance)
+      assumeOnShift4HoursLembur: isScheduledWork,
     });
 
     if (result.isIncomplete) totalHariIncomplete++;

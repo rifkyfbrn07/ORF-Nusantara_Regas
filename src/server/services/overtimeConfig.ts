@@ -1,28 +1,90 @@
+export interface OvertimeCalculationResult {
+  isScheduledWork: boolean;
+  actualDurationHours: number;
+  overtimeHours: number;
+  awalLembur: string;
+  akhirLembur: string;
+  keterangan: string;
+  pemberiTugas: string;
+  isIncomplete: boolean;
+}
+
+/**
+ * Parameters for calculating day overtime.
+ */
+export interface CalculateDayOvertimeParams {
+/**
+ * Calculates work duration in hours between two time strings (HH:mm or HH.mm).
+ * Correctly handles overnight shifts crossing midnight (e.g., 19:00 - 07:00 = 12 hours)
+ * without negative duration.
+ */
+export function calculateDurationHours(timeIn: string, timeOut: string): number {
+  if (!timeIn || !timeOut) return 0;
+
+  const [hIn, mIn] = parseTime(timeIn);
+  const [hOut, mOut] = parseTime(timeOut);
+
+  let startMins = hIn * 60 + mIn;
+  let endMins = hOut * 60 + mOut;
+
+  // Cross midnight detection: e.g. 19:00 to 07:00
+  if (endMins < startMins) {
+    endMins += 24 * 60;
+  }
+
+  const durationMinutes = endMins - startMins;
+  return Math.round((durationMinutes / 60) * 100) / 100;
+}
+
+function parseTime(timeStr: string): [number, number] {
+  const clean = timeStr.trim().replace('.', ':');
+  const parts = clean.split(':');
+  const h = parseInt(parts[0] || '0', 10);
+  const m = parseInt(parts[1] || '0', 10);
+  return [isNaN(h) ? 0 : h, isNaN(m) ? 0 : m];
 /**
  * Configuration and core operational calculation rules for Overtime (Lembur).
  * All calculation rules can be adjusted here without modifying code throughout the app.
  */
-
 export interface OvertimeConfig {
-  /** Jam kerja normal harian (default: 8 jam) */
   normalWorkHoursPerDay: number;
-  /** Lokasi penempatan default */
   defaultLocation: string;
-  /** Unit / Satuan kerja default */
   defaultUnitKerja: string;
-  /** Supervisor / Pemberi tugas default */
   defaultSupervisor: string;
-  /** Atasan langsung default */
   defaultAtasanLangsung: string;
-  /** Manager PT Nusantara Regas default */
   defaultManagerNR: string;
-  /** Jabatan Manager PT Nusantara Regas default */
   defaultManagerNRJabatan: string;
-  /** Staff Project Support PT Permata Karya Jasa default */
   defaultStaffPermata: string;
-  /** Jabatan Staff Permata default */
   defaultStaffPermataJabatan: string;
-  /** Pjs Kepala Departemen default */
+  defaultPjsKepalaDept: string;
+}
+
+export const OVERTIME_CONFIG: OvertimeConfig = {
+  normalWorkHoursPerDay: 8,
+  defaultLocation: 'NR Muara Karang',
+  defaultUnitKerja: 'Operasi',
+  defaultSupervisor: 'Muhammad Tauvik Ibrahim',
+  defaultAtasanLangsung: 'Yosep Ismail Zulkarnain',
+  defaultManagerNR: 'Yosep Ismail Zulkarnain',
+  defaultManagerNRJabatan: 'Manager Gas Distribution & ORF Management',
+  defaultStaffPermata: 'Aditya Paramayudha',
+  defaultStaffPermataJabatan: 'Staff Project Support',
+  defaultPjsKepalaDept: 'Pjs. Kepala Departemen Distribusi Gas & ORF',
+};
+/**
+ * Configuration and core operational calculation rules for Overtime (Lembur).
+ * All calculation rules can be adjusted here without modifying code throughout the app.
+ */
+export interface OvertimeConfig {
+  normalWorkHoursPerDay: number;
+  defaultLocation: string;
+  defaultUnitKerja: string;
+  defaultSupervisor: string;
+  defaultAtasanLangsung: string;
+  defaultManagerNR: string;
+  defaultManagerNRJabatan: string;
+  defaultStaffPermata: string;
+  defaultStaffPermataJabatan: string;
   defaultPjsKepalaDept: string;
 }
 
@@ -82,26 +144,9 @@ export interface OvertimeCalculationResult {
 }
 
 /**
- * Core Operational Overtime Calculation Engine
- * 
- * Skenario 1 — Operator bekerja pada jadwal ON (Hari kerja terjadwal):
- *   - Jam kerja normal: 8 jam.
- *   - Jam Lembur = Maksimum(0, Jam Kerja Aktual - 8).
- *   - Contoh: 8 jam -> 0 jam; 10 jam -> 2 jam; 12 jam -> 4 jam.
- *   - Shift Pagi (07.00 - 19.00): Awal lembur 15.00, Akhir lembur 19.00.
- *   - Shift Malam (19.00 - 07.00): Awal lembur 03.00, Akhir lembur 07.00.
- * 
- * Skenario 2 — Operator bekerja pada jadwal OFF:
- *   - Jika operator seharusnya OFF tetapi masuk bekerja (misalnya mem-backup tim):
- *     Seluruh jam kerja aktual dihitung sebagai jam lembur!
- *   - Rumus: Jika Jadwal = OFF dan Operator Bekerja: Jam Lembur = Jam Kerja Aktual.
- *   - Contoh: Bekerja 12 jam -> Jam Lembur = 12 jam.
- *   - Awal & Akhir lembur = Jam masuk dan jam pulang.
- * 
- * Jadwal OFF tanpa kerja:
- *   - Jam Lembur = 0, Keterangan = "Off Duty".
+ * Parameters for calculating day overtime.
  */
-export function calculateDayOvertime(params: {
+export interface CalculateDayOvertimeParams {
   isScheduledWork: boolean; // From Roster: true = WORK, false = OFF
   isLeave?: boolean; // From Approved LeaveRequest: true = Cuti
   shiftCode?: string; // 'ORF_PAGI' | 'ORF_MALAM' | 'ORF_OFF'
@@ -109,10 +154,24 @@ export function calculateDayOvertime(params: {
   checkOut?: string | null; // e.g. "07.00" or "19.00"
   customNote?: string | null; // user-specified note if any
   supervisorName?: string | null; // supervisor or assigner
-}): OvertimeCalculationResult {
-  const supervisor = params.supervisorName || OVERTIME_CONFIG.defaultSupervisor;
+  // NEW: Use roster-based assumption when scheduled work (8 normal + 4 lembur assumption, not from actual attendance)
+  assumeOnShift4HoursLembur?: boolean;
+}
 
-  // 1. Cuti
+/**
+ * Calculates overtime for a single day based on scheduled work status and attendance.
+ *
+ * Modes:
+ * 1. assumeOnShift4HoursLembur=true: When true, ON schedule = 8 jam normal + 4 jam lembur assumption
+ *    (used when attendance data is not yet active, using roster assumption)
+ * 2. isScheduledWork=true, assumeOnShift4HoursLembur=false: ON schedule with actual attendance
+ *    - Jam normal = 8 jam, Jam lembur = actual - 8 (hitung dari attendance)
+ * 3. isScheduledWork=false, has checkIn/checkOut: OFF but working (backup)
+ *    - Seluruh jam kerja = lembur
+ * 4. isScheduledWork=false, no checkIn/checkOut: Off Duty
+ * 5. isLeave=true: Cuti
+ */
+// 1. Cuti
   if (params.isLeave) {
     return {
       isScheduledWork: false,
@@ -126,41 +185,94 @@ export function calculateDayOvertime(params: {
     };
   }
 
-  // Determine standard shift times if checkIn/checkOut are missing
+  // NEW: Roster-based assumption mode - when enabled, ON schedule = 8 normal + 4 lembur assumption
+  if (params.assumeOnShift4HoursLembur) {
+    // Mode: Asumsi roster ON = 8 jam normal + 4 jam lembur (bukan dari absensi aktual)
+    // Ini digunakan ketika data absensi belum aktif, menggunakan asumsi roster
+    const overtimeHours = 4; // Fixed 4 jam lembur assumption for ON shift
+    const normalHours = 8; // Fixed 8 jam normal assumption
+    const actualDurationHours = normalHours + overtimeHours; // 12 jam total diasumsikan
+
+    // Determine shift times based on shiftCode for display purposes
+    let awalLembur = '15.00';
+    let akhirLembur = '19.00';
+    let defaultNote = 'Lembur Shift Pagi';
+    const isPagi = params.shiftCode === 'ORF_PAGI';
+    const isMalam = params.shiftCode === 'ORF_MALAM';
+
+    if (isMalam) {
+      awalLembur = '03.00';
+      akhirLembur = '07.00';
+      defaultNote = 'Lembur Shift Malam';
+    }
+
+    return {
+      isScheduledWork: true,
+      actualDurationHours,
+      overtimeHours,
+      awalLembur,
+      akhirLembur,
+      keterangan: 'Lembur berdasarkan roster (8 jam normal + 4 jam lembur assumption), bukan absensi aktual',
+      pemberiTugas: supervisor,
+      isIncomplete: false,
+    };
+  }
+
+  // Determine if we have checkIn/checkOut
+  const hasCheckIn = params.checkIn !== null && params.checkIn !== '';
+  const hasCheckOut = params.checkOut !== null && params.checkOut !== '';
+
+  // Extract checkIn/checkOut values for later use
+  const rawIn = params.checkIn || '';
+  const rawOut = params.checkOut || '';
+
+  // Format time display: 19:00 -> 19.00
+  const formattedIn = rawIn.replace(':', '.');
+  const formattedOut = rawOut.replace(':', '.');
+
+  // Determine shift type for display logic
   const isPagi = params.shiftCode === 'ORF_PAGI';
   const isMalam = params.shiftCode === 'ORF_MALAM';
 
-  let rawIn = params.checkIn || '';
-  let rawOut = params.checkOut || '';
-
-  // If scheduled WORK and no attendance was explicitly logged, fall back to shift standard
-  if (params.isScheduledWork && !rawIn && !rawOut) {
-    if (isPagi) {
-      rawIn = '07.00';
-      rawOut = '19.00';
-    } else if (isMalam) {
-      rawIn = '19.00';
-      rawOut = '07.00';
-    }
-  }
-
-  // 2. Off Duty (Jadwal OFF and not working)
-  if (!params.isScheduledWork && !rawIn && !rawOut) {
+  // 2. Off Duty (Jadwal OFF and not working) - ONLY if no confirmation
+  if (!params.isScheduledWork && !hasCheckIn && !hasCheckOut) {
     return {
       isScheduledWork: false,
       actualDurationHours: 0,
       overtimeHours: 0,
       awalLembur: '',
       akhirLembur: '',
-      keterangan: 'Off Duty',
+      keterangan: 'Tidak ada konfirmasi kerja pada hari OFF (berdasarkan roster)',
       pemberiTugas: '',
       isIncomplete: false,
     };
   }
 
-  // Incomplete attendance flag (checkIn without checkOut)
-  const isIncomplete = Boolean(rawIn && !rawOut);
-  if (isIncomplete) {
+  // If OFF but has explicit confirmation (checkIn/checkOut provided)
+  if (!params.isScheduledWork && hasCheckIn && hasCheckOut) {
+    // Operator OFF tapi bekerja - hitung seluruh jam sebagai lembur (backup)
+    const actualDuration = calculateDurationHours(rawIn, rawOut);
+    const overtimeHours = actualDuration;
+
+    // Format time display: 19:00 -> 19.00 (already done above)
+    // The formattedIn/formattedOut are already prepared above
+
+    const defaultBackupNote = isPagi ? 'Lembur Back Up Tim C' : 'Lembur Back Up Tim A';
+
+    return {
+      isScheduledWork: false,
+      actualDurationHours: actualDuration,
+      overtimeHours,
+      awalLembur: formattedIn,
+      akhirLembur: formattedOut,
+      keterangan: params.customNote || defaultBackupNote + ' (confirmed working on OFF day)',
+      pemberiTugas: supervisor,
+      isIncomplete: false,
+    };
+  }
+
+  // 3. Incomplete attendance flag (checkIn without checkOut)
+  if (hasCheckIn && !hasCheckOut) {
     return {
       isScheduledWork: params.isScheduledWork,
       actualDurationHours: 0,
@@ -173,61 +285,63 @@ export function calculateDayOvertime(params: {
     };
   }
 
-  // Format time display: 19:00 -> 19.00
-  const formattedIn = rawIn.replace(':', '.');
-  const formattedOut = rawOut.replace(':', '.');
-
+  // 4. Calculate actual duration
   const actualDuration = calculateDurationHours(rawIn, rawOut);
 
-  // Skenario 2: Operator terjadwal OFF tetapi masuk kerja
-  if (!params.isScheduledWork) {
-    const overtimeHours = actualDuration;
-    const defaultBackupNote = isPagi ? 'Lembur Back Up Tim C' : 'Lembur Back Up Tim A';
+  // 5. Operator terjadwal ON (WORK) - menggunakan asumsi roster
+  // Jam normal = 8 jam, Jam lembur = 4 jam (assumption), Total = 12 jam
+  // JANGKA KISAH: Bukan dari absensi aktual, melainkan asumsi roster
+  if (params.isScheduledWork) {
+    // Mode asumsi: 8 jam normal + 4 jam lembur tetap untuk shift ON
+    const normalHours = 8;
+    const overtimeHours = 4; // Fixed assumption, bukan Math.max(0, actualDuration - 8)
+    const actualDurationHours = normalHours + overtimeHours; // 12 jam totaliasumsakan
+
+    let awalLembur = '15.00';
+    let akhirLembur = '19.00';
+    let defaultNote = 'Lembur Shift Pagi';
+
+    if (isPagi || (rawIn && rawIn.startsWith('07'))) {
+      awalLembur = '15.00';
+      defaultNote = 'Lembur Shift Pagi';
+    } else if (isMalam || (rawIn && rawIn.startsWith('19'))) {
+      awalLembur = '03.00';
+      akhirLembur = '07.00';
+      defaultNote = 'Lembur Shift Malam';
+    } else {
+      // General: lembur mulai setelah 8 jam
+      const parsedIn = parseTime(rawIn);
+      const otStartH = (parsedIn[0] + normalHours) % 24;
+      awalLembur = `${otStartH.toString().padStart(2, '0')}.${parsedIn[1].toString().padStart(2, '0')}`;
+    }
+
     return {
-      isScheduledWork: false,
-      actualDurationHours: actualDuration,
+      isScheduledWork: true,
+      actualDurationHours,
       overtimeHours,
-      awalLembur: formattedIn,
-      akhirLembur: formattedOut,
-      keterangan: params.customNote || defaultBackupNote,
+      awalLembur,
+      akhirLembur,
+      keterangan: 'Lembur berdasarkan roster (8 jam normal + 4 jam lembur assumption), bukan absensi aktual',
       pemberiTugas: supervisor,
       isIncomplete: false,
     };
   }
 
-  // Skenario 1: Operator terjadwal ON (WORK)
-  // Jam Lembur = Max(0, Jam Kerja Aktual - 8)
-  const normalHours = OVERTIME_CONFIG.normalWorkHoursPerDay;
-  const overtimeHours = Math.max(0, actualDuration - normalHours);
-
-  let awalLembur = '';
-  let akhirLembur = '';
-  let defaultNote = 'Lembur Kerja';
-
-  if (overtimeHours > 0) {
-    akhirLembur = formattedOut;
-    if (isPagi || formattedIn.startsWith('07')) {
-      awalLembur = '15.00';
-      defaultNote = 'Lembur Shift Pagi';
-    } else if (isMalam || formattedIn.startsWith('19')) {
-      awalLembur = '03.00';
-      defaultNote = 'Lembur Shift Malam';
-    } else {
-      // General shift: start of overtime is 8 hours after check in
-      const [hIn, mIn] = parseTime(rawIn);
-      const otStartH = (hIn + normalHours) % 24;
-      awalLembur = `${otStartH.toString().padStart(2, '0')}.${mIn.toString().padStart(2, '0')}`;
-    }
-  }
+  // 6. Operator terjadwal OFF but has explicit checkIn/checkout (backup working)
+  // This handles the case where OFF schedule but working - all hours as overtime
+  const overtimeHours = actualDuration;
 
   return {
-    isScheduledWork: true,
+    isScheduledWork: false,
     actualDurationHours: actualDuration,
     overtimeHours,
-    awalLembur,
-    akhirLembur,
-    keterangan: params.customNote || defaultNote,
+    awalLembur: formattedIn,
+    akhirLembur: formattedOut,
+    keterangan: params.customNote || 'Lembur Backup (working on OFF day)',
     pemberiTugas: supervisor,
     isIncomplete: false,
   };
+}
+export function calculateDayOvertime(params: CalculateDayOvertimeParams): OvertimeCalculationResult {
+
 }
