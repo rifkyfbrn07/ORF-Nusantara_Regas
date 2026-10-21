@@ -17,7 +17,12 @@ interface LeaveDocxViewerProps {
 
 /**
  * Pratinjau dokumen Formulir Permohonan Cuti (.docx) yang dirender langsung
- * dari berkas template asli, plus unduhan DOCX dan Cetak/Simpan PDF (final).
+ * dari berkas template asli, plus unduhan DOCX dan Cetak/Simpan PDF.
+ *
+ * Aturan PDF:
+ * - Draft / pratinjau tersedia untuk semua status (termasuk PENDING).
+ * - PDF FINAL hanya tersedia setelah status APPROVED
+ *   (alur Reviewer → Team Lead → Manager sudah selesai).
  *
  * Catatan teknis: konversi DOCX -> PDF di server (LibreOffice/soffice) tidak
  * tersedia pada lingkungan ini, sehingga PDF dihasilkan lewat dialog cetak
@@ -91,7 +96,6 @@ export function LeaveDocxViewer({
    * di root body agar hanya dokumen yang ikut tercetak.
    */
   const handlePrint = () => {
-    if (!isFinal) return;
     const source = containerRef.current;
     if (!source || !source.innerHTML.trim()) return;
 
@@ -149,7 +153,7 @@ export function LeaveDocxViewer({
             />
             {!isFinal && (
               <span className="text-[11px] font-semibold text-amber-600 dark:text-amber-400">
-                PDF final hanya tersedia setelah approval Manager.
+                PDF DRAFT tersedia — FINAL hanya setelah approval Manager.
               </span>
             )}
           </div>
@@ -164,17 +168,31 @@ export function LeaveDocxViewer({
             </a>
             <button
               type="button"
-              disabled={!isFinal || loading}
+              disabled={loading}
               onClick={handlePrint}
               className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1.5 transition disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
               title={
                 isFinal
-                  ? 'Cetak / Simpan sebagai PDF melalui dialog cetak browser'
-                  : 'Tersedia setelah pengajuan disetujui final oleh Manager'
+                  ? 'Cetak / Simpan sebagai PDF FINAL melalui dialog cetak browser (persetujuan lengkap)'
+                  : 'Cetak / Simpan sebagai PDF DRAFT melalui dialog cetak browser (belum disetujui final)'
               }
             >
               <Printer className="h-3.5 w-3.5" />
-              <span>Cetak / Simpan PDF</span>
+              <span>{isFinal ? 'Cetak / Simpan PDF (Final)' : 'Cetak / Simpan PDF (Draft)'}</span>
+            </button>
+            <button
+              type="button"
+              disabled={loading}
+              onClick={handlePrint}
+              className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold flex items-center gap-1.5 transition disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+              title={
+                isFinal
+                  ? 'Unduh dokumen PDF FINAL (persetujuan Reviewer → Team Lead → Manager lengkap)'
+                  : 'Unduh dokumen PDF DRAFT (belum disetujui final)'
+              }
+            >
+              <FileText className="h-3.5 w-3.5" />
+              <span>{isFinal ? 'Unduh PDF (Final)' : 'Unduh PDF (Draft)'}</span>
             </button>
             <button
               type="button"
@@ -220,7 +238,8 @@ export function LeaveDocxViewer({
         <p className="text-[11px] text-slate-400 dark:text-slate-500 flex items-center gap-1.5">
           <FileText className="h-3.5 w-3.5" />
           Dokumen dirender dari template resmi PT Permata Karya Jasa (.docx). Gunakan opsi
-          &quot;Cetak / Simpan PDF&quot; untuk menghasilkan PDF final.
+          &quot;Cetak / Simpan PDF&quot; atau &quot;Unduh PDF&quot; untuk menghasilkan PDF via dialog
+          cetak browser. PDF FINAL hanya tersedia setelah pengajuan disetujui oleh Manager.
         </p>
       </div>
     </Modal>

@@ -14,12 +14,13 @@ import { CurrentShiftCard } from '@/components/dashboard/CurrentShiftCard';
 import { OperationalAlertsCard } from '@/components/dashboard/OperationalAlertsCard';
 import { OperatorStatusTable } from '@/components/dashboard/OperatorStatusTable';
 import { InfoOrfWidget } from '@/components/dashboard/InfoOrfWidget';
+import { ProgramNotifications } from '@/components/dashboard/ProgramNotifications';
 
 export default async function ManagerDashboardPage() {
   const manager = await requireRole(['MANAGER', 'ADMIN']);
   const todayStr = formatJakartaDate();
 
-  const [manpowerSummary, currentShiftCoverage, userRoleCounts, todaySchedules] = await Promise.all([
+  const [manpowerSummary, currentShiftCoverage, userRoleCounts, todaySchedules, managerPrograms] = await Promise.all([
     getManpowerStatusSummary(todayStr),
     getCurrentShiftCoverage(todayStr),
     prisma.user.groupBy({
@@ -30,6 +31,18 @@ export default async function ManagerDashboardPage() {
     prisma.schedule.findMany({
       where: { date: todayStr },
       select: { status: true, shift: { select: { code: true, name: true } } },
+    }),
+    prisma.programKerja.findMany({
+      select: {
+        id: true,
+        name: true,
+        category: true,
+        status: true,
+        progress: true,
+        deadline: true,
+        months: { select: { month: true, week: true, target: true, realization: true } },
+      },
+      orderBy: { sequence: 'asc' },
     }),
   ]);
 
@@ -85,6 +98,12 @@ export default async function ManagerDashboardPage() {
       />
 
       <InfoOrfWidget href="/manager/monitoring-orf" />
+
+      {/* PEMBERITAHUAN PROGRAM */}
+      <ProgramNotifications
+        programs={managerPrograms}
+        userRole={manager.role as 'ADMIN' | 'MANAGER' | 'OPERATOR'}
+      />
 
       {/* 2. Primary Command Center Row 1 (Workforce Overview, Operational Pulse, Facility Status) */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">

@@ -19,6 +19,7 @@ import {
   Calendar,
   Building2,
   BadgeInfo,
+  Printer,
 } from 'lucide-react';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { Modal } from '@/components/ui/Modal';
@@ -676,10 +677,32 @@ export function OperatorRequestsClient({
                       type="button"
                       onClick={() => setDocViewItem(r)}
                       className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs font-bold transition shadow-2xs"
-                      title="Pratinjau dokumen cuti dan unduh PDF final (khusus pengajuan yang sudah disetujui)"
+                      title="Pratinjau dokumen cuti sebelum disimpan sebagai PDF"
                     >
                       <FileText className="h-3.5 w-3.5" />
-                      <span>Pratinjau &amp; PDF</span>
+                      <span>Pratinjau PDF</span>
+                    </button>
+
+                    {/* Unduh PDF — unduh langsung sebagai PDF via cetak browser */}
+                    <button
+                      type="button"
+                      onClick={() => setDocViewItem(r)}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50/80 dark:bg-blue-950/50 hover:bg-blue-100 dark:hover:bg-blue-900 text-[#0B3568] dark:text-[#38BDF8] text-[11px] font-bold transition shadow-2xs"
+                      title="Unduh dokumen cuti sebagai PDF via dialog cetak browser (draft saat pending, final setelah approval)"
+                    >
+                      <Printer className="h-3 w-3 text-[#0B3568] dark:text-[#38BDF8]" />
+                      <span>Unduh PDF</span>
+                    </button>
+
+                    {/* Buat PDF — buat dokumen PDF dari template (draft saat pending, final setelah approved) */}
+                    <button
+                      type="button"
+                      onClick={() => setDocViewItem(r)}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50/80 dark:bg-emerald-950/50 hover:bg-emerald-100 dark:hover:bg-emerald-900 text-emerald-700 dark:text-emerald-300 text-[11px] font-bold transition shadow-2xs"
+                      title="Buat dokumen PDF dari template resmi cuti (draft saat belum disetujui, final setelah approval Manager)"
+                    >
+                      <FileText className="h-3 w-3 text-emerald-700 dark:text-emerald-300" />
+                      <span>Buat PDF</span>
                     </button>
 
                     {hasProof && (
