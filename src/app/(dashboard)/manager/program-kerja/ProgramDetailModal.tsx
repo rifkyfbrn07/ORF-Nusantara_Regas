@@ -65,25 +65,86 @@ function Field({ label, value, span }: { label: string; value: string; span?: 2 
 
 /** Jadwal bulan program — Plan (biru) dan Realisasi (hijau) dari periode Excel. */
 function MonthSchedule({ program }: { program: ProgramKerjaDTO }) {
-  const months = Array.from({ length: 12 }, (_, i) => {
-    const entries = program.months.filter((m) => m.month === i + 1);
-    const plan = entries.some((e) => e.realization !== null);
+  const [editingMonth, setEditingMonth] = useState<number | null>(null);
+  const [realizationValue, setRealizationValue] = useState<number | null>(null);
+    const entries = programb.filter((m) => m.b === i + 1);
+    const plan = entries.some((e) => e.target !== null);
     const realValues = entries.filter((e) => e.realization !== null).map((e) => e.realization as number);
     const maxReal = realValues.length ? Math.max(...realValues) : null;
-    return { plan, maxReal };
+    return { month: i + 1, entries, plan, maxReal };
   });
   return (
     <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-6">
-      {months.map((m, idx) => (
-        <div key={idx} className="rounded-lg border border-[#E2E8F0] bg-[#FBFDFE] px-2 py-2 text-center">
-          <div className="text-[9px] font-black uppercase tracking-wide text-slate-400">{MONTH_SHORT[idx]}</div>
+      {months.map((m) => (
+        <div
+          key={m.month}
+          className="rounded-lg border border-[#E2E8F0] bg-[#FBFDFE] px-2 py-2 text-center cursor-pointer hover:border-[#0066B3] transition-colors"
+          onClick={() => setEditingMonth(m.month)}
+        >
+          <div className="text-[9px] font-black uppercase tracking-wide text-slate-400">{MONTH_SHORT[m.month - 1]}</div>
           <div className="mt-1.5 space-y-1">
-            <div className={`h-1.5 rounded-full ${m.plan ? 'bg-[#0088D8]' : 'bg-slate-200/70'}`} title="Plan (P)" />
-            <div className={`h-1.5 rounded-full ${m.maxReal === 0 ? 'bg-red-400' : m.maxReal && m.maxReal > 0 ? 'bg-emerald-500' : 'bg-slate-200/70'}`} title="Realisasi (R)" />
+            <div
+              className={`h-1.5 rounded-full ${m.plan ? 'bg-[#0088D8]' : 'bg-slate-200/70'}`}
+              title="Plan (P)"
+            />
+            <div
+              className={`h-1.5 rounded-full ${m.maxReal === 0 ? 'bg-red-400' : m.maxReal && m.maxReal > 0 ? 'bg-emerald-500' : 'bg-slate-200/70'}`}
+              title="Realisasi (R)"
+            />
           </div>
-          <div className="mt-1 text-[8.5px] font-black tabular-nums text-slate-500">{m.maxReal !== null ? `${m.maxReal}%` : m.plan ? 'P' : '—'}</div>
+          <div className="mt-1 text-[8.5px] font-black tabular-nums text-slate-500">
+            {m.maxReal !== null ? `${m.maxReal}%` : m.plan ? 'P' : '—'}
+          </div>
         </div>
       ))}
+      {editingMonth && (
+        <div className="rounded-lg border border-[#DCE5EF] bg-[#F8FAFC] px-3 py-2.5">
+          <span className="block text-[9px] font-black uppercase tracking-wide text-slate-400">
+            Realisasi Bulan {MONTH_SHORT[editingMonth - 1]}
+          </span>
+          <p className="mt-0.5 whitespace-pre-wrap text-[11px] leading-relaxed text-slate-700">
+            {realizationValue !== null ? `${realizationValue}` : '—'}
+          </p>
+          <div className="mt-3">
+            <input
+              type="number"
+              value={realizationValue !== null ? `${realizationValue}` : ''}
+              onChange={(e) => setRealizationValue(Number(e.target.value) || null)}
+              className="w-full px-2 py-1 border rounded text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#0066B3]"
+              min={0}
+              max={100}
+              step={1}
+              placeholder="0-100"
+            />
+          </div>
+          <div className="mt-3 flex gap-2">
+            <button
+              onClick={() => {
+                if (realizationValue !== null && realizationValue !== undefined) {
+                  const entryIndex = programb.findIndex((m) => m.b === editingMonth);
+                  if (entryIndex >= 0) {
+                    programb[entryIndex].realization = realizationValue;
+                  }
+                  setEditingMonth(null);
+                  setRealizationValue(null);
+                }
+              }}
+              className="flex-1 bg-emerald-600 text-white py-1 rounded text-[9px] font-bold"
+            >
+              Simpan
+            </button>
+            <button
+              onClick={() => {
+                setEditingMonth(null);
+                setRealizationValue(null);
+              }}
+              className="flex-1 bg-slate-400 text-white py-1 rounded text-[9px] font-bold"
+            >
+              Batal
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
