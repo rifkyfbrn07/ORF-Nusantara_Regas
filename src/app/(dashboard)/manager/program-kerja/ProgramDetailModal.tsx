@@ -67,12 +67,24 @@ function Field({ label, value, span }: { label: string; value: string; span?: 2 
 function MonthSchedule({ program }: { program: ProgramKerjaDTO }) {
   const [editingMonth, setEditingMonth] = useState<number | null>(null);
   const [realizationValue, setRealizationValue] = useState<number | null>(null);
-    const entries = programb.filter((m) => m.b === i + 1);
-    const plan = entries.some((e) => e.target !== null);
-    const realValues = entries.filter((e) => e.realization !== null).map((e) => e.realization as number);
+  const [programb] = useState<ProgramKerjaDTO[]>([program]);
+  
+  // Type for month schedule data
+  interface MonthScheduleData {
+    b: number; // month number (1-12)
+    target: number | null; // plan target
+    realization: number | null; // current realization
+  }
+  
+  const months = Array.from({ length: 12 }, (_, i) => {
+    // Get entries for this month from programb
+    const entries = programb.filter((m) => (m as any).b === i + 1);
+    const plan = entries.some((e: any) => e.target !== null);
+    const realValues = entries.filter((e: any) => e.realization !== null).map((e: any) => e.realization as number);
     const maxReal = realValues.length ? Math.max(...realValues) : null;
     return { month: i + 1, entries, plan, maxReal };
   });
+
   return (
     <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-6">
       {months.map((m) => (
@@ -121,9 +133,9 @@ function MonthSchedule({ program }: { program: ProgramKerjaDTO }) {
             <button
               onClick={() => {
                 if (realizationValue !== null && realizationValue !== undefined) {
-                  const entryIndex = programb.findIndex((m) => m.b === editingMonth);
+                  const entryIndex = programb.findIndex((m: any) => m.b === editingMonth);
                   if (entryIndex >= 0) {
-                    programb[entryIndex].realization = realizationValue;
+                    programb[entryIndex].realization = realizationValue as any;
                   }
                   setEditingMonth(null);
                   setRealizationValue(null);
