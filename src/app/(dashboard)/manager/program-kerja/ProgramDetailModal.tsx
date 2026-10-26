@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { CalendarRange, Download, Eye, FileText, History, Info, Plus, Send } from 'lucide-react';
 import { Modal } from '@/components/ui/Modal';
 import { EvidenceViewer } from '@/components/ui/EvidenceViewer';
-import type { ProgramKerjaDTO, ProgramUpdateDTO } from '@/server/services/programKerjaService';
+import type { ProgramKerjaDTO, ProgramUpdateDTO, ProgramKerjaScheduleHistoryDTO, ProgramKerjaRealizationLogDTO } from '@/server/services/programKerjaService';
 import { CATEGORY_LABELS, MONTH_SHORT, StatusBadge, fmtNumber, fmtPercent } from './shared';
 import { getProgramMetrics } from '@/lib/programKerjaLogic';
 import { ProgramUpdateFormModal } from './ProgramUpdateFormModal';
@@ -67,7 +67,7 @@ function Field({ label, value, span }: { label: string; value: string; span?: 2 
 function MonthSchedule({ program }: { program: ProgramKerjaDTO }) {
   const months = Array.from({ length: 12 }, (_, i) => {
     const entries = program.months.filter((m) => m.month === i + 1);
-    const plan = entries.some((e) => e.target !== null);
+    const plan = entries.some((e) => e.oldRealization !== null);
     const realValues = entries.filter((e) => e.realization !== null).map((e) => e.realization as number);
     const maxReal = realValues.length ? Math.max(...realValues) : null;
     return { plan, maxReal };

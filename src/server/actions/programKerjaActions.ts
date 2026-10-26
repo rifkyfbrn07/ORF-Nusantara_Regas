@@ -12,14 +12,25 @@ import {
   updateProgramProgress,
   submitProgramUpdate,
   addProgramRealization,
+  updateProgramKerjaSchedule,
+  setProgramRealization,
+  getProgramKerjaScheduleHistory,
+  getProgramKerjaRealizationLog,
 } from '../services/programKerjaService';
-import type { ProgramRealizationAddInput, ProgramUpdateSubmitInput } from '@/lib/validation';
+import type {
+  ProgramRealizationAddInput,
+  ProgramUpdateSubmitInput,
+  ProgramKerjaScheduleChangeInput,
+  ProgramKerjaSetRealizationInput,
+} from '@/lib/validation';
 import {
   programKerjaCreateSchema,
   programKerjaUpdateSchema,
   programKerjaProgressSchema,
   programUpdateSubmitSchema,
   programRealizationAddSchema,
+  programKerjaScheduleChangeSchema,
+  programKerjaSetRealizationSchema,
   ProgramKerjaCreateInput,
   ProgramKerjaUpdateInput,
 } from '@/lib/validation';
@@ -174,5 +185,61 @@ export async function updatePicProgressAction(input: {
   } catch (error: unknown) {
     if (storagePathForRollback) await rollbackBlobIfUnreferenced(storagePathForRollback).catch(() => {});
     return { success: false as const, error: error instanceof Error ? error.message : 'Gagal memperbarui progress.' };
+  }
+}
+
+export async function updateProgramKerjaScheduleAction(input: ProgramKerjaScheduleChangeInput) {
+  try {
+    const user = await requireRole([...ALLOWED_ROLES]);
+    const parse = programKerjaScheduleChangeSchema.safeParse(input);
+    if (!parse.success) return { success: false as const, error: parse.error.issues[0]?.message || 'Data jadwal tidak valid' };
+    await updateProgramKerjaSchedule(parse.data.programId, parse.data.monthChanges, user.id, parse.data.reason ?? null);
+    revalidateProgramKerja();
+    return { success: true as const };
+  } catch (error: unknown) {
+    return { success: false as const, error: error instanceof Error ? error.message : 'Gagal memperbarui jadwal program' };
+  }
+}
+
+export async function setProgramRealizationAction(input: ProgramKerjaSetRealizationInput) {
+  try {
+    const user = await requireRole([...ALLOWED_ROLES]);
+    const parse = programKerjaSetRealizationSchema.safeParse(input);
+    if (!parse.success) return { success: false as const, error: parse.error.issues[0]?.message || 'Data realisasi tidak valid' };
+    const program = await setProgramRealization(
+      parse.data.programId,
+      parse.data.year,
+      parse.data.month,
+      parse.data.week,
+      parse.data.realization,
+      user.id,
+      parse.data.note ?? null,
+    );
+    revalidateProgramKerja();
+    return { success: true as const, program };
+  } catch (error: unknown) {
+    return { success: false as const, error: error instanceof Error ? error.message : 'Gagal menyimpan realisasi periode' };
+  }
+}
+
+export async function getProgramKerjaScheduleHistoryAction(programId: string) {
+  try {
+    await requireRole([...ALLOWED_ROLES, 'OPERATOR']);
+    if (!programId || typeof programId !== 'string') return { success: false as const, error: 'ID Program tidak valid' };
+    const history = await getProgramKerjaScheduleHistory(programId);
+    return { success: true as const, history };
+  } catch (error: unknown) {
+    return { success: false as const, error: error instanceof Error ? error.message : 'Gagal memuat riwayat jadwal' };
+  }
+}
+
+export async function getProgramKerjaRealizationLogAction(programId: string, month?: number) {
+  try {
+    await requireRole([...ALLOWED_ROLES, 'OPERATOR']);
+    if (!programId || typeof programId !== 'string') return { success: false as const, error: 'ID Program tidak valid' };
+    const log = await getProgramKerjaRealizationLog(programId, month);
+    return { success: true as const, log };
+  } catch (error: unknown) {
+    return { success: false as const, error: error instanceof Error ? error.message : 'Gagal memuat riwayat realisasi' };
   }
 }

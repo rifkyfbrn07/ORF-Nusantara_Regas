@@ -187,6 +187,8 @@ model User {
   uploadedProgramKerjaEvidence ProgramKerja[] @relation("ProgramKerjaEvidenceUploaders")
   programProgressLogs    ProgramKerjaProgressLog[] @relation("ProgramKerjaProgressActors")
   programUpdates         ProgramUpdate[]     @relation("ProgramUpdateSubmitters")
+programScheduleHistories ProgramKerjaScheduleHistory[] @relation("ProgramScheduleHistoryEditors")
+programRealizationLogs   ProgramKerjaRealizationLog[] @relation("ProgramRealizationLogEditors")
   createdAnnouncements   Announcement[]      @relation("CreatedAnnouncements")
   uploadedReports        OperationalReport[] @relation("UploadedReports")
   dataImports            DataImport[]        @relation("DataImportActors")
@@ -502,6 +504,8 @@ model ProgramKerja {
   months          ProgramKerjaMonth[]
   progressLogs    ProgramKerjaProgressLog[]
   updates         ProgramUpdate[]
+scheduleHistories ProgramKerjaScheduleHistory[]
+realizationLogs   ProgramKerjaRealizationLog[]
   createdAt       DateTime                @default(now())
   updatedAt       DateTime                @updatedAt
 
@@ -607,6 +611,56 @@ model ProgramKerjaMonth {
  * Data dokumen hanya dianggap sebagai input — seluruh perubahan ditulis
  * dalam satu database transaction dan dicatat di sini.
  */
+
+/**
+ * Riwayat perubahan jadwal Program Kerja.
+ * Setiap kali jadwal (bulan pelaksanaan) program diubah, catat:
+ * jadwal sebelumnya, jadwal baru, waktu perubahan, dan pengguna yang mengubah.
+ * Tidak pernah menimpa/replace record lama — append-only.
+ */
+model ProgramKerjaScheduleHistory {
+id String @id @default(cuid())
+programId String
+program ProgramKerja @relation(fields: [programId], references: [id], onDelete: Cascade)
+previousYear Int
+previousMonth Int?
+newYear Int
+newMonth Int?
+changedById String
+changedBy User @relation("ProgramScheduleHistoryEditors", fields: [changedById], references: [id])
+changedAt DateTime @default(now())
+reason String?
+
+@@index([programId])
+@@index([changedById])
+@@index([changedAt])
+}
+
+/**
+ * Riwayat perubahan realisasi per periode (bulan) Program Kerja.
+ * Catat: Program, periode yang diperbarui, nilai sebelumnya, nilai baru,
+ * waktu pembaruan, dan pengguna yang melakukan perubahan.
+ * Digunakan untuk membedakan "Tambah realisasi" vs "Edit/koreksi realisasi".
+ */
+model ProgramKerjaRealizationLog {
+id String @id @default(cuid())
+programId String
+program ProgramKerja @relation(fields: [programId], references: [id], onDelete: Cascade)
+year Int
+month Int
+oldRealization Int?
+newRealization Int
+changedById String
+changedBy User @relation("ProgramRealizationLogEditors", fields: [changedById], references: [id])
+changedAt DateTime @default(now())
+note String?
+
+@@index([programId])
+@@index([programId, year, month])
+@@index([changedById])
+@@index([changedAt])
+}
+
 model DataImport {
   id                String             @id @default(cuid())
   fileName          String

@@ -1,0 +1,31 @@
+=== SUMMARY OF FIXES NEEDED ===
+File: src/app/(dashboard)/manager/program-kerja/ProgramDetailModal.tsx
+
+1. DTO IMPORTS (line 8):
+   Current: import type { ProgramKerjaDTO, ProgramUpdateDTO } from '@/server/services/programKerjaService';
+   Fixed:   import type { ProgramKerjaDTO, ProgramUpdateDTO, ProgramKerjaScheduleHistoryDTO, ProgramKerjaRealizationLogDTO } from '@/server/services/programKerjaService';
+
+2. REALIZATION HISTORY TABLE - Fix these DTO property names:
+   - {l.week || '—'}          → {'—'}          (DTO has month, not week)
+   - {fmtNumber(l.target)}     → {fmtNumber(l.oldRealization)}  (DTO has oldRealization)
+   - {fmtNumber(l.realization)}→ {fmtNumber(l.newRealization)} (DTO has newRealization)
+   - {fmtNumber(l.diff ?? 0)}  → {fmtNumber(l.newRealization - l.oldRealization ?? 0)}
+   - {l.userName || '—'}      → {l.changedBy?.name || '—'} (DTO has changedBy.name)
+   - {l.note || '—'}          → {l.note || '—'}          (DTO has note - keep as is)
+
+3. SCHEDULE HISTORY TABLE - Fix these DTO property names:
+   - l.month                    → l.newMonth or l.previousMonth (DTO has previousMonth/newMonth)
+   - l.week                     → Remove (DTO has no week property)
+   - l.target                   → l.reason              (DTO has reason)
+   - l.realization              → l.reason              (DTO has reason)
+   - l.diff                     → Remove              (not in DTO)
+   - l.userName                 → l.changedBy?.name     (DTO has changedBy.name)
+   - l.note                     → Remove              (note is in realization log, not schedule history)
+
+DTO Interfaces:
+- ProgramKerjaRealizationLogDTO: id, year, month, oldRealization, newRealization, changedBy, changedAt, note
+- ProgramKerjaScheduleHistoryDTO: id, previousYear, previousMonth, newYear, newMonth, changedBy, changedAt, reason
+
+BUILD VERIFICATION:
+Run: npx next build
+Check for any remaining TypeScript errors related to property access on these DTOs.

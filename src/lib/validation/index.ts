@@ -516,3 +516,35 @@ export const nextCargoSchema = z.object({
 export type InfoOrfReportInput = z.infer<typeof infoOrfReportSchema>;
 export type InfoOrfReportUpdateInput = z.infer<typeof infoOrfReportUpdateSchema>;
 export type NextCargoInput = z.infer<typeof nextCargoSchema>;
+
+// ============================================================
+// SCHEDULE CHANGE — Ubah jadwal pelaksanaan program (bulan/minggu)
+// ============================================================
+export const programKerjaScheduleChangeSchema = z.object({
+  programId: z.string().min(1, 'Program wajib dipilih.'),
+  monthChanges: z.array(
+    z.object({
+      fromMonth: z.number().int().min(1, 'Bulan dari minimal 1').max(12, 'Bulan dari maksimal 12'),
+      fromWeek: z.number().int().min(1, 'Minggu dari minimal 1').max(5, 'Minggu dari maksimal 5'),
+      toMonth: z.number().int().min(1, 'Bulan tujuan minimal 1').max(12, 'Bulan tujuan maksimal 12'),
+      toWeek: z.number().int().min(1, 'Minggu tujuan minimal 1').max(5, 'Minggu tujuan maksimal 5'),
+    })
+  ).min(1, 'Minimal satu perubahan jadwal wajib diisi.'),
+  reason: z.string().trim().max(500, 'Alasan maksimal 500 karakter').optional().nullable(),
+});
+
+export type ProgramKerjaScheduleChangeInput = z.infer<typeof programKerjaScheduleChangeSchema>;
+
+// ============================================================
+// SET REALISASI PER PERIODE — Tambah atau edit realisasi per bulan/minggu
+// ============================================================
+export const programKerjaSetRealizationSchema = z.object({
+  programId: z.string().min(1, 'Program wajib dipilih.'),
+  year: z.number().int().min(2020, 'Tahun minimal 2020').max(2100, 'Tahun maksimal 2100'),
+  month: z.number().int().min(1, 'Bulan minimal 1').max(12, 'Bulan maksimal 12'),
+  week: z.number().int().min(1, 'Minggu minimal 1').max(5, 'Minggu maksimal 5'),
+  realization: z.number().int().min(0, 'Realisasi minimal 0').max(100, 'Realisasi maksimal 100'),
+  note: z.string().trim().max(500, 'Catatan maksimal 500 karakter').optional().nullable(),
+});
+
+export type ProgramKerjaSetRealizationInput = z.infer<typeof programKerjaSetRealizationSchema>;

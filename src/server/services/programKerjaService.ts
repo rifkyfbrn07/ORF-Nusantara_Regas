@@ -749,3 +749,217 @@ export async function addProgramRealization(
   if (!found) throw new Error('Program tidak ditemukan setelah update.');
   return found;
 }
+
+// ============================================================================
+// SCHEDULE MANAGEMENT — Ubah Jadwal Program
+// ============================================================================
+
+export interface ProgramKerjaScheduleHistoryDTO {
+  id: string;
+  previousYear: number;
+  previousMonth: number | null;
+  newYear: number;
+  newMonth: number | null;
+  changedBy: { id: string; name: string } | null;
+  changedAt: string;
+  reason: string | null;
+}
+
+export interface ProgramKerjaRealizationLogDTO {
+  id: string;
+  year: number;
+  month: number;
+  oldRealization: number | null;
+  newRealization: number;
+  changedBy: { id: string; name: string } | null;
+  changedAt: string;
+  note: string | null;
+}
+
+function serializeScheduleHistory(h: Prisma.ProgramKerjaScheduleHistoryGetPayload<{ include: { changedBy: { select: { id: true; name: true } } } }>): ProgramKerjaScheduleHistoryDTO {
+  return {
+    id: h.id,
+    previousYear: h.previousYear,
+    previousMonth: h.previousMonth,
+    newYear: h.newYear,
+    newMonth: h.newMonth,
+    changedBy: h.changedBy ? { id: h.changedBy.id, name: h.changedBy.name } : null,
+    changedAt: h.changedAt.toISOString(),
+    reason: h.reason,
+  };
+}
+
+function serializeRealizationLog(l: Prisma.ProgramKerjaRealizationLogGetPayload<{ include: { changedBy: { select: { id: true; name: true } } } }>): ProgramKerjaRealizationLogDTO {
+  return {
+    id: l.id,
+    year: l.year,
+    month: l.month,
+    oldRealization: l.oldRealization,
+    newRealization: l.newRealization,
+    changedBy: l.changedBy ? { id: l.changedBy.id, name: l.changedBy.name } : null,
+    changedAt: l.changedAt.toISOString(),
+    note: l.note,
+  };
+}
+
+/** Ubah jadwal pelaksanaan program — pindahkan bulan-bulan terkait ke jadwal baru. */
+export async function updateProgramKerjaSchedule(
+  programId: string,
+  monthChanges: { fromMonth: number; fromWeek: number; toMonth: number; toWeek: number }[],
+  actorId: string,
+  reason?: string | null
+): Promise<void> {
+  const program = await prisma.programKerja.findUnique({
+    where: { id: programId },
+    select: { id: true, year: true, months: true },
+  });
+  if (!program) throw new Error('Program tidak ditemukan.');
+
+  const tx: Prisma.PrismaPromise<unknown>[] = [];
+
+  // Update setiap entri bulan ke jadwal baru
+  for (const c of monthChanges) {
+    const entry = await prisma.programKerjaMonth.findUnique({
+      where: { programId_month_week: { programId, month: c.fromMonth, week: c.fromWeek } },
+    });
+    if (!entry) continue;
+
+    tx.push(
+      prisma.programKerjaMonth.update({
+        where: { id: entry.id },
+        data: { month: c.toMonth, week: c.toWeek },
+      })
+    );
+  }
+
+  // Catat histori perubahan jadwal
+  for (const c of monthChanges) {
+    tx.push(
+      prisma.programKerjaScheduleHistory.create({
+        data: {
+          programId,
+          previousYear: program.year,
+          previousMonth: c.fromMonth,
+          newYear: program.year,
+          newMonth: c.toMonth,
+          changedById: actorId,
+          reason: reason ?? null,
+        },
+        include: { changedBy: { select: { id: true, name: true } } },
+      })
+    );
+  }
+
+  await prisma.$transaction(tx);
+
+  await recordAuditLog({
+    userId: actorId,
+    action: 'UPDATE_PROGRAM_SCHEDULE',
+    entity: 'ProgramKerja',
+    entityId: programId,
+    metadata: { monthChanges, reason },
+  });
+}
+
+/** Set realisasi untuk periode bulan tertentu (add atau edit/koreksi). */
+export async function setProgramRealization(
+  programId: string,
+  year: number,
+  month: number,
+  week: number,
+  realization: number,
+  actorId: string,
+  note?: string | null
+): Promise<ProgramKerjaDTO> {
+  const program = await prisma.programKerja.findUnique({
+    where: { id: programId },
+    select: { id: true, year: true, planTarget: true },
+  });
+  if (!program) throw new Error('Program tidak ditemukan.');
+
+  if (realization < 0 || realization > 100) {
+    throw new Error('Nilai realisasi harus antara 0 dan 100.');
+  }
+
+  const existing = await prisma.programKerjaMonth.findUnique({
+    where: { programId_month_week: { programId, month, week } },
+  });
+
+  const oldRealization = existing?.realization ?? null;
+
+  const tx: Prisma.PrismaPromise<unknown>[] = [];
+
+  if (existing) {
+    tx.push(
+      prisma.programKerjaMonth.update({
+        where: { id: existing.id },
+        data: { realization },
+      })
+    );
+  } else {
+    const planEntry = await prisma.programKerjaMonth.findUnique({
+      where: { programId_month_week: { programId, month, week } },
+    });
+    if (!planEntry || planEntry.target === null) {
+      throw new Error('Tidak ada plan pada periode tersebut. Buat plan terlebih dahulu.');
+    }
+    tx.push(
+      prisma.programKerjaMonth.create({
+        data: { programId, month, week, target: planEntry.target, realization },
+      })
+    );
+  }
+
+  tx.push(
+    prisma.programKerjaRealizationLog.create({
+      data: {
+        programId,
+        year,
+        month,
+        oldRealization,
+        newRealization: realization,
+        changedById: actorId,
+        note: note ?? null,
+      },
+      include: { changedBy: { select: { id: true, name: true } } },
+    })
+  );
+
+  await prisma.$transaction(tx);
+
+  await recordAuditLog({
+    userId: actorId,
+    action: existing ? 'EDIT_PROGRAM_REALIZATION' : 'ADD_PROGRAM_REALIZATION_PERIOD',
+    entity: 'ProgramKerja',
+    entityId: programId,
+    metadata: { year, month, week, oldRealization, newRealization: realization, note },
+  });
+
+  const refreshed = await listProgramKerja({ year: program.year });
+  const found = refreshed.find((p) => p.id === programId);
+  if (!found) throw new Error('Program tidak ditemukan setelah update.');
+  return found;
+}
+
+/** Dapatkan histori perubahan jadwal program. */
+export async function getProgramKerjaScheduleHistory(programId: string): Promise<ProgramKerjaScheduleHistoryDTO[]> {
+  const rows = await prisma.programKerjaScheduleHistory.findMany({
+    where: { programId },
+    include: { changedBy: { select: { id: true, name: true } } },
+    orderBy: { changedAt: 'desc' },
+  });
+  return rows.map(serializeScheduleHistory);
+}
+
+/** Dapatkan histori perubahan realisasi per periode. */
+export async function getProgramKerjaRealizationLog(
+  programId: string,
+  month?: number
+): Promise<ProgramKerjaRealizationLogDTO[]> {
+  const rows = await prisma.programKerjaRealizationLog.findMany({
+    where: { programId, ...(month !== undefined ? { month } : {}) },
+    include: { changedBy: { select: { id: true, name: true } } },
+    orderBy: { changedAt: 'desc' },
+  });
+  return rows.map(serializeRealizationLog);
+}
