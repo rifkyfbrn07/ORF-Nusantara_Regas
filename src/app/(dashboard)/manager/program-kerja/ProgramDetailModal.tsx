@@ -67,7 +67,7 @@ function Field({ label, value, span }: { label: string; value: string; span?: 2 
 function MonthSchedule({ program }: { program: ProgramKerjaDTO }) {
   const months = Array.from({ length: 12 }, (_, i) => {
     const entries = program.months.filter((m) => m.month === i + 1);
-    const plan = entries.some((e) => e.oldRealization !== null);
+    const plan = entries.some((e) => e.realization !== null);
     const realValues = entries.filter((e) => e.realization !== null).map((e) => e.realization as number);
     const maxReal = realValues.length ? Math.max(...realValues) : null;
     return { plan, maxReal };
