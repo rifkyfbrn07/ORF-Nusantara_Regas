@@ -31,7 +31,7 @@ export const APPLICATIONS: ApplicationLink[] = [
   },
   {
     id: 'idaman',
-    name: 'IDAMAN',
+    name: 'PDH',
     description: 'Pertamina Development Hub',
     url: 'https://apps.pertamina.com/pdh/app',
   },
@@ -95,7 +95,7 @@ export const APPLICATIONS: ApplicationLink[] = [
     description: 'Permit to Work',
     url: 'https://ptw.nusantararegas.com/login',
   },
-  
+
   {
     id: 'activox',
     name: 'ActivoX',
