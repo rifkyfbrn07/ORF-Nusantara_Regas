@@ -63,7 +63,7 @@ export function Sidebar({
 
   // IDAMAN External Shortcut Menu Item
   const idamanNavItem: NavItem = {
-    label: 'IDAMAN',
+    label: 'PDH',
     href: 'https://apps.pertamina.com/pdh/app',
     imageSrc: '/images/idaman.png',
     isExternal: true,
