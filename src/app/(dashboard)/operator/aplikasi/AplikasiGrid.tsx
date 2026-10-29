@@ -30,6 +30,7 @@ const DEFAULT_LOGO = '/images/PERTAMINA.png';
  * ICOFR/SIPGAS TIDAK dipakai sebagai fallback.
  */
 const APP_LOGO: Record<string, string> = {
+  idaman: '/images/idaman.png',
   'nregas-emas': '/images/NREMAS.png',
   'gms-pgn': '/images/SIPGAS.png',
   icor: '/images/ICOFR.png',

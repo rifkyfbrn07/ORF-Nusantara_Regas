@@ -32,8 +32,8 @@ export const APPLICATIONS: ApplicationLink[] = [
   {
     id: 'idaman',
     name: 'IDAMAN',
-    description: 'Portal IDAMAN',
-    url: 'https://login.idaman.pertamina.com/Common/Login',
+    description: 'Pertamina Development Hub',
+    url: 'https://apps.pertamina.com/pdh/app',
   },
   {
     id: 'esimi',

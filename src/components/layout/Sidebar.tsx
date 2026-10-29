@@ -23,6 +23,7 @@ import {
   Activity,
   X,
   ChevronRight,
+  ExternalLink,
 } from 'lucide-react';
 import { SessionUser } from '@/lib/auth/session';
 
@@ -37,9 +38,11 @@ interface SidebarProps {
 interface NavItem {
   label: string;
   href: string;
-  icon: React.ComponentType<{ className?: string; strokeWidth?: number }>;
+  icon?: React.ComponentType<{ className?: string; strokeWidth?: number }>;
+  imageSrc?: string;
   badge?: number;
   hasSub?: boolean;
+  isExternal?: boolean;
 }
 
 interface NavSection {
@@ -57,6 +60,14 @@ export function Sidebar({
   const pathname = usePathname();
   const isManager = user.role === 'MANAGER';
   const isAdmin = user.role === 'ADMIN';
+
+  // IDAMAN External Shortcut Menu Item
+  const idamanNavItem: NavItem = {
+    label: 'IDAMAN',
+    href: 'https://apps.pertamina.com/pdh/app',
+    imageSrc: '/images/idaman.png',
+    isExternal: true,
+  };
 
   // Admin Navigation Structure
   const adminSections: NavSection[] = [
@@ -102,6 +113,7 @@ export function Sidebar({
         { label: 'Audit Log', href: '/manager/audit-logs', icon: ShieldCheck },
         { label: 'Pengaturan', href: '/admin/settings', icon: Settings },
         { label: 'Aplikasi', href: '/operator/aplikasi', icon: Grid2X2 },
+        idamanNavItem,
       ],
     },
   ];
@@ -150,6 +162,7 @@ export function Sidebar({
         { label: 'Audit Log', href: '/manager/audit-logs', icon: ShieldCheck },
         { label: 'Pengaturan', href: '/profile#keamanan', icon: Settings },
         { label: 'Aplikasi', href: '/operator/aplikasi', icon: Grid2X2 },
+        idamanNavItem,
       ],
     },
   ];
@@ -193,6 +206,7 @@ export function Sidebar({
         { label: 'Notifikasi', href: '/notifications', icon: Bell, badge: unreadCount },
         { label: 'Pengaturan', href: '/profile', icon: Settings },
         { label: 'Aplikasi', href: '/operator/aplikasi', icon: Grid2X2 },
+        idamanNavItem,
       ],
     },
   ];
@@ -201,6 +215,7 @@ export function Sidebar({
   const allHrefs = sections.flatMap((s) => s.items.map((i) => i.href.split('?')[0]));
 
   const checkIsActive = (itemHref: string): boolean => {
+    if (itemHref.startsWith('http')) return false;
     const cleanItemHref = itemHref.split('?')[0];
     if (pathname === cleanItemHref) return true;
     if (!itemHref.includes('?') && pathname.startsWith(cleanItemHref + '/')) {
@@ -284,33 +299,35 @@ export function Sidebar({
                 const Icon = item.icon;
                 const isActive = checkIsActive(item.href);
 
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    onClick={onCloseMobile}
-                    className={clsx(
-                      'flex items-center justify-between px-3.5 py-2.5 rounded-xl text-[12.5px] font-semibold transition-all duration-150 group relative',
-                      isActive
-                        ? 'bg-[#087CC9] text-white font-bold shadow-[0_4px_16px_rgba(8,124,201,0.4),inset_0_1px_0_rgba(255,255,255,0.25)]'
-                        : 'text-[#123D70] dark:text-[#B9CCDE] hover:bg-[#F4F9FC] dark:hover:bg-[#0088D8]/10 hover:text-[#0077C8] dark:hover:text-[#EAF6FF]'
-                    )}
-                  >
+                const itemContent = (
+                  <>
                     {/* Active Left Indicator Bar */}
                     {isActive && (
                       <span className="absolute left-0 top-1.5 bottom-1.5 w-1 bg-[#69BE28] rounded-r-full shadow-xs" />
                     )}
 
-                    <div className="flex items-center gap-3 min-w-0">
-                      <Icon
-                        strokeWidth={2}
-                        className={clsx(
-                          'h-4.5 w-4.5 shrink-0 transition-transform duration-150 group-hover:scale-108',
-                          isActive
-                            ? 'text-white'
-                            : 'text-[#0077C8] dark:text-[#55B9F2] group-hover:text-[#0077C8] dark:group-hover:text-[#38A9EA]'
-                        )}
-                      />
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      {item.imageSrc ? (
+                        <span className="relative flex h-6 w-9 shrink-0 items-center justify-center overflow-hidden rounded-md border border-[#E2E8F0] bg-white p-0.5 shadow-2xs transition-transform duration-150 group-hover:scale-105 dark:border-[rgba(120,190,235,0.2)] dark:bg-white">
+                          <Image
+                            src={item.imageSrc}
+                            alt={`Logo ${item.label}`}
+                            width={36}
+                            height={24}
+                            className="h-full w-full object-contain object-center"
+                          />
+                        </span>
+                      ) : Icon ? (
+                        <Icon
+                          strokeWidth={2}
+                          className={clsx(
+                            'h-4.5 w-4.5 shrink-0 transition-transform duration-150 group-hover:scale-108',
+                            isActive
+                              ? 'text-white'
+                              : 'text-[#0077C8] dark:text-[#55B9F2] group-hover:text-[#0077C8] dark:group-hover:text-[#38A9EA]'
+                          )}
+                        />
+                      ) : null}
                       <span className="truncate leading-tight">{item.label}</span>
                     </div>
 
@@ -321,15 +338,55 @@ export function Sidebar({
                         </span>
                       ) : null}
 
-                      {'hasSub' in item && item.hasSub && (
-                        <ChevronRight
-                          className={clsx(
-                            'w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5',
-                            isActive ? 'text-white/80' : 'text-[#64748B] dark:text-[#7895AD]'
-                          )}
+                      {item.isExternal ? (
+                        <ExternalLink
+                          className="w-3.5 h-3.5 text-[#64748B] dark:text-[#7895AD] transition-all duration-150 group-hover:translate-x-0.5 group-hover:text-[#0077C8] dark:group-hover:text-[#38BDF8]"
                         />
+                      ) : (
+                        item.hasSub && (
+                          <ChevronRight
+                            className={clsx(
+                              'w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5',
+                              isActive ? 'text-white/80' : 'text-[#64748B] dark:text-[#7895AD]'
+                            )}
+                          />
+                        )
                       )}
                     </div>
+                  </>
+                );
+
+                const itemClassName = clsx(
+                  'flex items-center justify-between px-3.5 py-2.5 rounded-xl text-[12.5px] font-semibold transition-all duration-150 group relative',
+                  isActive
+                    ? 'bg-[#087CC9] text-white font-bold shadow-[0_4px_16px_rgba(8,124,201,0.4),inset_0_1px_0_rgba(255,255,255,0.25)]'
+                    : 'text-[#123D70] dark:text-[#B9CCDE] hover:bg-[#F4F9FC] dark:hover:bg-[#0088D8]/10 hover:text-[#0077C8] dark:hover:text-[#EAF6FF]'
+                );
+
+                if (item.isExternal) {
+                  return (
+                    <a
+                      key={item.href}
+                      href={item.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={onCloseMobile}
+                      className={itemClassName}
+                      title={`Buka ${item.label} di tab baru`}
+                    >
+                      {itemContent}
+                    </a>
+                  );
+                }
+
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={onCloseMobile}
+                    className={itemClassName}
+                  >
+                    {itemContent}
                   </Link>
                 );
               })}
