@@ -16,6 +16,8 @@ const DEFAULT_LOGO = '/images/PERTAMINA.png';
 
 /**
  * Logo aplikasi (file asli di public/images, TIDAK digenerate ulang):
+ *   - IDAMAN / PDH  → idaman.png
+ *   - i-AM Talent   → iam-talent.png
  *   - NR EMAS       → NREMAS.png
  *   - ICOR 2.0 REFORM → ICOFR.png (cadangan bila aplikasi hadir)
  *   - ICOFR          → ICOFR.png (WAJIB ICOFR, jangan fallback NREMAS)
@@ -31,6 +33,7 @@ const DEFAULT_LOGO = '/images/PERTAMINA.png';
  */
 const APP_LOGO: Record<string, string> = {
   idaman: '/images/idaman.png',
+  'iam-talent': '/images/iam-talent.png',
   'nregas-emas': '/images/NREMAS.png',
   'gms-pgn': '/images/SIPGAS.png',
   icor: '/images/ICOFR.png',

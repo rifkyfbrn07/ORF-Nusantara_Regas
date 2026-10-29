@@ -69,6 +69,14 @@ export function Sidebar({
     isExternal: true,
   };
 
+  // i-AM Talent External Shortcut Menu Item
+  const iamTalentNavItem: NavItem = {
+    label: 'i-AM Talent',
+    href: 'https://apps.pertamina.com/mycareer',
+    imageSrc: '/images/iam-talent.png',
+    isExternal: true,
+  };
+
   // Admin Navigation Structure
   const adminSections: NavSection[] = [
     {
@@ -114,6 +122,7 @@ export function Sidebar({
         { label: 'Pengaturan', href: '/admin/settings', icon: Settings },
         { label: 'Aplikasi', href: '/operator/aplikasi', icon: Grid2X2 },
         idamanNavItem,
+        iamTalentNavItem,
       ],
     },
   ];
@@ -163,6 +172,7 @@ export function Sidebar({
         { label: 'Pengaturan', href: '/profile#keamanan', icon: Settings },
         { label: 'Aplikasi', href: '/operator/aplikasi', icon: Grid2X2 },
         idamanNavItem,
+        iamTalentNavItem,
       ],
     },
   ];
@@ -207,6 +217,7 @@ export function Sidebar({
         { label: 'Pengaturan', href: '/profile', icon: Settings },
         { label: 'Aplikasi', href: '/operator/aplikasi', icon: Grid2X2 },
         idamanNavItem,
+        iamTalentNavItem,
       ],
     },
   ];

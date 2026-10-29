@@ -36,6 +36,12 @@ export const APPLICATIONS: ApplicationLink[] = [
     url: 'https://apps.pertamina.com/pdh/app',
   },
   {
+    id: 'iam-talent',
+    name: 'i-AM Talent',
+    description: 'Pertamina MyCareer',
+    url: 'https://apps.pertamina.com/mycareer',
+  },
+  {
     id: 'esimi',
     name: 'E-SIMI',
     description: 'Sistem E-SIMI',
