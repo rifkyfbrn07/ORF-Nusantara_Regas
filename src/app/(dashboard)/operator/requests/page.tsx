@@ -3,6 +3,7 @@ import { requireAuth } from '@/lib/auth/session';
 import {
   getOperatorLeaveRequests,
   getLeaveEntitlement,
+  getApprovalConfigurationStatus,
   getPendingLeaveApprovalsForUser,
 } from '@/server/services/leaveService';
 import { formatJakartaDate } from '@/lib/time';
@@ -36,6 +37,7 @@ export default async function OperatorRequestsPage({
   ]);
 
   const pendingApprovals = await getPendingLeaveApprovalsForUser(sessionUser.id);
+  const approvalConfiguration = await getApprovalConfigurationStatus(dbUser?.team);
 
   const currentUser = {
     name: dbUser?.name || sessionUser.name,
@@ -67,6 +69,7 @@ export default async function OperatorRequestsPage({
         currentUser={currentUser}
         entitlement={entitlement}
         pendingApprovals={pendingApprovals}
+        approvalConfiguration={approvalConfiguration}
         defaultTab={defaultTab}
       />
     </div>

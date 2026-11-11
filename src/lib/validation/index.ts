@@ -176,6 +176,10 @@ export const operatorCreateSchema = z.object({
   password: z.string().min(6, 'Kata sandi minimal 6 karakter'),
   position: z.string().min(2, 'Posisi/Jabatan minimal 2 karakter'),
   departmentId: z.string().optional(),
+  team: z.union([
+    z.literal(''),
+    z.string().max(20).regex(/^[A-Za-z0-9_-]+$/, 'Kode tim hanya boleh huruf, angka, garis bawah, dan strip'),
+  ]).optional(),
   phone: z.string().optional(),
   role: z.enum(['ADMIN', 'MANAGER', 'OPERATOR'] as const).default('OPERATOR'),
 });
@@ -187,6 +191,10 @@ export const operatorUpdateSchema = z.object({
   name: z.string().min(3, 'Nama operator minimal 3 karakter'),
   position: z.string().min(2, 'Posisi/Jabatan minimal 2 karakter'),
   departmentId: z.string().optional(),
+  team: z.union([
+    z.literal(''),
+    z.string().max(20).regex(/^[A-Za-z0-9_-]+$/, 'Kode tim hanya boleh huruf, angka, garis bawah, dan strip'),
+  ]).optional(),
   phone: z.string().optional(),
   isActive: z.boolean().default(true),
   newPassword: z.string().optional(),
@@ -214,6 +222,10 @@ const adminUserBaseSchema = z.object({
   role: z.enum(['MANAGER', 'OPERATOR'] as const).default('OPERATOR'),
   position: z.string().min(2, 'Jabatan minimal 2 karakter'),
   departmentId: z.string().optional(),
+  team: z.union([
+    z.literal(''),
+    z.string().max(20).regex(/^[A-Za-z0-9_-]+$/, 'Kode tim hanya boleh huruf, angka, garis bawah, dan strip'),
+  ]).optional(),
   phone: z.string().optional(),
   avatarUrl: avatarUrlSchema.optional().nullable(),
   isActive: z.boolean().default(true),

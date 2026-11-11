@@ -4,12 +4,13 @@ import UsersClient from './UsersClient';
 
 export default async function AdminUsersPage() {
   await requireAdmin();
-  const [users, departments] = await Promise.all([
+  const [users, departments, teamConfigs] = await Promise.all([
     prisma.user.findMany({
       select: {
         id: true,
         name: true,
         username: true,
+        team: true,
         email: true,
         employeeId: true,
         role: true,
@@ -25,7 +26,17 @@ export default async function AdminUsersPage() {
       orderBy: { createdAt: 'desc' },
     }),
     prisma.department.findMany({ orderBy: { name: 'asc' } }),
+    prisma.teamConfig.findMany({
+      select: {
+        code: true,
+        name: true,
+        reviewerId: true,
+        teamLeadId: true,
+        managerId: true,
+      },
+      orderBy: { code: 'asc' },
+    }),
   ]);
 
-  return <UsersClient users={users} departments={departments} />;
+  return <UsersClient users={users} departments={departments} teamConfigs={teamConfigs} />;
 }

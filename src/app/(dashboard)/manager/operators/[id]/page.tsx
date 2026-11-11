@@ -1,8 +1,8 @@
 import React from 'react';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import { requireRole } from '@/lib/auth/session';
-import { getOperatorFullDossier } from '@/server/services/operatorService';
+import { requireAuth } from '@/lib/auth/session';
+import { getOperatorFullDossier, getOperatorTeamScope } from '@/server/services/operatorService';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { UserAvatar } from '@/components/ui/UserAvatar';
 import { formatJakartaTime } from '@/lib/time';
@@ -22,12 +22,17 @@ export default async function OperatorDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  await requireRole(['MANAGER']);
+  const currentUser = await requireAuth();
   const resolvedParams = await params;
   const dossier = await getOperatorFullDossier(resolvedParams.id);
 
   if (!dossier) {
     notFound();
+  }
+  if (dossier.user.role !== 'OPERATOR') notFound();
+  if (currentUser.role !== 'MANAGER' && currentUser.role !== 'ADMIN') {
+    const teamCodes = await getOperatorTeamScope(currentUser.id);
+    if (!dossier.user.team || !teamCodes.includes(dossier.user.team)) notFound();
   }
 
   const { user, todayStatus, attendances, leaveRequests, schedules, hsseLogs } = dossier;
@@ -61,7 +66,7 @@ export default async function OperatorDetailPage({
               </span>
             </div>
             <p className="text-xs font-semibold text-slate-600 mt-0.5 font-mono">
-              {user.employeeId} • <span className="font-sans font-bold text-slate-800">{user.position}</span>
+              @{user.username} • {user.employeeId} • <span className="font-sans font-bold text-slate-800">{user.position}</span>
             </p>
             <div className="flex flex-wrap items-center gap-4 text-xs text-slate-500 mt-2">
               <div className="flex items-center gap-1">
@@ -76,7 +81,7 @@ export default async function OperatorDetailPage({
               )}
               <div className="flex items-center gap-1">
                 <Shield className="h-3.5 w-3.5 text-slate-400" />
-                <span>{user.department?.name || 'Operations'}</span>
+                <span>{user.team ? `Tim ${user.team} · ` : ''}{user.department?.name || 'Operations'}</span>
               </div>
             </div>
           </div>
@@ -186,6 +191,26 @@ export default async function OperatorDetailPage({
                       <span className="font-mono text-slate-500">{l.startDate} s/d {l.endDate}</span>
                     </div>
                     <p className="text-[11px] text-slate-600 mt-0.5">&ldquo;{l.reason}&rdquo;</p>
+                    <div className="mt-1.5 space-y-0.5 text-[10px] text-slate-500">
+                      {([
+                        { key: 'REVIEWER', label: 'Reviewer', name: l.reviewerName, at: l.reviewerApprovedAt, note: l.reviewerNote },
+                        { key: 'TEAM_LEAD', label: 'Team Lead', name: l.teamLeadName, at: l.teamLeadApprovedAt, note: l.teamLeadNote },
+                        { key: 'MANAGER', label: 'Manager', name: l.managerName, at: l.managerApprovedAt, note: l.managerNote },
+                      ] as const).map((stage) => {
+                        const rejected = l.status === 'REJECTED' && l.approvalStage === stage.key;
+                        const decision = stage.at
+                          ? rejected ? 'Ditolak' : 'Disetujui'
+                          : l.status === 'PENDING' && l.approvalStage === stage.key ? 'Menunggu' : 'Belum diproses';
+                        return (
+                          <p key={stage.key}>
+                            <span className="font-bold">{stage.label}:</span> {decision}
+                            {stage.name ? ` · ${stage.name}` : ''}
+                            {stage.at ? ` · ${new Date(stage.at).toLocaleString('id-ID')}` : ''}
+                            {stage.note ? ` · ${stage.note}` : ''}
+                          </p>
+                        );
+                      })}
+                    </div>
                   </div>
                   <StatusBadge status={l.status} size="sm" />
                 </div>

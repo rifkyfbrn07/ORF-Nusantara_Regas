@@ -110,6 +110,11 @@ interface OperatorRequestsClientProps {
   currentUser?: UserProfile;
   entitlement?: LeaveEntitlement;
   pendingApprovals?: PendingApprovalItem[];
+  approvalConfiguration?: {
+    team: string | null;
+    complete: boolean;
+    missing: string[];
+  };
   defaultTab?: 'mine' | 'approvals';
 }
 
@@ -355,6 +360,7 @@ export function OperatorRequestsClient({
   currentUser,
   entitlement,
   pendingApprovals = [],
+  approvalConfiguration,
   defaultTab = 'mine',
 }: OperatorRequestsClientProps) {
   const router = useRouter();
@@ -498,6 +504,19 @@ export function OperatorRequestsClient({
 
   return (
     <div className="space-y-5">
+      {approvalConfiguration && !approvalConfiguration.complete && (
+        <div className="flex items-start gap-2 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-amber-900">
+          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+          <div>
+            <p className="text-xs font-bold">Konfigurasi persetujuan belum lengkap</p>
+            <p className="mt-1 text-[11px]">
+              {approvalConfiguration.team ? `Tim ${approvalConfiguration.team}: ` : ''}
+              {approvalConfiguration.missing.join(', ')} belum dipetakan ke akun aktif yang berwenang.
+              Hubungi Admin; pengajuan baru tidak dapat dikirim sampai konfigurasi lengkap.
+            </p>
+          </div>
+        </div>
+      )}
       {success && (
         <div className="p-3.5 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 text-xs font-semibold rounded-2xl flex items-center justify-between shadow-xs">
           <div className="flex items-center gap-2">

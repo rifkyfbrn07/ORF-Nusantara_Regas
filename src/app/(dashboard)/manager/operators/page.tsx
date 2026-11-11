@@ -1,15 +1,19 @@
 import React from 'react';
-import { requireRole } from '@/lib/auth/session';
+import { notFound } from 'next/navigation';
+import { requireAuth } from '@/lib/auth/session';
 import { prisma } from '@/lib/db/prisma';
-import { getAllOperators } from '@/server/services/operatorService';
+import { getAllOperators, getOperatorTeamScope } from '@/server/services/operatorService';
 import { OperatorsManagerClient } from './OperatorsManagerClient';
 import { PageHeader } from '@/components/ui/PageHeader';
 
 export default async function ManagerOperatorsPage() {
-  await requireRole(['MANAGER', 'ADMIN']);
+  const currentUser = await requireAuth();
+  const canManage = currentUser.role === 'MANAGER' || currentUser.role === 'ADMIN';
+  const teamCodes = canManage ? undefined : await getOperatorTeamScope(currentUser.id);
+  if (!canManage && !teamCodes?.length) notFound();
 
   const [operators, departments] = await Promise.all([
-    getAllOperators(),
+    getAllOperators({ ...(teamCodes ? { teamCodes } : {}) }),
     prisma.department.findMany(),
   ]);
 
@@ -24,6 +28,7 @@ export default async function ManagerOperatorsPage() {
       <OperatorsManagerClient
         initialOperators={operators}
         departments={departments}
+        canManage={canManage}
       />
     </div>
   );

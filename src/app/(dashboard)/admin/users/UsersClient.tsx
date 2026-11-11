@@ -2,22 +2,24 @@
 
 import React, { useMemo, useState, useTransition } from 'react';
 import { toast } from 'sonner';
-import { AlertTriangle, Edit2, Filter, HardHat, KeyRound, MoreVertical, Power, Search, Shield, Trash2, Upload, UserCog, UserPlus, UserX, Users, UserCheck } from 'lucide-react';
+import { AlertTriangle, Edit2, Filter, HardHat, KeyRound, Power, Search, Shield, Trash2, Upload, UserCog, UserPlus, UserX, Users, UserCheck } from 'lucide-react';
 import { UserAvatar } from '@/components/ui/UserAvatar';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { KpiCard } from '@/components/dashboard/KpiCard';
 import { Modal } from '@/components/ui/Modal';
 import { createAdminUserAction, deleteAdminUserAction, resetAdminUserPasswordAction, toggleAdminUserStatusAction, updateAdminUserAction } from '@/server/actions/adminUserActions';
+import { ApprovalTeamConfigPanel } from './ApprovalTeamConfigPanel';
 
 type UserRole = 'ADMIN' | 'MANAGER' | 'OPERATOR';
 
 type UserItem = {
   id: string;
   name: string;
-  username?: string | null;
+  username: string | null;
   email: string | null;
   employeeId: string;
   role: UserRole;
+  team: string | null;
   position: string;
   phone: string | null;
   departmentId: string | null;
@@ -28,6 +30,13 @@ type UserItem = {
 };
 
 type Department = { id: string; name: string };
+type TeamApprovalConfig = {
+  code: string;
+  name: string;
+  reviewerId: string | null;
+  teamLeadId: string | null;
+  managerId: string | null;
+};
 
 type UserForm = {
   name: string;
@@ -37,6 +46,7 @@ type UserForm = {
   password: string;
   confirmPassword: string;
   role: UserRole;
+  team: string;
   position: string;
   departmentId: string;
   phone: string;
@@ -52,6 +62,7 @@ const EMPTY_FORM: UserForm = {
   password: '',
   confirmPassword: '',
   role: 'OPERATOR',
+  team: '',
   position: '',
   departmentId: '',
   phone: '',
@@ -68,6 +79,7 @@ function toForm(user: UserItem): UserForm {
     password: '',
     confirmPassword: '',
     role: user.role,
+    team: user.team || '',
     position: user.position,
     departmentId: user.departmentId || '',
     phone: user.phone || '',
@@ -107,14 +119,21 @@ async function readAvatar(file: File | undefined): Promise<string> {
   return canvas.toDataURL('image/jpeg', 0.85);
 }
 
-export default function UsersClient({ users, departments }: { users: UserItem[]; departments: Department[] }) {
+export default function UsersClient({
+  users,
+  departments,
+  teamConfigs,
+}: {
+  users: UserItem[];
+  departments: Department[];
+  teamConfigs: TeamApprovalConfig[];
+}) {
   const [query, setQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [form, setForm] = useState<UserForm>(EMPTY_FORM);
   const [editingUser, setEditingUser] = useState<UserItem | null>(null);
   const [creating, setCreating] = useState(false);
-  const [menuId, setMenuId] = useState<string | null>(null);
   const [resetUser, setResetUser] = useState<UserItem | null>(null);
   const [resetPassword, setResetPassword] = useState('');
   const [deleteUser, setDeleteUser] = useState<UserItem | null>(null);
@@ -123,6 +142,7 @@ export default function UsersClient({ users, departments }: { users: UserItem[];
   const filteredUsers = useMemo(() => {
     return users.filter((u) => {
       const matchQuery = `${u.name} ${u.username || ''} ${u.email || ''} ${u.employeeId} ${u.position}`
+        .concat(` ${u.team || ''} ${u.department?.name || ''}`)
         .toLowerCase()
         .includes(query.toLowerCase());
       const matchRole = !roleFilter || u.role === roleFilter;
@@ -130,6 +150,19 @@ export default function UsersClient({ users, departments }: { users: UserItem[];
       return matchQuery && matchRole && matchActive;
     });
   }, [users, query, roleFilter, statusFilter]);
+  const approvalTeams = useMemo(
+    () => Array.from(new Set([
+      ...users
+        .filter((user): user is UserItem & { team: string } => user.role === 'OPERATOR' && Boolean(user.team))
+        .map((user) => user.team),
+      ...teamConfigs.map((config) => config.code),
+    ])).sort(),
+    [users, teamConfigs]
+  );
+  const approverUsers = useMemo(
+    () => users.map(({ id, name, username, role, isActive }) => ({ id, name, username, role, isActive })),
+    [users]
+  );
 const setField = <K extends keyof UserForm>(key: K, value: UserForm[K]) => setForm((current) => ({ ...current, [key]: value }));
 
   const openCreate = () => {
@@ -142,7 +175,6 @@ const setField = <K extends keyof UserForm>(key: K, value: UserForm[K]) => setFo
     setForm(toForm(user));
     setEditingUser(user);
     setCreating(false);
-    setMenuId(null);
   };
 
   const closeForm = () => {
@@ -169,6 +201,7 @@ const setField = <K extends keyof UserForm>(key: K, value: UserForm[K]) => setFo
             email: form.email.trim() || undefined,
             employeeId: form.employeeId.trim(),
             role: form.role,
+            team: form.team.trim().toUpperCase(),
             position: form.position.trim(),
             departmentId: form.departmentId || undefined,
             phone: form.phone.trim() || undefined,
@@ -181,6 +214,7 @@ const setField = <K extends keyof UserForm>(key: K, value: UserForm[K]) => setFo
             email: form.email.trim() || undefined,
             employeeId: form.employeeId.trim(),
             role: form.role === 'ADMIN' ? 'MANAGER' : form.role,
+            team: form.team.trim().toUpperCase(),
             position: form.position.trim(),
             departmentId: form.departmentId || undefined,
             phone: form.phone.trim() || undefined,
@@ -209,7 +243,6 @@ const setField = <K extends keyof UserForm>(key: K, value: UserForm[K]) => setFo
       } else {
         toast.error(result.error || 'Gagal mengubah status.');
       }
-      setMenuId(null);
     });
 const resetPasswordSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -236,7 +269,6 @@ const resetPasswordSubmit = (event: React.FormEvent<HTMLFormElement>) => {
       } else {
         toast.error(result.error || 'Gagal menghapus akun.');
       }
-      setMenuId(null);
     });
   };
 
@@ -276,6 +308,14 @@ const resetPasswordSubmit = (event: React.FormEvent<HTMLFormElement>) => {
           <UserPlus className="h-4 w-4" />Tambah Pengguna
         </button>
       </div>
+
+      <ApprovalTeamConfigPanel
+        key={`${approvalTeams.join(',')}|${teamConfigs.map((config) => `${config.code}:${config.reviewerId || ''}:${config.teamLeadId || ''}:${config.managerId || ''}`).join(',')}`}
+        teamCodes={approvalTeams}
+        configs={teamConfigs}
+        users={approverUsers}
+        unassignedOperatorCount={users.filter((user) => user.role === 'OPERATOR' && !user.team).length}
+      />
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
         <KpiCard label="Total User" value={users.length} icon={Users} variant="total" />
@@ -371,7 +411,10 @@ const resetPasswordSubmit = (event: React.FormEvent<HTMLFormElement>) => {
                       <span>{user.role}</span>
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-xs text-slate-600">{user.department?.name || '—'}</td>
+                  <td className="px-4 py-3 text-xs text-slate-600">
+                    <span className="block font-semibold text-slate-700">{user.team ? `Tim ${user.team}` : 'Tim belum dipetakan'}</span>
+                    <span className="text-[10px] text-slate-500">{user.department?.name || 'Divisi belum dipetakan'}</span>
+                  </td>
                   <td className="px-4 py-3">
                     <StatusBadge
                       status={user.isActive ? 'APPROVED' : 'REJECTED'}
@@ -625,6 +668,20 @@ const resetPasswordSubmit = (event: React.FormEvent<HTMLFormElement>) => {
                 ))}
               </select>
             </label>
+            <label className="text-xs font-semibold text-slate-700">
+              Tim Roster / Kode Tim
+              <input
+                type="text"
+                maxLength={20}
+                value={form.team}
+                onChange={(e) => setField('team', e.target.value.toUpperCase())}
+                className="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm font-mono"
+                placeholder="Contoh: A"
+              />
+              <span className="mt-1 block text-[10px] text-slate-400">
+                Kode ini harus sama dengan kode tim roster dan pemetaan approval.
+              </span>
+            </label>
           </div>
 <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
             <div className="mb-2 flex items-center gap-2 text-xs font-bold text-[#092B57]">
@@ -698,7 +755,10 @@ const resetPasswordSubmit = (event: React.FormEvent<HTMLFormElement>) => {
       </Modal>
 <Modal
         open={Boolean(resetUser)}
-        onClose={() => setResetUser(null)}
+        onClose={() => {
+          setResetUser(null);
+          setResetPassword('');
+        }}
         title="Reset Password"
         eyebrow="SECURITY"
         size="sm"
@@ -706,7 +766,10 @@ const resetPasswordSubmit = (event: React.FormEvent<HTMLFormElement>) => {
           <div className="flex justify-end gap-2">
             <button
               type="button"
-              onClick={() => setResetUser(null)}
+              onClick={() => {
+                setResetUser(null);
+                setResetPassword('');
+              }}
               className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-50 transition cursor-pointer"
             >
               Batal
@@ -717,14 +780,22 @@ const resetPasswordSubmit = (event: React.FormEvent<HTMLFormElement>) => {
               disabled={pending || resetPassword.length < 8}
               className="rounded-xl bg-[#0B3568] px-4 py-2 text-xs font-bold text-white hover:bg-[#092B57] transition disabled:opacity-50 cursor-pointer"
             >
-              Reset Password
+              Simpan Password Baru
             </button>
           </div>
         }
       >
         <form id="reset-password-form" onSubmit={resetPasswordSubmit} className="space-y-3">
+          <div className="rounded-xl border border-amber-200 bg-amber-50 p-3">
+            <p className="text-[10px] font-black uppercase tracking-wide text-amber-800">Pastikan akun yang dipilih benar</p>
+            <p className="mt-1 text-sm font-bold text-slate-900">{resetUser?.name || '—'}</p>
+            <p className="font-mono text-xs font-bold text-[#1769AA]">@{resetUser?.username || '—'}</p>
+            <p className="mt-1 text-[10px] text-slate-600">
+              {resetUser?.role} · {resetUser?.team ? `Tim ${resetUser.team}` : 'Tim belum dipetakan'} · {resetUser?.department?.name || 'Divisi belum dipetakan'}
+            </p>
+          </div>
           <p className="text-xs text-slate-500">
-            Password baru untuk <strong>@{resetUser?.username}</strong> (minimal 8 karakter).
+            Password baru akan diterapkan ke akun di atas. Password lama tidak dapat dilihat dan tidak ditampilkan.
           </p>
           <label className="text-xs font-semibold text-slate-700">
             Password Baru

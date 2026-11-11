@@ -4,6 +4,7 @@ import { requireAuth } from '@/lib/auth/session';
 import type { SessionUser } from '@/lib/auth/session';
 import { DashboardShell } from '@/components/layout/DashboardShell';
 import { getUserNotifications } from '@/server/services/notificationService';
+import { prisma } from '@/lib/db/prisma';
 
 export default async function DashboardLayout({
   children,
@@ -22,6 +23,10 @@ export default async function DashboardLayout({
 
   // Fetch unread notifications for this user
   const { notifications, unreadCount } = await getUserNotifications(session.id, 10);
+  const hasTeamOperatorScope = session.role === 'OPERATOR'
+    && Boolean(await prisma.teamConfig.count({
+      where: { OR: [{ reviewerId: session.id }, { teamLeadId: session.id }] },
+    }));
 
   const serializableNotifications = notifications.map((n) => ({
     id: n.id,
@@ -38,10 +43,10 @@ export default async function DashboardLayout({
       user={session}
       notifications={serializableNotifications}
       unreadCount={unreadCount}
+      hasTeamOperatorScope={hasTeamOperatorScope}
     >
       {children}
     </DashboardShell>
   );
 
 }
-

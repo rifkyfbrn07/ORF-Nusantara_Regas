@@ -12,9 +12,11 @@ import { useRouter } from 'next/navigation';
 export interface OperatorManagerRecord {
   id: string;
   name: string;
+  username: string;
   email: string | null;
   employeeId: string;
   position?: string | null;
+  team?: string | null;
   departmentId?: string | null;
   phone?: string | null;
   isActive: boolean;
@@ -36,11 +38,13 @@ export interface DepartmentItem {
 interface OperatorsManagerClientProps {
   initialOperators: OperatorManagerRecord[];
   departments: DepartmentItem[];
+  canManage: boolean;
 }
 
 export function OperatorsManagerClient({
   initialOperators,
   departments,
+  canManage,
 }: OperatorsManagerClientProps) {
   const router = useRouter();
   const [search, setSearch] = useState('');
@@ -60,6 +64,7 @@ export function OperatorsManagerClient({
     employeeId: '',
     password: '',
     position: '',
+    team: '',
     departmentId: departments[0]?.id || '',
     phone: '',
     isActive: true,
@@ -70,7 +75,9 @@ export function OperatorsManagerClient({
     const matchSearch =
       search === '' ||
       op.name.toLowerCase().includes(search.toLowerCase()) ||
+      op.username.toLowerCase().includes(search.toLowerCase()) ||
       op.employeeId.toLowerCase().includes(search.toLowerCase()) ||
+      (op.team && op.team.toLowerCase().includes(search.toLowerCase())) ||
       (op.position && op.position.toLowerCase().includes(search.toLowerCase()));
 
     return matchDept && matchSearch;
@@ -85,6 +92,7 @@ export function OperatorsManagerClient({
       employeeId: '',
       password: 'Operator123!',
       position: 'Field Operator',
+      team: '',
       departmentId: departments[0]?.id || '',
       phone: '+62 ',
       isActive: true,
@@ -102,6 +110,7 @@ export function OperatorsManagerClient({
       employeeId: op.employeeId,
       password: '',
       position: op.position || '',
+      team: op.team || '',
       departmentId: op.departmentId || '',
       phone: op.phone || '',
       isActive: op.isActive,
@@ -121,6 +130,7 @@ export function OperatorsManagerClient({
           id: formData.id,
           name: formData.name,
           position: formData.position,
+          team: formData.team.trim().toUpperCase(),
           departmentId: formData.departmentId || undefined,
           phone: formData.phone || undefined,
           isActive: formData.isActive,
@@ -135,6 +145,7 @@ export function OperatorsManagerClient({
           employeeId: formData.employeeId,
           password: formData.password,
           position: formData.position,
+          team: formData.team.trim().toUpperCase(),
           departmentId: formData.departmentId || undefined,
           phone: formData.phone || undefined,
           role: 'OPERATOR',
@@ -201,19 +212,19 @@ export function OperatorsManagerClient({
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Cari nama, NIP, atau jabatan..."
+              placeholder="Cari nama, username, tim, NIP, atau jabatan..."
               className="w-full pl-9 pr-3 py-2 text-xs bg-[#F3F6FA] border border-[#CBD7E6] rounded-xl text-[#132238] placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#1769AA]/20 transition"
             />
           </div>
         </div>
 
-        <button
+        {canManage && <button
           onClick={handleOpenAdd}
           className="px-4 py-2 rounded-xl bg-[#123E7A] hover:bg-[#092B57] text-white text-xs font-bold flex items-center gap-2 shadow-xs transition hover:scale-[1.01] active:scale-[0.98] cursor-pointer"
         >
           <Plus className="h-4 w-4 text-[#F58220]" />
           <span>+ Tambah Operator Baru</span>
-        </button>
+        </button>}
       </div>
 
       {/* Operators Table */}
@@ -223,7 +234,7 @@ export function OperatorsManagerClient({
             <thead className="bg-[#EDF4FB] text-[11px] uppercase font-bold text-[#3F5570] border-b border-[#DCE5EF]">
               <tr>
                 <th className="px-5 py-3.5">OPERATOR</th>
-                <th className="px-5 py-3.5">DEPARTEMEN</th>
+                <th className="px-5 py-3.5">TIM / DIVISI</th>
                 <th className="px-5 py-3.5">KONTAK</th>
                 <th className="px-5 py-3.5 text-center">STATUS HARI INI</th>
                 <th className="px-5 py-3.5 text-center">AKUN</th>
@@ -255,14 +266,16 @@ export function OperatorsManagerClient({
                             <span>•</span>
                             <span className="font-sans text-[#5F718A]">{op.position}</span>
                           </div>
+                          <span className="text-[10px] font-mono text-[#1769AA]">@{op.username}</span>
                         </div>
                       </div>
                     </td>
 
                     <td className="px-5 py-3.5">
                       <span className="font-semibold text-[#132238]">
-                        {op.department?.name || 'Operations'}
+                        {op.team ? `Tim ${op.team}` : 'Tim belum dipetakan'}
                       </span>
+                      <span className="block text-[10px] text-slate-500">{op.department?.name || 'Divisi belum dipetakan'}</span>
                     </td>
 
                     <td className="px-5 py-3.5 text-[11px]">
@@ -308,14 +321,14 @@ export function OperatorsManagerClient({
                         >
                           <Eye className="h-3.5 w-3.5" />
                         </Link>
-                        <button
+                        {canManage && <button
                           onClick={() => handleOpenEdit(op)}
                           title="Ubah Data"
                           className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-[#5F718A] transition cursor-pointer"
                         >
                           <Edit2 className="h-3.5 w-3.5" />
-                        </button>
-                        <button
+                        </button>}
+                        {canManage && <button
                           onClick={() => handleToggleStatus(op)}
                           title={op.isActive ? 'Nonaktifkan Akun' : 'Aktifkan Akun'}
                           className={`p-1.5 rounded-lg transition cursor-pointer ${
@@ -323,7 +336,7 @@ export function OperatorsManagerClient({
                           }`}
                         >
                           <Power className="h-3.5 w-3.5" />
-                        </button>
+                        </button>}
                       </div>
                     </td>
                   </tr>
@@ -436,6 +449,19 @@ export function OperatorsManagerClient({
                 ))}
               </select>
             </div>
+          </div>
+
+          <div>
+            <label className="text-xs font-bold text-slate-700 block mb-1">Tim Roster / Kode Tim</label>
+            <input
+              type="text"
+              maxLength={20}
+              value={formData.team}
+              onChange={(e) => setFormData({ ...formData, team: e.target.value.toUpperCase() })}
+              placeholder="Contoh: A"
+              className="w-full px-3 py-2 text-xs bg-white border border-slate-200 rounded-xl text-slate-900 focus:outline-none font-mono"
+            />
+            <p className="mt-1 text-[10px] text-slate-400">Kode harus sama dengan pemetaan approval tim yang dikelola Admin.</p>
           </div>
 
           <div>

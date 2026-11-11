@@ -13,6 +13,7 @@ export interface CreateOperatorParams {
   password?: string;
   position: string;
   departmentId?: string;
+  team?: string;
   phone?: string;
   role?: Role;
   creatorId: string;
@@ -23,6 +24,7 @@ export interface UpdateOperatorParams {
   name: string;
   position: string;
   departmentId?: string;
+  team?: string;
   phone?: string;
   isActive?: boolean;
   newPassword?: string;
@@ -61,11 +63,25 @@ export async function createOperator(params: CreateOperatorParams) {
       employeeId: params.employeeId,
       passwordHash,
       position: params.position,
+      team: params.team?.trim().toUpperCase() || null,
       departmentId: params.departmentId || null,
       phone: params.phone || null,
       role: params.role || Role.OPERATOR,
     },
-    include: { department: true },
+    select: {
+      id: true,
+      name: true,
+      username: true,
+      email: true,
+      employeeId: true,
+      role: true,
+      position: true,
+      team: true,
+      departmentId: true,
+      phone: true,
+      isActive: true,
+      department: { select: { id: true, name: true } },
+    },
   });
 
   await recordAuditLog({
@@ -73,7 +89,7 @@ export async function createOperator(params: CreateOperatorParams) {
     action: 'CREATE_OPERATOR',
     entity: 'User',
     entityId: user.id,
-    metadata: { name: user.name, employeeId: user.employeeId, position: user.position },
+    metadata: { name: user.name, employeeId: user.employeeId, position: user.position, team: user.team },
   });
 
   return user;
@@ -84,6 +100,7 @@ export async function updateOperator(params: UpdateOperatorParams) {
     name: string;
     position: string;
     departmentId: string | null;
+    team?: string | null;
     phone: string | null;
     isActive?: boolean;
     passwordHash?: string;
@@ -93,6 +110,8 @@ export async function updateOperator(params: UpdateOperatorParams) {
     departmentId: params.departmentId || null,
     phone: params.phone || null,
   };
+
+  if (params.team !== undefined) data.team = params.team.trim().toUpperCase() || null;
 
   if (typeof params.isActive === 'boolean') {
     data.isActive = params.isActive;
@@ -105,7 +124,20 @@ export async function updateOperator(params: UpdateOperatorParams) {
   const updated = await prisma.user.update({
     where: { id: params.id },
     data,
-    include: { department: true },
+    select: {
+      id: true,
+      name: true,
+      username: true,
+      email: true,
+      employeeId: true,
+      role: true,
+      position: true,
+      team: true,
+      departmentId: true,
+      phone: true,
+      isActive: true,
+      department: { select: { id: true, name: true } },
+    },
   });
 
   await recordAuditLog({
@@ -113,7 +145,7 @@ export async function updateOperator(params: UpdateOperatorParams) {
     action: 'UPDATE_OPERATOR',
     entity: 'User',
     entityId: updated.id,
-    metadata: { name: updated.name, position: updated.position, isActive: updated.isActive },
+    metadata: { name: updated.name, position: updated.position, team: updated.team, isActive: updated.isActive },
   });
 
   return updated;
@@ -126,6 +158,7 @@ export async function toggleOperatorActiveStatus(operatorId: string, managerId: 
   const updated = await prisma.user.update({
     where: { id: operatorId },
     data: { isActive: !current.isActive },
+    select: { id: true, name: true, username: true, isActive: true },
   });
 
   await recordAuditLog({
@@ -139,14 +172,21 @@ export async function toggleOperatorActiveStatus(operatorId: string, managerId: 
   return updated;
 }
 
-export async function getAllOperators(filters?: { departmentId?: string; search?: string; isActive?: boolean }) {
+export async function getAllOperators(filters?: {
+  departmentId?: string;
+  search?: string;
+  isActive?: boolean;
+  teamCodes?: string[];
+}) {
   const where: Prisma.UserWhereInput = { role: Role.OPERATOR };
 
   if (filters?.departmentId) where.departmentId = filters.departmentId;
   if (typeof filters?.isActive === 'boolean') where.isActive = filters.isActive;
+  if (filters?.teamCodes) where.team = { in: filters.teamCodes };
   if (filters?.search) {
     where.OR = [
       { name: { contains: filters.search, mode: 'insensitive' } },
+      { username: { contains: filters.search, mode: 'insensitive' } },
       { employeeId: { contains: filters.search, mode: 'insensitive' } },
       { position: { contains: filters.search, mode: 'insensitive' } },
     ];
@@ -155,7 +195,21 @@ export async function getAllOperators(filters?: { departmentId?: string; search?
   const operators = await prisma.user.findMany({
     where,
     orderBy: { name: 'asc' },
-    include: { department: true },
+    select: {
+      id: true,
+      name: true,
+      username: true,
+      email: true,
+      employeeId: true,
+      role: true,
+      position: true,
+      team: true,
+      departmentId: true,
+      phone: true,
+      avatarUrl: true,
+      isActive: true,
+      department: { select: { id: true, name: true } },
+    },
   });
 
   // Attach real-time computed today's work status for each operator
@@ -172,10 +226,31 @@ export async function getAllOperators(filters?: { departmentId?: string; search?
   return enriched;
 }
 
+export async function getOperatorTeamScope(userId: string): Promise<string[]> {
+  const assignments = await prisma.teamConfig.findMany({
+    where: { OR: [{ reviewerId: userId }, { teamLeadId: userId }] },
+    select: { code: true },
+  });
+  return assignments.map(({ code }) => code);
+}
+
 export async function getOperatorFullDossier(operatorId: string) {
   const user = await prisma.user.findUnique({
     where: { id: operatorId },
-    include: { department: true },
+    select: {
+      id: true,
+      name: true,
+      username: true,
+      email: true,
+      employeeId: true,
+      role: true,
+      position: true,
+      team: true,
+      phone: true,
+      avatarUrl: true,
+      isActive: true,
+      department: { select: { id: true, name: true } },
+    },
   });
 
   if (!user) return null;
@@ -214,7 +289,11 @@ export async function getOperatorFullDossier(operatorId: string) {
       where: { OR: [{ outgoingOperatorId: operatorId }, { incomingOperatorId: operatorId }] },
       orderBy: { date: 'desc' },
       take: 10,
-      include: { outgoingOperator: true, incomingOperator: true, shift: true },
+      include: {
+        outgoingOperator: { select: { id: true, name: true } },
+        incomingOperator: { select: { id: true, name: true } },
+        shift: true,
+      },
     }),
     prisma.hSSEChecklist.findMany({
       where: { operatorId },

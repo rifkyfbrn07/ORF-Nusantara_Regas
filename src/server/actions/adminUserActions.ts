@@ -18,6 +18,9 @@ const userPaths = () => {
   revalidatePath('/admin/users');
   revalidatePath('/admin/dashboard');
   revalidatePath('/profile');
+  revalidatePath('/operator/requests');
+  revalidatePath('/manager/requests');
+  revalidatePath('/manager/operators');
 };
 
 async function usernameIsTaken(username: string, excludeUserId?: string): Promise<boolean> {
@@ -57,6 +60,7 @@ export async function createAdminUserAction(input: AdminUserCreateInput) {
         position: data.position.trim(),
         isActive: data.isActive,
         departmentId: data.departmentId || null,
+        team: data.team?.trim().toUpperCase() || null,
         phone: data.phone?.trim() || null,
         avatarUrl: data.avatarUrl || null,
         passwordHash: await bcrypt.hash(password, 12),
@@ -68,10 +72,23 @@ export async function createAdminUserAction(input: AdminUserCreateInput) {
       action: 'ADMIN_CREATE_USER',
       entity: 'User',
       entityId: user.id,
-      metadata: { username: user.username, role: user.role, email: user.email },
+      metadata: { username: user.username, role: user.role, email: user.email, team: user.team },
     });
     userPaths();
-    return { success: true, user };
+    return {
+      success: true,
+      user: {
+        id: user.id,
+        name: user.name,
+        username: user.username,
+        email: user.email,
+        employeeId: user.employeeId,
+        role: user.role,
+        position: user.position,
+        isActive: user.isActive,
+        departmentId: user.departmentId,
+      },
+    };
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : '';
     if (message.includes('Unique constraint')) {
@@ -120,6 +137,7 @@ export async function updateAdminUserAction(input: AdminUserUpdateInput) {
       where: { id },
       data: {
         ...data,
+        ...(data.team !== undefined ? { team: data.team.trim().toUpperCase() || null } : {}),
         username: normalizedUsername,
         email: data.email?.trim() || null,
         departmentId: data.departmentId || null,
@@ -133,10 +151,23 @@ export async function updateAdminUserAction(input: AdminUserUpdateInput) {
       action: 'ADMIN_UPDATE_USER',
       entity: 'User',
       entityId: user.id,
-      metadata: { username: user.username, role: user.role, isActive: user.isActive },
+      metadata: { username: user.username, role: user.role, isActive: user.isActive, team: user.team },
     });
     userPaths();
-    return { success: true, user };
+    return {
+      success: true,
+      user: {
+        id: user.id,
+        name: user.name,
+        username: user.username,
+        email: user.email,
+        employeeId: user.employeeId,
+        role: user.role,
+        position: user.position,
+        isActive: user.isActive,
+        departmentId: user.departmentId,
+      },
+    };
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : '';
     if (message.includes('Unique constraint')) {
@@ -153,7 +184,11 @@ export async function toggleAdminUserStatusAction(id: string) {
     const current = await prisma.user.findUnique({ where: { id }, select: { isActive: true, email: true, username: true } });
     if (!current) return { success: false, error: 'Akun tidak ditemukan.' };
 
-    const user = await prisma.user.update({ where: { id }, data: { isActive: !current.isActive } });
+    const user = await prisma.user.update({
+      where: { id },
+      data: { isActive: !current.isActive },
+      select: { id: true, name: true, username: true, isActive: true },
+    });
     await recordAuditLog({
       userId: admin.id,
       action: user.isActive ? 'ADMIN_ENABLE_USER' : 'ADMIN_DISABLE_USER',
@@ -173,14 +208,36 @@ export async function resetAdminUserPasswordAction(input: { id: string; password
     const admin = await requireAdmin();
     const parsed = adminPasswordResetSchema.safeParse(input);
     if (!parsed.success) return { success: false, error: parsed.error.issues[0]?.message || 'Input tidak valid.' };
-    await prisma.user.update({
-      where: { id: parsed.data.id },
-      data: { passwordHash: await bcrypt.hash(parsed.data.password, 12) },
+    const passwordHash = await bcrypt.hash(parsed.data.password, 12);
+    await prisma.$transaction(async (tx) => {
+      const target = await tx.user.findUnique({
+        where: { id: parsed.data.id },
+        select: { id: true, name: true, username: true },
+      });
+      if (!target) throw new Error('Akun tidak ditemukan.');
+      await tx.user.update({
+        where: { id: target.id },
+        data: { passwordHash },
+      });
+      const auditLog = await recordAuditLog({
+        userId: admin.id,
+        action: 'ADMIN_RESET_PASSWORD',
+        entity: 'User',
+        entityId: target.id,
+        metadata: { username: target.username, name: target.name },
+      }, tx);
+      if (!auditLog) throw new Error('Gagal mencatat audit perubahan kata sandi.');
+      return target;
     });
-    await recordAuditLog({ userId: admin.id, action: 'ADMIN_RESET_PASSWORD', entity: 'User', entityId: parsed.data.id });
+    userPaths();
     return { success: true };
-  } catch {
-    return { success: false, error: 'Gagal mereset kata sandi.' };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error && error.message === 'Akun tidak ditemukan.'
+        ? error.message
+        : 'Gagal mereset kata sandi.',
+    };
   }
 }
 
@@ -197,7 +254,11 @@ export async function deleteAdminUserAction(id: string) {
     if (target.role === 'ADMIN') return { success: false, error: 'ADMIN utama tidak boleh dihapus.' };
     if (!target.isActive) return { success: true, user: { isActive: false }, alreadyInactive: true };
 
-    const user = await prisma.user.update({ where: { id }, data: { isActive: false } });
+    const user = await prisma.user.update({
+      where: { id },
+      data: { isActive: false },
+      select: { id: true, name: true, username: true, isActive: true },
+    });
     await recordAuditLog({
       userId: admin.id,
       action: 'ADMIN_DELETE_USER',

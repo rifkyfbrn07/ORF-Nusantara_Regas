@@ -34,6 +34,7 @@ export interface ManagerLeaveRequestItem {
   endDate: string;
   reason: string;
   status: string;
+  canAct?: boolean;
   attachmentUrl?: string | null;
   attachmentName?: string | null;
   attachmentMime?: string | null;
@@ -153,10 +154,7 @@ export function ManagerRequestsClient({
   };
 
   const canActOnStage = (r: ManagerLeaveRequestItem) => {
-    if (r.status !== 'PENDING') return false;
-    if (currentUserRole === 'ADMIN') return true;
-    // Manager hanya dapat memproses pada tahap MANAGER (tahap akhir).
-    return currentUserRole === 'MANAGER' && r.approvalStage === 'MANAGER';
+    return currentUserRole === 'MANAGER' && r.status === 'PENDING' && r.canAct === true;
   };
 
   // Proof Preview Modal State
@@ -380,7 +378,7 @@ export function ManagerRequestsClient({
           </button>
         </div>
 
-        {tab === 'leave' && (
+        {tab === 'leave' && currentUserRole === 'ADMIN' && (
           <button
             onClick={() => {
               setError(null);
@@ -580,22 +578,27 @@ export function ManagerRequestsClient({
                               </span>
                             </div>
                           </td>
-                          <td className="px-5 py-3.5 text-[11px] text-slate-500 italic max-w-xs">
-                            {r.status === 'REJECTED' ? (
-                              r.managerNote || r.reviewerNote ? (
-                                `"${r.managerNote || r.reviewerNote}" (${r.managerName || r.reviewedBy?.name || 'Approver'})`
-                              ) : (
-                                'Pengajuan ditolak'
-                              )
-                            ) : r.status === 'APPROVED' ? (
-                              r.managerNote ? (
-                                `"${r.managerNote}" (${r.managerName || r.reviewedBy?.name || 'Manager'})`
-                              ) : (
-                                'Dokumen evidence cuti final tersedia'
-                              )
-                            ) : (
-                              'Menunggu proses approval berurutan'
-                            )}
+                          <td className="px-5 py-3.5 text-[10px] text-slate-500 max-w-xs">
+                            <div className="space-y-1">
+                              {([
+                                { key: 'REVIEWER', label: 'Reviewer', name: r.reviewerName, at: r.reviewerApprovedAt, note: r.reviewerNote },
+                                { key: 'TEAM_LEAD', label: 'Team Lead', name: r.teamLeadName, at: r.teamLeadApprovedAt, note: r.teamLeadNote },
+                                { key: 'MANAGER', label: 'Manager', name: r.managerName, at: r.managerApprovedAt, note: r.managerNote },
+                              ] as const).map((stage) => {
+                                const decided = Boolean(stage.at);
+                                const rejected = r.status === 'REJECTED' && r.approvalStage === stage.key;
+                                const date = stage.at ? new Date(stage.at).toLocaleString('id-ID') : null;
+                                return (
+                                  <p key={stage.key} title={stage.note || undefined}>
+                                    <span className="font-bold">{stage.label}:</span>{' '}
+                                    {decided ? (rejected ? 'Ditolak' : 'Disetujui') : r.approvalStage === stage.key && r.status === 'PENDING' ? 'Menunggu' : 'Belum diproses'}
+                                    {stage.name ? ` · ${stage.name}` : ''}
+                                    {date ? ` · ${date}` : ''}
+                                    {stage.note ? ` · ${stage.note}` : ''}
+                                  </p>
+                                );
+                              })}
+                            </div>
                           </td>
                           <td className="px-5 py-3.5 text-right">
                             {canActOnStage(r) ? (
@@ -895,7 +898,7 @@ export function ManagerRequestsClient({
       )}
 
       {/* On-Behalf Leave Submission Modal */}
-      {showApplyModal && (
+      {showApplyModal && currentUserRole === 'ADMIN' && (
         <Modal
           open={showApplyModal}
           onClose={() => {

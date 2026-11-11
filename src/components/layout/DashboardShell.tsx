@@ -22,6 +22,7 @@ interface DashboardShellProps {
   user: SessionUser;
   notifications: NotificationItem[];
   unreadCount: number;
+  hasTeamOperatorScope: boolean;
   children: React.ReactNode;
 }
 
@@ -29,6 +30,7 @@ export function DashboardShell({
   user,
   notifications,
   unreadCount,
+  hasTeamOperatorScope,
   children,
 }: DashboardShellProps) {
   const pathname = usePathname();
@@ -59,7 +61,7 @@ export function DashboardShell({
 
       {/* Desktop Sidebar (Fixed Left, 230px) */}
       <div className="hidden md:block">
-        <Sidebar user={user} unreadCount={unreadCount} />
+        <Sidebar user={user} unreadCount={unreadCount} hasTeamOperatorScope={hasTeamOperatorScope} />
       </div>
 
       {/* Mobile Drawer Sidebar */}
@@ -67,6 +69,7 @@ export function DashboardShell({
         <Sidebar
           user={user}
           unreadCount={unreadCount}
+          hasTeamOperatorScope={hasTeamOperatorScope}
           isMobileDrawer
           isOpen={isMobileDrawerOpen}
           onCloseMobile={() => setIsMobileDrawerOpen(false)}

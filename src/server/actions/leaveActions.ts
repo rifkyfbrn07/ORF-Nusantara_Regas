@@ -1,6 +1,7 @@
 'use server';
 
-import { requireAuth, requireRole } from '@/lib/auth/session';
+import { requireAdmin, requireAuth } from '@/lib/auth/session';
+import { prisma } from '@/lib/db/prisma';
 import {
   submitLeaveRequest,
   processLeaveApproval,
@@ -29,8 +30,15 @@ export async function submitLeaveAction(input: LeaveRequestInput) {
 
     // If submitting on behalf of another employee
     if (parse.data.targetUserId && parse.data.targetUserId !== currentUser.id) {
-      if (currentUser.role !== 'ADMIN' && currentUser.role !== 'MANAGER') {
+      if (currentUser.role !== 'ADMIN') {
         return { success: false, error: 'Anda tidak memiliki izin untuk mengajukan cuti atas nama operator lain.' };
+      }
+      const target = await prisma.user.findUnique({
+        where: { id: parse.data.targetUserId },
+        select: { role: true, isActive: true },
+      });
+      if (!target || target.role !== 'OPERATOR' || !target.isActive) {
+        return { success: false, error: 'Pengajuan atas nama hanya dapat dibuat untuk akun operator aktif.' };
       }
       finalUserId = parse.data.targetUserId;
     }
@@ -71,7 +79,7 @@ export async function submitLeaveAction(input: LeaveRequestInput) {
 
 export async function searchEmployeesAction(query: string) {
   try {
-    await requireRole(['MANAGER', 'ADMIN']);
+    await requireAdmin();
     const results = await searchEmployeesForLeave(query, 12);
     return { success: true, data: results };
   } catch (error: unknown) {

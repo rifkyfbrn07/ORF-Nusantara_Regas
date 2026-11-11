@@ -32,6 +32,7 @@ interface SidebarProps {
   unreadCount?: number;
   isMobileDrawer?: boolean;
   isOpen?: boolean;
+  hasTeamOperatorScope?: boolean;
   onCloseMobile?: () => void;
 }
 
@@ -55,6 +56,7 @@ export function Sidebar({
   unreadCount = 0,
   isMobileDrawer = false,
   isOpen = false,
+  hasTeamOperatorScope = false,
   onCloseMobile,
 }: SidebarProps) {
   const pathname = usePathname();
@@ -193,6 +195,7 @@ export function Sidebar({
         { label: 'Monitoring ORF', href: '/operator/monitoring-orf', icon: Activity },
         { label: 'Absensi Saya', href: '/operator/attendance', icon: Clock },
         { label: 'Pergantian Shift', href: '/operator/shift-exchange', icon: ArrowLeftRight },
+        ...(hasTeamOperatorScope ? [{ label: 'Operator Roster', href: '/manager/operators', icon: Users }] : []),
       ],
     },
     {

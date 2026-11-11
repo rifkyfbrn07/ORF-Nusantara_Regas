@@ -1,6 +1,6 @@
 import React from 'react';
 import { requireRole } from '@/lib/auth/session';
-import { getAllLeaveRequests } from '@/server/services/leaveService';
+import { getLeaveRequestsVisibleToUser } from '@/server/services/leaveService';
 import { getAllShiftExchanges } from '@/server/services/shiftExchangeService';
 import { ManagerRequestsClient } from './ManagerRequestsClient';
 import { PageHeader } from '@/components/ui/PageHeader';
@@ -10,13 +10,12 @@ export default async function ManagerRequestsPage({
 }: {
   searchParams: Promise<{ tab?: string }>;
 }) {
-  await requireRole(['MANAGER', 'ADMIN']);
   const sessionUser = await requireRole(['MANAGER', 'ADMIN']);
   const resolvedParams = await searchParams;
   const activeTab = resolvedParams.tab || 'leave';
 
   const [leaveRequests, shiftExchanges] = await Promise.all([
-    getAllLeaveRequests(),
+    getLeaveRequestsVisibleToUser(sessionUser.id, sessionUser.role),
     getAllShiftExchanges(),
   ]);
 
