@@ -100,6 +100,31 @@ export async function getApprovalConfigForTeam(team?: string | null) {
   return prisma.teamConfig.findUnique({ where: { code: team } });
 }
 
+export async function assertNoPendingLeaveRequestsForRoutingChange(
+  userId: string,
+  nextTeam: string | null,
+  nextRole: Role
+): Promise<void> {
+  const currentUser = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { team: true, role: true },
+  });
+  if (!currentUser) throw new Error('Akun tidak ditemukan.');
+
+  const normalizedNextTeam = nextTeam?.trim().toUpperCase() || null;
+  const currentTeam = currentUser.team?.trim().toUpperCase() || null;
+  if (currentTeam === normalizedNextTeam && currentUser.role === nextRole) return;
+
+  const pendingRequestCount = await prisma.leaveRequest.count({
+    where: { userId, status: RequestStatus.PENDING },
+  });
+  if (pendingRequestCount > 0) {
+    throw new Error(
+      'Tim atau role akun tidak dapat diubah selama masih ada pengajuan cuti/izin yang menunggu persetujuan.'
+    );
+  }
+}
+
 export interface ApprovalConfigurationStatus {
   team: string | null;
   complete: boolean;
@@ -528,7 +553,7 @@ export async function processLeaveApproval(params: ProcessLeaveApprovalParams) {
         message: nextStage === 'TEAM_LEAD'
           ? `Permohonan ${existing.type} ${existing.user.name} (${existing.startDate} s/d ${existing.endDate}) telah disetujui Reviewer. Mohon diproses sebagai Team Lead.`
           : `Permohonan ${existing.type} ${existing.user.name} (${existing.startDate} s/d ${existing.endDate}) telah disetujui Team Lead. Mohon diberikan keputusan akhir.`,
-        link: nextStage === 'TEAM_LEAD' ? '/operator/requests?tab=approvals' : '/manager/requests',
+        link: '/operator/requests?tab=approvals',
       }, tx);
     }
 
@@ -608,12 +633,14 @@ export async function getLeaveEntitlement(userId: string, referenceDate?: string
  * Daftar pengajuan yang MENUNGGU user ini (antrian approval tahap Reviewer/Team Lead/Manager).
  * Digunakan untuk tab "Persetujuan Tim" pada halaman operator & daftar manager.
  */
-export async function getPendingLeaveApprovalsForUser(userId: string) {
+async function getPendingLeaveApprovalWhereForUser(
+  userId: string
+): Promise<Prisma.LeaveRequestWhereInput | null> {
   const user = await prisma.user.findUnique({
     where: { id: userId },
     select: { id: true, role: true, isActive: true },
   });
-  if (!user || !user.isActive || user.role === Role.ADMIN) return [];
+  if (!user || !user.isActive || user.role === Role.ADMIN) return null;
 
   const or: Prisma.LeaveRequestWhereInput[] = [];
   const configs = await prisma.teamConfig.findMany({
@@ -632,10 +659,21 @@ export async function getPendingLeaveApprovalsForUser(userId: string) {
     }
   }
 
-  if (!or.length) return [];
+  if (!or.length) return null;
+  return { status: RequestStatus.PENDING, OR: or };
+}
+
+export async function getPendingLeaveApprovalCountForUser(userId: string): Promise<number> {
+  const where = await getPendingLeaveApprovalWhereForUser(userId);
+  return where ? prisma.leaveRequest.count({ where }) : 0;
+}
+
+export async function getPendingLeaveApprovalsForUser(userId: string) {
+  const where = await getPendingLeaveApprovalWhereForUser(userId);
+  if (!where) return [];
 
   return prisma.leaveRequest.findMany({
-    where: { status: RequestStatus.PENDING, OR: or },
+    where,
     orderBy: { createdAt: 'desc' },
     include: {
       user: {
@@ -652,6 +690,15 @@ export async function getPendingLeaveApprovalsForUser(userId: string) {
       reviewedBy: { select: { id: true, name: true, position: true } },
     },
   });
+}
+
+export async function hasApprovalInboxScope(userId: string): Promise<boolean> {
+  const assignments = await prisma.teamConfig.count({
+    where: {
+      OR: [{ reviewerId: userId }, { teamLeadId: userId }, { managerId: userId }],
+    },
+  });
+  return assignments > 0;
 }
 
 
@@ -679,12 +726,15 @@ export async function getOperatorLeaveRequests(userId: string) {
 }
 
 export async function getLeaveRequestsVisibleToUser(userId: string, role: Role) {
-  const teamCodes = role === Role.ADMIN
+  const assignments = role === Role.ADMIN
     ? []
-    : (await prisma.teamConfig.findMany({
-        where: { managerId: userId },
-        select: { code: true },
-      })).map(({ code }) => code);
+    : await prisma.teamConfig.findMany({
+        where: {
+          OR: [{ reviewerId: userId }, { teamLeadId: userId }, { managerId: userId }],
+        },
+        select: { code: true, reviewerId: true, teamLeadId: true, managerId: true },
+      });
+  const teamCodes = assignments.map(({ code }) => code);
   if (role !== Role.ADMIN && teamCodes.length === 0) return [];
 
   const requests = await prisma.leaveRequest.findMany({
@@ -716,7 +766,14 @@ export async function getLeaveRequestsVisibleToUser(userId: string, role: Role) 
     ...request,
     canAct: role === Role.MANAGER
       && request.status === RequestStatus.PENDING
-      && request.approvalStage === 'MANAGER',
+      && assignments.some((assignment) =>
+        assignment.code === request.user.team
+        && (
+          (request.approvalStage === 'REVIEWER' && assignment.reviewerId === userId)
+          || (request.approvalStage === 'TEAM_LEAD' && assignment.teamLeadId === userId)
+          || (request.approvalStage === 'MANAGER' && assignment.managerId === userId)
+        )
+      ),
   }));
 }
 

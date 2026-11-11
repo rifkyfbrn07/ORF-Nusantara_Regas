@@ -118,6 +118,7 @@ export async function processLeaveApprovalAction(input: {
     revalidatePath('/operator/dashboard');
     revalidatePath('/operator/jadwal-saya');
     revalidatePath('/manager/jadwal-operator');
+    revalidatePath('/notifications');
     revalidatePath('/admin/dashboard');
 
     return { success: true, request: updated };

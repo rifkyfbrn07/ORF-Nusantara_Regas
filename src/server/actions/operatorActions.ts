@@ -22,6 +22,8 @@ export async function createOperatorAction(input: OperatorCreateInput) {
     revalidatePath('/manager/dashboard');
     revalidatePath('/admin/users');
     revalidatePath('/operator/requests');
+    revalidatePath('/manager/jadwal-operator');
+    revalidatePath('/operator/roster');
 
     return { success: true, operator };
   } catch (error: unknown) {
@@ -48,6 +50,8 @@ export async function updateOperatorAction(input: OperatorUpdateInput) {
     revalidatePath('/admin/users');
     revalidatePath('/operator/requests');
     revalidatePath('/manager/requests');
+    revalidatePath('/manager/jadwal-operator');
+    revalidatePath('/operator/roster');
 
     return { success: true, operator };
   } catch (error: unknown) {
@@ -65,6 +69,8 @@ export async function toggleOperatorStatusAction(operatorId: string) {
     revalidatePath('/admin/users');
     revalidatePath('/operator/requests');
     revalidatePath('/manager/requests');
+    revalidatePath('/manager/jadwal-operator');
+    revalidatePath('/operator/roster');
 
     return { success: true, operator };
   } catch (error: unknown) {

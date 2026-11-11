@@ -115,6 +115,7 @@ interface OperatorRequestsClientProps {
     complete: boolean;
     missing: string[];
   };
+  hasApprovalInbox?: boolean;
   defaultTab?: 'mine' | 'approvals';
 }
 
@@ -361,6 +362,7 @@ export function OperatorRequestsClient({
   entitlement,
   pendingApprovals = [],
   approvalConfiguration,
+  hasApprovalInbox = false,
   defaultTab = 'mine',
 }: OperatorRequestsClientProps) {
   const router = useRouter();
@@ -542,7 +544,7 @@ export function OperatorRequestsClient({
       )}
 
       {/* Tabs: Permohonan Saya / Antrian Persetujuan (Reviewer-Team Lead) */}
-      {pendingApprovals.length > 0 && (
+      {hasApprovalInbox && (
         <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-2">
           <button
             onClick={() => setTab('mine')}

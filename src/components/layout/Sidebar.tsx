@@ -33,6 +33,8 @@ interface SidebarProps {
   isMobileDrawer?: boolean;
   isOpen?: boolean;
   hasTeamOperatorScope?: boolean;
+  hasApprovalInbox?: boolean;
+  pendingApprovalCount?: number;
   onCloseMobile?: () => void;
 }
 
@@ -57,6 +59,8 @@ export function Sidebar({
   isMobileDrawer = false,
   isOpen = false,
   hasTeamOperatorScope = false,
+  hasApprovalInbox = false,
+  pendingApprovalCount = 0,
   onCloseMobile,
 }: SidebarProps) {
   const pathname = usePathname();
@@ -108,6 +112,7 @@ export function Sidebar({
     {
       title: 'REQUEST & OPS',
       items: [
+        ...(hasApprovalInbox ? [{ label: 'Inbox Persetujuan', href: '/operator/requests?tab=approvals', icon: UserCheck, badge: pendingApprovalCount }] : []),
         { label: 'Cuti & Izin', href: '/manager/requests', icon: UserCheck },
         { label: 'Rekap & SPL Lembur', href: '/manager/lembur', icon: Clock },
         { label: 'Handover', href: '/manager/handover', icon: ClipboardList },
@@ -158,6 +163,7 @@ export function Sidebar({
     {
       title: 'REQUEST & OPS',
       items: [
+        ...(hasApprovalInbox ? [{ label: 'Inbox Persetujuan', href: '/operator/requests?tab=approvals', icon: UserCheck, badge: pendingApprovalCount }] : []),
         { label: 'Cuti & Izin', href: '/manager/requests', icon: UserCheck },
         { label: 'Rekap & SPL Lembur', href: '/manager/lembur', icon: Clock },
         { label: 'Handover', href: '/manager/handover', icon: ClipboardList },
@@ -207,6 +213,7 @@ export function Sidebar({
     {
       title: 'REQUEST & OPS',
       items: [
+        ...(hasApprovalInbox ? [{ label: 'Inbox Persetujuan', href: '/operator/requests?tab=approvals', icon: UserCheck, badge: pendingApprovalCount }] : []),
         { label: 'Cuti & Izin', href: '/operator/requests', icon: UserCheck },
         { label: 'Rekap & SPL Lembur', href: '/operator/lembur', icon: Clock },
         { label: 'Shift Handover', href: '/operator/handover', icon: ClipboardList },

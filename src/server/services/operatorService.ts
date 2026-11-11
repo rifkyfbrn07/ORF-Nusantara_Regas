@@ -4,6 +4,7 @@ import { Role, Prisma } from '@prisma/client';
 import { recordAuditLog } from './auditService';
 import { getOperatorWorkStatus } from './workStatusService';
 import { slugifyUsername } from '@/lib/auth/username';
+import { assertNoPendingLeaveRequestsForRoutingChange } from './leaveService';
 
 export interface CreateOperatorParams {
   name: string;
@@ -96,6 +97,17 @@ export async function createOperator(params: CreateOperatorParams) {
 }
 
 export async function updateOperator(params: UpdateOperatorParams) {
+  const current = await prisma.user.findUnique({
+    where: { id: params.id },
+    select: { team: true, role: true },
+  });
+  if (!current) throw new Error('Operator tidak ditemukan.');
+  await assertNoPendingLeaveRequestsForRoutingChange(
+    params.id,
+    params.team === undefined ? current.team : params.team.trim().toUpperCase() || null,
+    current.role
+  );
+
   const data: {
     name: string;
     position: string;

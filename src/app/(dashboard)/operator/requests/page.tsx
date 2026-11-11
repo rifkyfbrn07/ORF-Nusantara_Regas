@@ -5,6 +5,7 @@ import {
   getLeaveEntitlement,
   getApprovalConfigurationStatus,
   getPendingLeaveApprovalsForUser,
+  hasApprovalInboxScope,
 } from '@/server/services/leaveService';
 import { formatJakartaDate } from '@/lib/time';
 import { OperatorRequestsClient } from './OperatorRequestsClient';
@@ -20,7 +21,7 @@ export default async function OperatorRequestsPage({
   const today = formatJakartaDate();
   const defaultTab = resolvedParams.tab === 'approvals' ? 'approvals' : 'mine';
 
-  const [requests, dbUser, entitlement] = await Promise.all([
+  const [requests, dbUser, entitlement, hasApprovalInbox] = await Promise.all([
     getOperatorLeaveRequests(sessionUser.id),
     prisma.user.findUnique({
       where: { id: sessionUser.id },
@@ -34,6 +35,7 @@ export default async function OperatorRequestsPage({
       },
     }),
     getLeaveEntitlement(sessionUser.id, today),
+    hasApprovalInboxScope(sessionUser.id),
   ]);
 
   const pendingApprovals = await getPendingLeaveApprovalsForUser(sessionUser.id);
@@ -70,6 +72,7 @@ export default async function OperatorRequestsPage({
         entitlement={entitlement}
         pendingApprovals={pendingApprovals}
         approvalConfiguration={approvalConfiguration}
+        hasApprovalInbox={hasApprovalInbox}
         defaultTab={defaultTab}
       />
     </div>

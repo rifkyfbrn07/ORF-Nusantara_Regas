@@ -46,7 +46,7 @@ export interface RosterOperatorRow {
   position: string;
   /** Hanya terisi untuk MANAGER/ADMIN (lihat catatan privacy di atas). */
   phone: string | null;
-  team: string | null; // A | B | C (dari notes roster)
+  team: string | null; // A | B | C from the canonical User.team field
   positionSuffix: string | null; // Supervisor/Lead Operator | DCS | Field
   hsseMarshall: boolean; // tanda `*` pada dokumen
   todayStatus: {
@@ -122,24 +122,22 @@ function pad2(n: number): string {
 /** Parse notes roster terstruktur: "Roster ORF | Team A | DCS | HSSE Marshall" */
 function parseRosterNotes(notes: string | null): {
   isRoster: boolean;
-  team: string | null;
   positionSuffix: string | null;
   hsseMarshall: boolean;
 } {
-  if (!notes) return { isRoster: false, team: null, positionSuffix: null, hsseMarshall: false };
+  if (!notes) return { isRoster: false, positionSuffix: null, hsseMarshall: false };
   const segments = notes.split(' | ').map((s) => s.trim());
   if (segments[0] !== 'Roster ORF') {
-    return { isRoster: false, team: null, positionSuffix: null, hsseMarshall: false };
+    return { isRoster: false, positionSuffix: null, hsseMarshall: false };
   }
-  let team: string | null = null;
   let positionSuffix: string | null = null;
   let hsseMarshall = false;
   for (const seg of segments.slice(1)) {
-    if (/^Team [A-Z]$/.test(seg)) team = seg.replace('Team ', '');
+    if (/^Team [A-Z]$/.test(seg)) continue;
     else if (seg === 'HSSE Marshall') hsseMarshall = true;
     else if (seg) positionSuffix = seg;
   }
-  return { isRoster: true, team, positionSuffix, hsseMarshall };
+  return { isRoster: true, positionSuffix, hsseMarshall };
 }
 
 function shiftKeyOf(code: string): RosterShiftKey | null {
@@ -186,7 +184,7 @@ export async function getRosterMonth(options: {
       where: { userId: options.onlyUserId, date: dateWhere },
       include: {
         shift: true,
-        user: { select: { id: true, name: true, employeeId: true, position: true, phone: true } },
+        user: { select: { id: true, name: true, employeeId: true, position: true, phone: true, team: true } },
       },
       orderBy: { date: 'asc' },
     });
@@ -197,7 +195,7 @@ export async function getRosterMonth(options: {
         ? owner
         : (await prisma.user.findUnique({
             where: { id: options.onlyUserId },
-            select: { id: true, name: true, employeeId: true, position: true, phone: true },
+            select: { id: true, name: true, employeeId: true, position: true, phone: true, team: true },
           }))!,
       schedules: own,
       daysInMonth,
@@ -234,7 +232,7 @@ export async function getRosterMonth(options: {
     },
     include: {
       shift: true,
-      user: { select: { id: true, name: true, employeeId: true, position: true, phone: true } },
+      user: { select: { id: true, name: true, employeeId: true, position: true, phone: true, team: true } },
     },
     orderBy: [{ date: 'asc' }],
   });
@@ -249,7 +247,7 @@ export async function getRosterMonth(options: {
   if (options.includeUnscheduledOperators) {
     const allActiveOperators = await prisma.user.findMany({
       where: { role: 'OPERATOR', isActive: true },
-      select: { id: true, name: true, employeeId: true, position: true, phone: true },
+      select: { id: true, name: true, employeeId: true, position: true, phone: true, team: true },
     });
     for (const u of allActiveOperators) {
       if (!userMap.has(u.id)) userMap.set(u.id, u);
@@ -395,7 +393,7 @@ export async function getAvailableRosterMonths(): Promise<{ year: number; month:
 }
 
 interface BuildRowParams {
-  user: { id: string; name: string; employeeId: string; position: string; phone: string | null };
+  user: { id: string; name: string; employeeId: string; position: string; phone: string | null; team: string | null };
   schedules: {
     date: string;
     status: ScheduleStatus;
@@ -415,10 +413,10 @@ interface BuildRowParams {
 async function buildOperatorRow(params: BuildRowParams): Promise<RosterOperatorRow | null> {
   const { user, schedules, daysInMonth, year, month, today, holidayNames } = params;
 
-  // Metadata roster dari notes baris mana pun milik operator ini
+  // Metadata non-identitas roster tetap dibaca dari notes jadwal.
   const meta = schedules
     .map((s) => parseRosterNotes(s.notes))
-    .find((m) => m.isRoster) || { isRoster: false, team: null, positionSuffix: null, hsseMarshall: false };
+    .find((m) => m.isRoster) || { isRoster: false, positionSuffix: null, hsseMarshall: false };
 
   const scheduleByDate = new Map(schedules.map((s) => [s.date, s]));
   const counts = { pagi: 0, malam: 0, off: 0 };
@@ -483,7 +481,7 @@ async function buildOperatorRow(params: BuildRowParams): Promise<RosterOperatorR
     // PRIVACY: contact person hanya di-serialize untuk MANAGER/ADMIN
     // (keputusan otorisasi dibuat server-side oleh halaman pemanggil).
     phone: params.includeContacts ? user.phone : null,
-    team: meta.team,
+    team: user.team?.trim() || null,
     positionSuffix: meta.positionSuffix,
     hsseMarshall: meta.hsseMarshall,
     todayStatus,

@@ -23,6 +23,8 @@ interface DashboardShellProps {
   notifications: NotificationItem[];
   unreadCount: number;
   hasTeamOperatorScope: boolean;
+  hasApprovalInbox: boolean;
+  pendingApprovalCount: number;
   children: React.ReactNode;
 }
 
@@ -31,6 +33,8 @@ export function DashboardShell({
   notifications,
   unreadCount,
   hasTeamOperatorScope,
+  hasApprovalInbox,
+  pendingApprovalCount,
   children,
 }: DashboardShellProps) {
   const pathname = usePathname();
@@ -61,7 +65,13 @@ export function DashboardShell({
 
       {/* Desktop Sidebar (Fixed Left, 230px) */}
       <div className="hidden md:block">
-        <Sidebar user={user} unreadCount={unreadCount} hasTeamOperatorScope={hasTeamOperatorScope} />
+        <Sidebar
+          user={user}
+          unreadCount={unreadCount}
+          hasTeamOperatorScope={hasTeamOperatorScope}
+          hasApprovalInbox={hasApprovalInbox}
+          pendingApprovalCount={pendingApprovalCount}
+        />
       </div>
 
       {/* Mobile Drawer Sidebar */}
@@ -70,6 +80,8 @@ export function DashboardShell({
           user={user}
           unreadCount={unreadCount}
           hasTeamOperatorScope={hasTeamOperatorScope}
+          hasApprovalInbox={hasApprovalInbox}
+          pendingApprovalCount={pendingApprovalCount}
           isMobileDrawer
           isOpen={isMobileDrawerOpen}
           onCloseMobile={() => setIsMobileDrawerOpen(false)}

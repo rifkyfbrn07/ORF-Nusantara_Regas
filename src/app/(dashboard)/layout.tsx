@@ -5,6 +5,7 @@ import type { SessionUser } from '@/lib/auth/session';
 import { DashboardShell } from '@/components/layout/DashboardShell';
 import { getUserNotifications } from '@/server/services/notificationService';
 import { prisma } from '@/lib/db/prisma';
+import { getPendingLeaveApprovalCountForUser, hasApprovalInboxScope } from '@/server/services/leaveService';
 
 export default async function DashboardLayout({
   children,
@@ -22,7 +23,11 @@ export default async function DashboardLayout({
   }
 
   // Fetch unread notifications for this user
-  const { notifications, unreadCount } = await getUserNotifications(session.id, 10);
+  const [{ notifications, unreadCount }, pendingApprovalCount, hasApprovalInbox] = await Promise.all([
+    getUserNotifications(session.id, 10),
+    getPendingLeaveApprovalCountForUser(session.id),
+    session.role === 'ADMIN' ? Promise.resolve(false) : hasApprovalInboxScope(session.id),
+  ]);
   const hasTeamOperatorScope = session.role === 'OPERATOR'
     && Boolean(await prisma.teamConfig.count({
       where: { OR: [{ reviewerId: session.id }, { teamLeadId: session.id }] },
@@ -44,6 +49,8 @@ export default async function DashboardLayout({
       notifications={serializableNotifications}
       unreadCount={unreadCount}
       hasTeamOperatorScope={hasTeamOperatorScope}
+      hasApprovalInbox={hasApprovalInbox}
+      pendingApprovalCount={pendingApprovalCount}
     >
       {children}
     </DashboardShell>

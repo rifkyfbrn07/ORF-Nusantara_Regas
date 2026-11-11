@@ -13,6 +13,7 @@ import {
   type AdminUserUpdateInput,
 } from '@/lib/validation';
 import { recordAuditLog } from '@/server/services/auditService';
+import { assertNoPendingLeaveRequestsForRoutingChange } from '@/server/services/leaveService';
 
 const userPaths = () => {
   revalidatePath('/admin/users');
@@ -21,6 +22,8 @@ const userPaths = () => {
   revalidatePath('/operator/requests');
   revalidatePath('/manager/requests');
   revalidatePath('/manager/operators');
+  revalidatePath('/manager/jadwal-operator');
+  revalidatePath('/operator/roster');
 };
 
 async function usernameIsTaken(username: string, excludeUserId?: string): Promise<boolean> {
@@ -112,7 +115,7 @@ export async function updateAdminUserAction(input: AdminUserUpdateInput) {
 
     const existing = await prisma.user.findUnique({
       where: { id },
-      select: { name: true, role: true, username: true },
+      select: { name: true, role: true, username: true, team: true },
     });
     if (!existing) return { success: false, error: 'Akun tidak ditemukan.' };
 
@@ -122,6 +125,11 @@ export async function updateAdminUserAction(input: AdminUserUpdateInput) {
     if (existing.role === 'ADMIN' && data.role && data.role !== 'ADMIN') {
       return { success: false, error: 'ADMIN utama tidak dapat diubah role-nya.' };
     }
+    await assertNoPendingLeaveRequestsForRoutingChange(
+      id,
+      data.team === undefined ? existing.team : data.team.trim().toUpperCase() || null,
+      data.role || existing.role
+    );
 
     const normalizedUsername = username.trim().toLowerCase();
     if (await usernameIsTaken(normalizedUsername, id)) {
@@ -170,6 +178,9 @@ export async function updateAdminUserAction(input: AdminUserUpdateInput) {
     };
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : '';
+    if (message.startsWith('Tim atau role akun tidak dapat diubah')) {
+      return { success: false, error: message };
+    }
     if (message.includes('Unique constraint')) {
       return { success: false, error: 'Username, email, atau Employee ID sudah digunakan.' };
     }
