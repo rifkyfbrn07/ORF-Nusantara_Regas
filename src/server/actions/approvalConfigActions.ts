@@ -5,6 +5,7 @@ import { Role } from '@prisma/client';
 import { requireAdmin } from '@/lib/auth/session';
 import { prisma } from '@/lib/db/prisma';
 import { recordAuditLog } from '@/server/services/auditService';
+import { createNotification } from '@/server/services/notificationService';
 
 export async function updateTeamApprovalConfigAction(input: {
   team: string;
@@ -36,6 +37,9 @@ export async function updateTeamApprovalConfigAction(input: {
       { id: input.teamLeadId.trim(), label: 'Team Lead', requiresManager: false },
       { id: input.managerId.trim(), label: 'Manager', requiresManager: true },
     ].filter((assignment) => assignment.id);
+    if (input.teamLeadId.trim() && input.teamLeadId.trim() === input.managerId.trim()) {
+      return { success: false, error: 'Team Lead harus berbeda dari Manager agar tahap persetujuan tidak digabung.' };
+    }
     const accounts = await prisma.user.findMany({
       where: { id: { in: assignments.map(({ id }) => id) } },
       select: { id: true, role: true, isActive: true },
@@ -51,7 +55,12 @@ export async function updateTeamApprovalConfigAction(input: {
       }
     }
 
+    let notifiedWaitingTeamLeadRequests = 0;
     await prisma.$transaction(async (tx) => {
+      const previousConfig = await tx.teamConfig.findUnique({
+        where: { code: team },
+        select: { teamLeadId: true },
+      });
       const config = await tx.teamConfig.upsert({
         where: { code: team },
         create: {
@@ -68,6 +77,33 @@ export async function updateTeamApprovalConfigAction(input: {
         },
         select: { id: true },
       });
+      const nextTeamLeadId = input.teamLeadId.trim() || null;
+      if (nextTeamLeadId && previousConfig?.teamLeadId !== nextTeamLeadId) {
+        const waitingRequests = await tx.leaveRequest.findMany({
+          where: {
+            status: 'PENDING',
+            approvalStage: 'TEAM_LEAD',
+            user: { team },
+          },
+          select: {
+            id: true,
+            type: true,
+            startDate: true,
+            endDate: true,
+            user: { select: { name: true } },
+          },
+        });
+        notifiedWaitingTeamLeadRequests = waitingRequests.length;
+        for (const request of waitingRequests) {
+          await createNotification({
+            userId: nextTeamLeadId,
+            type: 'LEAVE_STATUS',
+            title: `Pengajuan ${request.type} menunggu persetujuan Team Lead`,
+            message: `Permohonan ${request.type} ${request.user.name} (${request.startDate} s/d ${request.endDate}) menunggu persetujuan Team Lead. Mapping tim kini tersedia.`,
+            link: '/operator/requests?tab=approvals',
+          }, tx);
+        }
+      }
       const auditLog = await recordAuditLog({
         userId: admin.id,
         action: 'ADMIN_UPDATE_TEAM_APPROVAL_CONFIG',
@@ -78,6 +114,7 @@ export async function updateTeamApprovalConfigAction(input: {
           reviewerId: input.reviewerId.trim() || null,
           teamLeadId: input.teamLeadId.trim() || null,
           managerId: input.managerId.trim() || null,
+          notifiedWaitingTeamLeadRequests,
         },
       }, tx);
       if (!auditLog) throw new Error('Gagal mencatat audit konfigurasi approval.');

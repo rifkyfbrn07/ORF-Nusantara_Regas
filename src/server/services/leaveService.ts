@@ -153,13 +153,18 @@ export async function getApprovalConfigurationStatus(team?: string | null): Prom
   const byId = new Map(accounts.map((account) => [account.id, account]));
   const validAssignment = (id: string | null, stage: 'reviewer' | 'teamLead' | 'manager') => {
     if (!id) return false;
+    if (stage === 'teamLead' && id === config.managerId) return false;
     const account = byId.get(id);
     if (!account || !account.isActive) return false;
     return stage === 'manager' ? account.role === Role.MANAGER : account.role !== Role.ADMIN;
   };
   const missing: string[] = [];
   if (!validAssignment(config.reviewerId, 'reviewer')) missing.push('Reviewer');
-  if (!validAssignment(config.teamLeadId, 'teamLead')) missing.push('Team Lead');
+  if (!validAssignment(config.teamLeadId, 'teamLead')) {
+    missing.push(config.teamLeadId && config.teamLeadId === config.managerId
+      ? 'Team Lead (harus akun berbeda dari Manager)'
+      : 'Team Lead');
+  }
   if (!validAssignment(config.managerId, 'manager')) missing.push('Manager');
   return { team, complete: missing.length === 0, missing };
 }
@@ -190,7 +195,7 @@ export async function assertApprovalAuthority(
   }
 
   if (stage === 'TEAM_LEAD') {
-    if (config?.teamLeadId === approver.id) return;
+    if (config?.teamLeadId === approver.id && config.teamLeadId !== config.managerId) return;
     throw new Error('Hanya Team Lead yang berwenang memproses tahap ini.');
   }
 
@@ -530,7 +535,7 @@ export async function processLeaveApproval(params: ProcessLeaveApprovalParams) {
     if (decision === 'APPROVED' && nextStage) {
       const teamConfig = await tx.teamConfig.findUnique({ where: { code: existing.user.team || '' } });
       const nextApproverId = nextStage === 'TEAM_LEAD' ? teamConfig?.teamLeadId : teamConfig?.managerId;
-      if (!nextApproverId) {
+      if (!nextApproverId || (nextStage === 'TEAM_LEAD' && nextApproverId === teamConfig?.managerId)) {
         throw new Error(`Konfigurasi ${nextStage === 'TEAM_LEAD' ? 'Team Lead' : 'Manager'} tim operator tidak tersedia.`);
       }
       const nextApprover = await tx.user.findUnique({
@@ -558,7 +563,7 @@ export async function processLeaveApproval(params: ProcessLeaveApprovalParams) {
     }
 
     return { request: updated, status: updated.status };
-  });
+  }, { maxWait: 10000, timeout: 20000 });
 
   if (result.status === RequestStatus.REJECTED) {
     // REJECTED -> evidence dibersihkan, request TETAP disimpan (histori).
@@ -651,7 +656,7 @@ async function getPendingLeaveApprovalWhereForUser(
     if (config.reviewerId === user.id) {
       or.push({ approvalStage: 'REVIEWER', user: { team: config.code } });
     }
-    if (config.teamLeadId === user.id) {
+    if (config.teamLeadId === user.id && config.teamLeadId !== config.managerId) {
       or.push({ approvalStage: 'TEAM_LEAD', user: { team: config.code } });
     }
     if (user.role === Role.MANAGER && config.managerId === user.id) {
@@ -770,7 +775,9 @@ export async function getLeaveRequestsVisibleToUser(userId: string, role: Role) 
         assignment.code === request.user.team
         && (
           (request.approvalStage === 'REVIEWER' && assignment.reviewerId === userId)
-          || (request.approvalStage === 'TEAM_LEAD' && assignment.teamLeadId === userId)
+          || (request.approvalStage === 'TEAM_LEAD'
+            && assignment.teamLeadId === userId
+            && assignment.teamLeadId !== assignment.managerId)
           || (request.approvalStage === 'MANAGER' && assignment.managerId === userId)
         )
       ),

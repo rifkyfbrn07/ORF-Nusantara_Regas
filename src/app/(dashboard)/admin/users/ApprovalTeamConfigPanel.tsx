@@ -40,9 +40,15 @@ function createForms(teamCodes: string[], configs: TeamConfig[]): Record<string,
   }));
 }
 
-function accountIsValid(id: string, stage: 'reviewer' | 'teamLead' | 'manager', users: ApprovalUser[]) {
+function accountIsValid(
+  id: string,
+  stage: 'reviewer' | 'teamLead' | 'manager',
+  users: ApprovalUser[],
+  managerId?: string,
+) {
   const user = users.find((item) => item.id === id);
   if (!user || !user.isActive || user.role === 'ADMIN') return false;
+  if (stage === 'teamLead' && id === managerId) return false;
   return stage !== 'manager' || user.role === 'MANAGER';
 }
 
@@ -153,7 +159,7 @@ export function ApprovalTeamConfigPanel({
             const form = forms[team] || { reviewerId: '', teamLeadId: '', managerId: '' };
             const missing = [
               !accountIsValid(form.reviewerId, 'reviewer', users) ? 'Reviewer' : null,
-              !accountIsValid(form.teamLeadId, 'teamLead', users) ? 'Team Lead' : null,
+              !accountIsValid(form.teamLeadId, 'teamLead', users, form.managerId) ? 'Team Lead' : null,
               !accountIsValid(form.managerId, 'manager', users) ? 'Manager' : null,
             ].filter((label): label is string => Boolean(label));
 
@@ -181,7 +187,7 @@ export function ApprovalTeamConfigPanel({
                 </div>
                 {missing.length > 0 && (
                   <p className="mt-2 text-[10px] font-semibold text-amber-800">
-                    Belum valid: {missing.join(', ')}. Pengajuan baru untuk tim ini akan ditolak sampai pemetaan lengkap.
+                    Belum valid: {missing.join(', ')}. Pengajuan cuti baru belum dapat diajukan. Pengajuan yang sudah menunggu tahap Team Lead tetap tersimpan; setelah mapping dilengkapi, Team Lead akan menerima notifikasi dan dapat memprosesnya.
                   </p>
                 )}
                 <button
