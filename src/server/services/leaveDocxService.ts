@@ -3,6 +3,7 @@ import path from 'path';
 import JSZip from 'jszip';
 
 export interface LeaveDocData {
+  isDraft?: boolean;
   namaPekerja: string;
   nip: string;
   jabatan: string;
@@ -24,6 +25,11 @@ export interface LeaveDocData {
   selamaHari: number;
   penyerahanTugas: string;
   menyetujuiNama?: string;
+  managerRoleLine?: string;
+  managerDateLine?: string;
+  reviewerSummary?: string;
+  teamLeadSummary?: string;
+  /** @deprecated Retained for existing document verification scripts. */
   mengetahuiNama?: string;
 }
 
@@ -59,7 +65,10 @@ function replaceParagraphText(pXml: string, newText: string): string {
   const openTagMatch = pXml.match(/^<w:p(\s[^>]*)?>/);
   const openTag = openTagMatch ? openTagMatch[0] : '<w:p>';
 
-  return `${openTag}${pPr}<w:r>${rPr}<w:t xml:space="preserve">${escapeXml(newText)}</w:t></w:r></w:p>`;
+  const textRuns = newText.split('\n').map((line, index) =>
+    `${index > 0 ? '<w:br/>' : ''}<w:t xml:space="preserve">${escapeXml(line)}</w:t>`
+  ).join('');
+  return `${openTag}${pPr}<w:r>${rPr}${textRuns}</w:r></w:p>`;
 }
 
 export async function generateLeaveDocx(data: LeaveDocData): Promise<Buffer> {
@@ -82,6 +91,9 @@ export async function generateLeaveDocx(data: LeaveDocData): Promise<Buffer> {
     // Strip XML tags to get raw text of paragraph
     const rawText = pXml.replace(/<[^>]+>/g, '').trim();
 
+    if (rawText === 'Formulir Permohonan Cuti' && data.isDraft) {
+      return replaceParagraphText(pXml, 'Formulir Permohonan Cuti (DRAFT)');
+    }
     // 1. Nama Pekerja
     if (rawText === 'Nurman Assauri') {
       return replaceParagraphText(pXml, data.namaPekerja);
@@ -163,13 +175,20 @@ export async function generateLeaveDocx(data: LeaveDocData): Promise<Buffer> {
     if (rawText === '-') {
       return replaceParagraphText(pXml, data.penyerahanTugas || '-');
     }
-    // Menyetujui (Project Manager)
-    if (rawText === '(Isa Taufiq)' && data.menyetujuiNama) {
-      return replaceParagraphText(pXml, `(${data.menyetujuiNama})`);
+    // Manager approval role/decision and actual signer.
+    if (rawText === '(Project Manager)' && data.managerRoleLine) {
+      return replaceParagraphText(pXml, `(${data.managerRoleLine})`);
     }
-    // Mengetahui (Atasan Langsung)
-    if (rawText.includes('Yosep Ismail Zulkarnain') && data.mengetahuiNama) {
-      return replaceParagraphText(pXml, `(${data.mengetahuiNama})`);
+    if (rawText === '(Isa Taufiq)' && data.menyetujuiNama) {
+      return replaceParagraphText(pXml, `(${data.menyetujuiNama}\n${data.managerDateLine || 'Tanggal: -'})`);
+    }
+    // Reviewer and Team Lead are represented in the template's direct-supervisor
+    // sign-off area without changing its table or page layout.
+    if (rawText === '(Atasan Langsung)' && data.reviewerSummary) {
+      return replaceParagraphText(pXml, data.reviewerSummary);
+    }
+    if (rawText.includes('Yosep Ismail Zulkarnain') && (data.teamLeadSummary || data.mengetahuiNama)) {
+      return replaceParagraphText(pXml, data.teamLeadSummary || data.mengetahuiNama || 'Belum ditetapkan');
     }
 
     return pXml;

@@ -282,63 +282,96 @@ export async function submitLeaveRequest(params: SubmitLeaveParams) {
     })}`;
   }
 
-  const request = await prisma.leaveRequest.create({
-    data: {
-      userId: params.userId,
-      type: params.type,
-      startDate: params.startDate,
-      endDate: params.endDate,
-      reason: fullReason,
-      attachmentUrl: params.attachmentUrl || params.driveWebViewLink || null,
-      attachmentName: params.attachmentName || null,
-      attachmentMime: params.attachmentMime || null,
-      attachmentSize: params.attachmentSize || null,
-      driveFileId: params.driveFileId || null,
-      driveWebViewLink: params.driveWebViewLink || params.attachmentUrl || null,
-      storageProvider: params.storageProvider || null,
-      storagePath: params.storagePath || null,
-      uploadedAt: (params.attachmentUrl || params.driveFileId || params.storagePath) ? new Date() : null,
-      status: RequestStatus.PENDING,
-      approvalStage: 'REVIEWER',
-    },
-    include: {
-      user: {
-        select: {
-          id: true,
-          name: true,
-          employeeId: true,
-          username: true,
-          position: true,
-          department: true,
+  return prisma.$transaction(async (tx) => {
+    // Re-read routing inside the write transaction so a concurrent mapping
+    // change cannot send this request to an outdated reviewer.
+    const requestor = await tx.user.findUnique({
+      where: { id: params.userId },
+      select: { id: true, name: true, employeeId: true, team: true, isActive: true },
+    });
+    if (!requestor?.isActive || requestor.team !== user.team) {
+      throw new Error('Data akun atau tim berubah saat pengajuan diproses. Muat ulang halaman lalu coba lagi.');
+    }
+    const currentConfig = await tx.teamConfig.findUnique({ where: { code: user.team || '' } });
+    const approverIds = [currentConfig?.reviewerId, currentConfig?.teamLeadId, currentConfig?.managerId]
+      .filter((id): id is string => Boolean(id));
+    const approvers = await tx.user.findMany({
+      where: { id: { in: approverIds } },
+      select: { id: true, role: true, isActive: true },
+    });
+    const approverById = new Map(approvers.map((approver) => [approver.id, approver]));
+    const reviewer = currentConfig?.reviewerId ? approverById.get(currentConfig.reviewerId) : null;
+    const teamLead = currentConfig?.teamLeadId ? approverById.get(currentConfig.teamLeadId) : null;
+    const manager = currentConfig?.managerId ? approverById.get(currentConfig.managerId) : null;
+    if (
+      !currentConfig
+      || !reviewer?.isActive || reviewer.role === Role.ADMIN
+      || !teamLead?.isActive || teamLead.role === Role.ADMIN || currentConfig.teamLeadId === currentConfig.managerId
+      || !manager?.isActive || manager.role !== Role.MANAGER
+    ) {
+      throw new Error(`Konfigurasi persetujuan tim ${user.team || 'belum dipetakan'} berubah atau belum lengkap. Hubungi Admin.`);
+    }
+
+    const request = await tx.leaveRequest.create({
+      data: {
+        userId: params.userId,
+        type: params.type,
+        startDate: params.startDate,
+        endDate: params.endDate,
+        reason: fullReason,
+        attachmentUrl: params.attachmentUrl || params.driveWebViewLink || null,
+        attachmentName: params.attachmentName || null,
+        attachmentMime: params.attachmentMime || null,
+        attachmentSize: params.attachmentSize || null,
+        driveFileId: params.driveFileId || null,
+        driveWebViewLink: params.driveWebViewLink || params.attachmentUrl || null,
+        storageProvider: params.storageProvider || null,
+        storagePath: params.storagePath || null,
+        uploadedAt: (params.attachmentUrl || params.driveFileId || params.storagePath) ? new Date() : null,
+        status: RequestStatus.PENDING,
+        approvalStage: 'REVIEWER',
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            employeeId: true,
+            username: true,
+            position: true,
+            department: true,
+          },
         },
       },
-    },
-  });
+    });
 
-  // Audit: pengajuan cuti + bukti upload
-  await recordAuditLog({
-    userId: params.userId,
-    action: 'SUBMIT_LEAVE_REQUEST',
-    entity: 'LeaveRequest',
-    entityId: request.id,
-    metadata: {
-      type: params.type,
-      startDate: params.startDate,
-      endDate: params.endDate,
-      hasProof: Boolean(request.driveFileId || request.attachmentUrl),
-    },
-  });
+    const auditLog = await recordAuditLog({
+      userId: params.userId,
+      action: 'SUBMIT_LEAVE_REQUEST',
+      entity: 'LeaveRequest',
+      entityId: request.id,
+      metadata: {
+        type: params.type,
+        startDate: params.startDate,
+        endDate: params.endDate,
+        hasProof: Boolean(request.driveFileId || request.attachmentUrl || request.storagePath),
+        team: requestor.team,
+        approvalStage: 'REVIEWER',
+        assignedApproverId: currentConfig.reviewerId,
+      },
+    }, tx);
+    if (!auditLog) throw new Error('Pengajuan tidak dapat dicatat pada audit log; perubahan dibatalkan.');
 
-  // Notifikasi hanya dikirim kepada Reviewer yang ditugaskan.
-  await createNotification({
-    userId: teamConfig.reviewerId,
-    type: 'LEAVE_STATUS',
-    title: `Pengajuan ${params.type}: ${user.name}`,
-    message: `Operator ${user.name} (${user.employeeId}) mengajukan ${params.type} periode ${params.startDate} s/d ${params.endDate}. Mohon direview sebagai Reviewer tim Anda.`,
-    link: '/operator/requests?tab=approvals',
-  });
+    await createNotification({
+      userId: currentConfig.reviewerId!,
+      type: 'LEAVE_STATUS',
+      title: `Pengajuan ${params.type}: ${requestor.name}`,
+      message: `Operator ${requestor.name} (${requestor.employeeId}) mengajukan ${params.type} periode ${params.startDate} s/d ${params.endDate}. Mohon direview sebagai Reviewer tim Anda.`,
+      link: '/operator/requests?tab=approvals',
+    }, tx);
 
-  return request;
+    return request;
+  }, { maxWait: 10000, timeout: 20000 });
 }
 
 

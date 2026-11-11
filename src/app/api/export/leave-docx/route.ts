@@ -5,11 +5,19 @@ import { generateLeaveDocx, LeaveDocData } from '@/server/services/leaveDocxServ
 import { getLeaveEntitlement } from '@/server/services/leaveService';
 import { recordAuditLog } from '@/server/services/auditService';
 import { RequestStatus } from '@prisma/client';
+import { assertApprovalAuthority, type ApprovalStage } from '@/server/services/leaveService';
 
 export async function GET(req: NextRequest) {
   try {
-    const session = await getSession();
-    if (!session) {
+    const sessionToken = await getSession();
+    if (!sessionToken) {
+      return new NextResponse('Unauthorized', { status: 401 });
+    }
+    const session = await prisma.user.findUnique({
+      where: { id: sessionToken.id },
+      select: { id: true, role: true, isActive: true },
+    });
+    if (!session?.isActive) {
       return new NextResponse('Unauthorized', { status: 401 });
     }
 
@@ -33,9 +41,27 @@ export async function GET(req: NextRequest) {
       return new NextResponse('Permohonan cuti tidak ditemukan', { status: 404 });
     }
 
-    // Permission check: Operator can only download their own request.
+    // Operators may preview their own request or one actively assigned to them.
+    // Team Lead/Reviewer assignments are explicit in TeamConfig; role OPERATOR
+    // alone never grants access to another operator's document.
     if (session.role === 'OPERATOR' && leaveRequest.userId !== session.id) {
-      return new NextResponse('Forbidden: Anda tidak berhak mengunduh dokumen cuti operator lain', { status: 403 });
+      const activeStages: ApprovalStage[] = ['REVIEWER', 'TEAM_LEAD'];
+      const stage = leaveRequest.approvalStage as ApprovalStage;
+      if (leaveRequest.status !== RequestStatus.PENDING || !activeStages.includes(stage)) {
+        return new NextResponse('Forbidden: Anda tidak berhak mengunduh dokumen cuti operator lain', { status: 403 });
+      }
+      const approver = await prisma.user.findUnique({
+        where: { id: session.id },
+        select: { id: true, role: true, isActive: true },
+      });
+      if (!approver) {
+        return new NextResponse('Forbidden: Akun approver tidak ditemukan', { status: 403 });
+      }
+      try {
+        await assertApprovalAuthority({ userId: leaveRequest.userId }, approver, stage);
+      } catch {
+        return new NextResponse('Forbidden: Pengajuan ini bukan bagian dari inbox persetujuan Anda', { status: 403 });
+      }
     }
 
     // Calculate leave days
@@ -52,6 +78,23 @@ export async function GET(req: NextRequest) {
     const hakCutiBerjalan = entitlement.hakCutiBerjalan;
     const cutiBesar = entitlement.cutiBesar;
     const sisaCuti = entitlement.sisaCuti;
+
+    const teamConfig = leaveRequest.user.team
+      ? await prisma.teamConfig.findUnique({ where: { code: leaveRequest.user.team } })
+      : null;
+    const reviewerApproverId = leaveRequest.reviewerId || teamConfig?.reviewerId || null;
+    const assignedTeamLeadId = teamConfig?.teamLeadId && teamConfig.teamLeadId !== teamConfig.managerId
+      ? teamConfig.teamLeadId
+      : null;
+    const teamLeadApproverId = leaveRequest.teamLeadId || assignedTeamLeadId;
+    const managerApproverId = leaveRequest.managerId || teamConfig?.managerId || null;
+    const approverIds = [reviewerApproverId, teamLeadApproverId, managerApproverId]
+      .filter((id): id is string => Boolean(id));
+    const approverAccounts = await prisma.user.findMany({
+      where: { id: { in: approverIds } },
+      select: { id: true, name: true, position: true },
+    });
+    const approverById = new Map(approverAccounts.map((account) => [account.id, account]));
 
     // Formatted Indonesian dates
     const INDO_MONTHS = [
@@ -78,6 +121,14 @@ export async function GET(req: NextRequest) {
       }
       return `${formatIndoDate(startStr)} s/d ${formatIndoDate(endStr)}`;
     };
+    const formatApprovalTimestamp = (value: Date | null) => value
+      ? new Intl.DateTimeFormat('id-ID', {
+          day: 'numeric',
+          month: 'long',
+          year: 'numeric',
+          timeZone: 'Asia/Jakarta',
+        }).format(value)
+      : '-';
 
     // Parse extra metadata if stored in reason (or fallback)
     let alamatCuti = 'Simo Mulyo Baru 7J no 35 Surabaya, Jawa Timur';
@@ -98,11 +149,38 @@ export async function GET(req: NextRequest) {
       ? formatIndoDate(leaveRequest.createdAt.toISOString().substring(0, 10))
       : formatIndoDate(leaveRequest.startDate);
 
-    const approvalDate = leaveRequest.status === RequestStatus.APPROVED && leaveRequest.reviewedAt
-      ? formatIndoDate(leaveRequest.reviewedAt.toISOString().substring(0, 10))
-      : '-';
+    const approvalDate = formatApprovalTimestamp(leaveRequest.managerApprovedAt);
+
+    const approvalDecision = (stage: 'REVIEWER' | 'TEAM_LEAD' | 'MANAGER', decidedAt: Date | null) => {
+      if (decidedAt) {
+        return leaveRequest.status === RequestStatus.REJECTED && leaveRequest.approvalStage === stage
+          ? 'DITOLAK'
+          : 'DISETUJUI';
+      }
+      if (leaveRequest.status === RequestStatus.REJECTED) return 'TIDAK DIPROSES';
+      if (leaveRequest.status === RequestStatus.PENDING && leaveRequest.approvalStage === stage) {
+        return 'MENUNGGU';
+      }
+      return 'BELUM DIPROSES';
+    };
+    const approvalSummary = (
+      label: string,
+      stage: 'REVIEWER' | 'TEAM_LEAD' | 'MANAGER',
+      approverId: string | null,
+      decidedAt: Date | null,
+    ) => {
+      const approver = approverId ? approverById.get(approverId) : null;
+      const approverName = approver?.name || (approverId ? 'Akun approver tidak tersedia' : 'Belum ditetapkan');
+      const position = approver?.position ? ` (${approver.position})` : '';
+      const date = formatApprovalTimestamp(decidedAt);
+      return `${label}: ${approverName}${position}\n${approvalDecision(stage, decidedAt)} • ${date}`;
+    };
+    const managerName = managerApproverId ? approverById.get(managerApproverId)?.name : null;
+    const managerDecision = approvalDecision('MANAGER', leaveRequest.managerApprovedAt);
+    const managerPosition = managerApproverId ? approverById.get(managerApproverId)?.position : null;
 
     const docData: LeaveDocData = {
+      isDraft: leaveRequest.status !== RequestStatus.APPROVED,
       namaPekerja: leaveRequest.user.name,
       nip: leaveRequest.user.employeeId,
       jabatan: leaveRequest.user.position || 'Penunjang Pengoperasian ORF',
@@ -123,14 +201,13 @@ export async function GET(req: NextRequest) {
       tanggalPersetujuan: approvalDate,
       selamaHari: leaveDays,
       penyerahanTugas,
-      // Tanda tangan diisi dari data approval yang benar-benar tersimpan;
-      // fallback mempertahankan nama statis dari template apabila belum tersimpan.
-      menyetujuiNama: leaveRequest.managerName || 'Isa Taufiq',
-      mengetahuiNama:
-        leaveRequest.teamLeadName ||
-        leaveRequest.reviewerName ||
-        leaveRequest.reviewedBy?.name ||
-        'Yosep Ismail Zulkarnain',
+      // Nama approver berasal dari assignment aktual; konfigurasi kosong
+      // ditampilkan secara eksplisit dan tidak memakai nama fallback template.
+      menyetujuiNama: leaveRequest.managerName || managerName || 'Belum ditetapkan',
+      managerRoleLine: `Manager • ${managerDecision}`,
+      managerDateLine: `${managerPosition || 'Jabatan: -'} • Tanggal: ${approvalDate}`,
+      reviewerSummary: approvalSummary('Team Reviewer', 'REVIEWER', reviewerApproverId, leaveRequest.reviewerApprovedAt),
+      teamLeadSummary: approvalSummary('Team Lead', 'TEAM_LEAD', teamLeadApproverId, leaveRequest.teamLeadApprovedAt),
     };
 
     const docxBuffer = await generateLeaveDocx(docData);
@@ -161,6 +238,7 @@ export async function GET(req: NextRequest) {
         'Content-Type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
         'Content-Disposition': `attachment; filename="${encodeURIComponent(filename)}"`,
         'X-Document-Status': docStatus,
+        'Cache-Control': 'private, no-store, max-age=0',
       },
     });
   } catch (error: unknown) {

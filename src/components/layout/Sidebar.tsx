@@ -46,6 +46,7 @@ interface NavItem {
   badge?: number;
   hasSub?: boolean;
   isExternal?: boolean;
+  children?: NavItem[];
 }
 
 interface NavSection {
@@ -81,6 +82,14 @@ export function Sidebar({
     href: 'https://apps.pertamina.com/mycareer',
     imageSrc: '/images/iam-talent.png',
     isExternal: true,
+  };
+
+  const applicationsNavItem: NavItem = {
+    label: 'Aplikasi',
+    href: '/operator/aplikasi',
+    icon: Grid2X2,
+    hasSub: true,
+    children: [idamanNavItem, iamTalentNavItem],
   };
 
   // Admin Navigation Structure
@@ -127,9 +136,7 @@ export function Sidebar({
         { label: 'Laporan', href: '/manager/reports', icon: ClipboardList },
         { label: 'Audit Log', href: '/manager/audit-logs', icon: ShieldCheck },
         { label: 'Pengaturan', href: '/admin/settings', icon: Settings },
-        { label: 'Aplikasi', href: '/operator/aplikasi', icon: Grid2X2 },
-        idamanNavItem,
-        iamTalentNavItem,
+        applicationsNavItem,
       ],
     },
   ];
@@ -178,9 +185,7 @@ export function Sidebar({
         { label: 'Laporan', href: '/manager/reports', icon: ClipboardList },
         { label: 'Audit Log', href: '/manager/audit-logs', icon: ShieldCheck },
         { label: 'Pengaturan', href: '/profile#keamanan', icon: Settings },
-        { label: 'Aplikasi', href: '/operator/aplikasi', icon: Grid2X2 },
-        idamanNavItem,
-        iamTalentNavItem,
+        applicationsNavItem,
       ],
     },
   ];
@@ -225,9 +230,7 @@ export function Sidebar({
       items: [
         { label: 'Notifikasi', href: '/notifications', icon: Bell, badge: unreadCount },
         { label: 'Pengaturan', href: '/profile', icon: Settings },
-        { label: 'Aplikasi', href: '/operator/aplikasi', icon: Grid2X2 },
-        idamanNavItem,
-        iamTalentNavItem,
+        applicationsNavItem,
       ],
     },
   ];
@@ -252,7 +255,7 @@ export function Sidebar({
   };
 
   const sidebarContent = (
-    <div className="flex flex-col h-full bg-[#FFFFFF] dark:bg-[#081A2B] text-text-primary select-none border-r border-[#E2E8F0] dark:border-[rgba(120,190,235,0.14)] relative overflow-hidden shadow-xs">
+    <div className="flex h-full w-full min-w-0 flex-col overflow-hidden bg-[#FFFFFF] text-text-primary shadow-xs relative select-none border-r border-[#E2E8F0] dark:bg-[#081A2B] dark:border-[rgba(120,190,235,0.14)]">
       {/* 1. BRAND AREA — Logo + Title + Pulse Badge + 3-Color Ribbon */}
       <div className="pt-5 pb-4 px-4.5 flex flex-col shrink-0 border-b border-[#E2E8F0] dark:border-[rgba(120,190,235,0.14)] bg-[#FFFFFF] dark:bg-[#081A2B] relative z-10">
         <div className="flex items-center justify-between">
@@ -306,16 +309,16 @@ export function Sidebar({
       </div>
 
       {/* 2. NAVIGATION MENU */}
-      <div className="flex-1 overflow-y-auto px-3 py-4 space-y-4 scrollbar-thin relative z-10">
+      <div className="relative z-10 min-h-0 min-w-0 w-full flex-1 overflow-x-hidden overflow-y-auto px-3 py-4 space-y-4 scrollbar-thin">
         {sections.map((sec, idx) => (
-          <div key={idx}>
+          <div key={idx} className="min-w-0 w-full">
             {sec.title && (
               <div className="px-3 mb-1.5 text-[10px] font-extrabold text-[#64748B] dark:text-[#7895AD] tracking-wider uppercase">
                 {sec.title}
               </div>
             )}
 
-            <nav className="space-y-1">
+            <nav className="min-w-0 w-full space-y-1">
               {sec.items.map((item) => {
                 const Icon = item.icon;
                 const isActive = checkIsActive(item.href);
@@ -368,6 +371,7 @@ export function Sidebar({
                           <ChevronRight
                             className={clsx(
                               'w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5',
+                              item.children?.length ? 'rotate-90' : '',
                               isActive ? 'text-white/80' : 'text-[#64748B] dark:text-[#7895AD]'
                             )}
                           />
@@ -378,11 +382,52 @@ export function Sidebar({
                 );
 
                 const itemClassName = clsx(
-                  'flex items-center justify-between px-3.5 py-2.5 rounded-xl text-[12.5px] font-semibold transition-all duration-150 group relative',
+                  'relative flex w-full min-w-0 items-center justify-between overflow-hidden rounded-xl px-3.5 py-2.5 text-[12.5px] font-semibold transition-all duration-150 group',
                   isActive
                     ? 'bg-[#087CC9] text-white font-bold shadow-[0_4px_16px_rgba(8,124,201,0.4),inset_0_1px_0_rgba(255,255,255,0.25)]'
                     : 'text-[#123D70] dark:text-[#B9CCDE] hover:bg-[#F4F9FC] dark:hover:bg-[#0088D8]/10 hover:text-[#0077C8] dark:hover:text-[#EAF6FF]'
                 );
+
+                if (item.children?.length) {
+                  return (
+                    <div key={item.href} className="w-full min-w-0">
+                      <Link
+                        href={item.href}
+                        onClick={onCloseMobile}
+                        className={itemClassName}
+                      >
+                        {itemContent}
+                      </Link>
+                      <div className="ml-3 mt-1 min-w-0 space-y-1 border-l border-[#D8E4EF] pl-2 dark:border-[rgba(120,190,235,0.2)]">
+                        {item.children.map((child) => (
+                          <a
+                            key={child.href}
+                            href={child.href}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={onCloseMobile}
+                            className="group relative flex w-full min-w-0 items-center justify-between gap-2 overflow-hidden rounded-xl px-2.5 py-2 text-[11.5px] font-semibold text-[#123D70] transition-all duration-150 hover:bg-[#F4F9FC] hover:text-[#0077C8] dark:text-[#B9CCDE] dark:hover:bg-[#0088D8]/10 dark:hover:text-[#EAF6FF]"
+                            title={`Buka ${child.label} di tab baru`}
+                          >
+                            <span className="flex min-w-0 items-center gap-2">
+                              <span className="relative flex h-6 w-9 shrink-0 items-center justify-center overflow-hidden rounded-md border border-[#E2E8F0] bg-white p-0.5 shadow-2xs dark:border-[rgba(120,190,235,0.2)]">
+                                <Image
+                                  src={child.imageSrc || ''}
+                                  alt={`Logo ${child.label}`}
+                                  width={36}
+                                  height={24}
+                                  className="h-full w-full object-contain object-center"
+                                />
+                              </span>
+                              <span className="truncate leading-tight">{child.label}</span>
+                            </span>
+                            <ExternalLink className="h-3.5 w-3.5 shrink-0 text-[#64748B] dark:text-[#7895AD]" />
+                          </a>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                }
 
                 if (item.isExternal) {
                   return (
@@ -436,7 +481,7 @@ export function Sidebar({
         />
         <aside
           className={clsx(
-            'absolute left-0 top-0 bottom-0 w-[240px] max-w-[80vw] h-full shadow-2xl transition-transform duration-300 ease-in-out',
+            'absolute left-0 top-0 bottom-0 h-full w-[240px] max-w-[80vw] min-w-0 overflow-hidden shadow-2xl transition-transform duration-300 ease-in-out',
             isOpen ? 'translate-x-0' : '-translate-x-full'
           )}
         >
@@ -448,7 +493,7 @@ export function Sidebar({
 
   // Desktop Fixed Sidebar (240px width)
   return (
-    <aside className="w-[240px] h-screen fixed left-0 top-0 border-r border-[#E2E8F0] dark:border-[rgba(120,190,235,0.14)] shadow-[2px_0_14px_rgba(11,53,104,0.03)] dark:shadow-none z-40">
+    <aside className="fixed left-0 top-0 z-40 h-screen w-[240px] min-w-[240px] max-w-[240px] overflow-hidden border-r border-[#E2E8F0] shadow-[2px_0_14px_rgba(11,53,104,0.03)] dark:border-[rgba(120,190,235,0.14)] dark:shadow-none">
       {sidebarContent}
     </aside>
   );
