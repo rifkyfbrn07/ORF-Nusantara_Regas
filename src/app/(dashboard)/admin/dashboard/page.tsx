@@ -130,7 +130,7 @@ export default async function AdminDashboardPage() {
       id: log.id,
       time: timeStr,
       title: log.action.replaceAll('_', ' ').toLowerCase().replace(/\b\w/g, (l) => l.toUpperCase()),
-      subtitle: `${log.user?.name || 'System'} · ${log.entity}`,
+      subtitle: `${log.user?.name || log.userNameSnapshot || 'System'} · ${log.entity}`,
       dotColor: log.action.includes('DELETE') ? '#EF3340' : log.action.includes('CREATE') ? '#22A65A' : '#0077C8',
       link: '/manager/audit-logs',
     };

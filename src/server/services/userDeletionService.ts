@@ -15,7 +15,7 @@ export async function getUserDeletionBlockers(
 ): Promise<UserDeletionBlocker[]> {
   const [attendances, attendanceVerifications, leaveRequests, leaveApprovalHistory, reviewedLeaves, requestedExchanges,
     targetExchanges, reviewedExchanges, outgoingHandovers, incomingHandovers, hsseChecklists,
-    notifications, auditLogs, programPics, programEvidenceUploads, programProgressLogs, programUpdates,
+    notifications, programPics, programEvidenceUploads, programProgressLogs, programUpdates,
     programScheduleHistory, programRealizationLogs, taskCompletions, targetedAnnouncements, announcements, operationalReports, dataImports,
     infoOrfReports, cargoUpdates, teamAssignments] = await Promise.all([
     client.attendance.count({ where: { userId } }),
@@ -30,7 +30,6 @@ export async function getUserDeletionBlockers(
     client.handover.count({ where: { incomingOperatorId: userId } }),
     client.hSSEChecklist.count({ where: { operatorId: userId } }),
     client.notification.count({ where: { userId } }),
-    client.auditLog.count({ where: { userId } }),
     client.programKerja.count({ where: { picId: userId } }),
     client.programKerja.count({ where: { evidenceUploadedById: userId } }),
     client.programKerjaProgressLog.count({ where: { userId } }),
@@ -53,7 +52,9 @@ export async function getUserDeletionBlockers(
     ['pengajuan pergantian shift sebagai pemohon', requestedExchanges], ['pengajuan pergantian shift sebagai target', targetExchanges],
     ['keputusan pergantian shift', reviewedExchanges], ['serah terima shift sebagai operator keluar', outgoingHandovers],
     ['serah terima shift sebagai operator masuk', incomingHandovers], ['checklist HSSE', hsseChecklists],
-    ['notifikasi', notifications], ['audit log aktivitas', auditLogs], ['program kerja sebagai PIC', programPics],
+    // AuditLog.userId is nullable with ON DELETE SET NULL; it is preserved with
+    // identity snapshots by the database trigger and must not block account deletion.
+    ['notifikasi', notifications], ['program kerja sebagai PIC', programPics],
     ['unggahan bukti program kerja', programEvidenceUploads], ['riwayat progres program kerja', programProgressLogs],
     ['riwayat update program kerja', programUpdates], ['riwayat perubahan jadwal program', programScheduleHistory],
     ['riwayat realisasi program', programRealizationLogs], ['penyelesaian tugas program kerja', taskCompletions],

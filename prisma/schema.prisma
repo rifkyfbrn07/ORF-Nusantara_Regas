@@ -465,6 +465,10 @@ model AuditLog {
   id        String   @id @default(cuid())
   userId    String?
   user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  userNameSnapshot     String?
+  userUsernameSnapshot String?
+  userEmployeeIdSnapshot String?
+  userRoleSnapshot     String?
   action    String
   entity    String
   entityId  String?

@@ -42,6 +42,7 @@ export async function getAuditLogs(limit = 100, page = 1) {
           select: {
             id: true,
             name: true,
+            username: true,
             email: true,
             employeeId: true,
             role: true,
@@ -52,5 +53,19 @@ export async function getAuditLogs(limit = 100, page = 1) {
     prisma.auditLog.count(),
   ]);
 
-  return { logs, total, totalPages: Math.ceil(total / limit) };
+  return {
+    logs: logs.map((log) => ({
+      ...log,
+      user: log.user ?? (log.userNameSnapshot ? {
+        id: '',
+        name: log.userNameSnapshot,
+        username: log.userUsernameSnapshot,
+        email: null,
+        employeeId: log.userEmployeeIdSnapshot,
+        role: log.userRoleSnapshot,
+      } : null),
+    })),
+    total,
+    totalPages: Math.ceil(total / limit),
+  };
 }

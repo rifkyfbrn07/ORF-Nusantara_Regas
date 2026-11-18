@@ -264,7 +264,7 @@ const resetPasswordSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     startTransition(async () => {
       const result = await deleteAdminUserAction(deleteUser.id);
       if (result.success) {
-        toast.success(`Akun @${deleteUser.username} berhasil dihapus permanen.`);
+        toast.success('Akun berhasil dihapus');
         setDeleteUser(null);
       } else {
         toast.error(result.error || 'Gagal menghapus akun.');
@@ -843,7 +843,7 @@ const resetPasswordSubmit = (event: React.FormEvent<HTMLFormElement>) => {
           <AlertTriangle className="h-5 w-5 text-red-600 shrink-0" />
           <p className="text-xs text-slate-600 leading-relaxed">
             Akun <strong className="text-[#0F315A]">{deleteUser?.name}</strong> (@{deleteUser?.username}, ID karyawan {deleteUser?.employeeId}) akan dihapus permanen dan tidak dapat digunakan untuk login.
-            Jika akun masih terhubung ke jadwal, persetujuan, absensi, audit, atau data operasional lain, penghapusan akan ditolak agar riwayat tetap utuh.
+            Data historis yang sudah memiliki snapshot akan tetap tersimpan dengan identitas pembuatnya.
           </p>
         </div>
       </Modal>

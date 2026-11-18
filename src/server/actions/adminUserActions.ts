@@ -270,10 +270,9 @@ export async function deleteAdminUserAction(id: string) {
       const scheduleIds = await tx.schedule.findMany({ where: { userId: id }, select: { id: true } });
       const blockers = await getUserDeletionBlockers(id, tx);
       if (blockers.length > 0) {
-        const details = blockers.map(({ label, count }) => `${label}: ${count}`).join('; ');
         return {
           success: false as const,
-          error: `Akun @${target.username} belum dapat dihapus karena masih memiliki data terkait (${details}). Data historis dipertahankan.`,
+          error: 'Akun belum dapat dihapus karena masih terhubung dengan data operasional yang belum memiliki mekanisme arsip aman.',
         };
       }
 
