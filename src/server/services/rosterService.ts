@@ -177,9 +177,9 @@ export async function getRosterMonth(options: {
   if (month < 1 || month > 12) throw new Error('Bulan tidak valid.');
   const holidayCalendar = await getIndonesianHolidayCalendar(year);
   const holidayNames = holidayCalendar.holidays;
-  const teamLeadAssignments = new Map(
-    (await prisma.teamConfig.findMany({ select: { code: true, teamLeadId: true } }))
-      .map((config) => [config.code.trim().toUpperCase(), config.teamLeadId] as const)
+  const teamLeadUserIds = new Set(
+    (await prisma.teamConfig.findMany({ select: { teamLeadId: true } }))
+      .flatMap((config) => config.teamLeadId ? [config.teamLeadId] : [])
   );
 
   const dateWhere: { gte: string; lte: string } = { gte: monthStart, lte: monthEnd };
@@ -210,7 +210,7 @@ export async function getRosterMonth(options: {
       includeTodayStatus: options.includeTodayStatus,
       includeContacts: options.includeContacts,
       holidayNames,
-      teamLeadAssignments,
+      teamLeadUserIds,
     });
 
     return {
@@ -282,7 +282,7 @@ export async function getRosterMonth(options: {
           includeContacts: options.includeContacts,
           shiftFilter: options.shiftFilter,
           holidayNames,
-          teamLeadAssignments,
+          teamLeadUserIds,
         })
       )
     )
@@ -415,7 +415,7 @@ interface BuildRowParams {
   includeContacts: boolean;
   shiftFilter?: RosterShiftKey | 'ALL';
   holidayNames: Record<string, string>;
-  teamLeadAssignments: Map<string, string | null>;
+  teamLeadUserIds: Set<string>;
 }
 
 async function buildOperatorRow(params: BuildRowParams): Promise<RosterOperatorRow | null> {
@@ -490,7 +490,7 @@ async function buildOperatorRow(params: BuildRowParams): Promise<RosterOperatorR
     // (keputusan otorisasi dibuat server-side oleh halaman pemanggil).
     phone: params.includeContacts ? user.phone : null,
     team: user.team?.trim() || null,
-    isTeamLead: !!user.team && params.teamLeadAssignments.get(user.team.trim().toUpperCase()) === user.id,
+    isTeamLead: params.teamLeadUserIds.has(user.id),
     positionSuffix: meta.positionSuffix,
     hsseMarshall: meta.hsseMarshall,
     todayStatus,

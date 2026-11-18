@@ -14,6 +14,7 @@ import {
 } from '@/lib/validation';
 import { recordAuditLog } from '@/server/services/auditService';
 import { assertNoPendingLeaveRequestsForRoutingChange } from '@/server/services/leaveService';
+import { getUserDeletionBlockers } from '@/server/services/userDeletionService';
 
 const userPaths = () => {
   revalidatePath('/admin/users');
@@ -256,30 +257,41 @@ export async function deleteAdminUserAction(id: string) {
   try {
     const admin = await requireAdmin();
     if (id === admin.id) return { success: false, error: 'Anda tidak dapat menghapus akun sendiri.' };
+    const result = await prisma.$transaction(async (tx) => {
+      // Prevent concurrent inserts from attaching new history while the preflight runs.
+      await tx.$queryRaw<{ id: string }[]>`SELECT "id" FROM "User" WHERE "id" = ${id} FOR UPDATE`;
+      const target = await tx.user.findUnique({
+        where: { id },
+        select: { id: true, isActive: true, email: true, username: true, name: true, role: true },
+      });
+      if (!target) return { success: false as const, error: 'Akun tidak ditemukan.' };
+      if (target.role === 'ADMIN') return { success: false as const, error: 'ADMIN utama tidak boleh dihapus.' };
 
-    const target = await prisma.user.findUnique({
-      where: { id },
-      select: { isActive: true, email: true, username: true, name: true, role: true },
-    });
-    if (!target) return { success: false, error: 'Akun tidak ditemukan.' };
-    if (target.role === 'ADMIN') return { success: false, error: 'ADMIN utama tidak boleh dihapus.' };
-    if (!target.isActive) return { success: true, user: { isActive: false }, alreadyInactive: true };
+      const blockers = await getUserDeletionBlockers(id, tx);
+      if (blockers.length > 0) {
+        const details = blockers.map(({ label, count }) => `${label}: ${count}`).join('; ');
+        return {
+          success: false as const,
+          error: `Akun @${target.username} belum dapat dihapus karena masih memiliki data terkait (${details}). Data historis dipertahankan.`,
+        };
+      }
 
-    const user = await prisma.user.update({
-      where: { id },
-      data: { isActive: false },
-      select: { id: true, name: true, username: true, isActive: true },
-    });
-    await recordAuditLog({
-      userId: admin.id,
-      action: 'ADMIN_DELETE_USER',
-      entity: 'User',
-      entityId: id,
-      metadata: { mode: 'soft-delete', username: target.username, email: target.email, name: target.name },
-    });
+      await tx.user.delete({ where: { id: target.id } });
+      const auditLog = await recordAuditLog({
+        userId: admin.id,
+        action: 'ADMIN_DELETE_USER',
+        entity: 'User',
+        entityId: target.id,
+        metadata: { mode: 'hard-delete', username: target.username, email: target.email, name: target.name, wasActive: target.isActive },
+      }, tx);
+      if (!auditLog) throw new Error('Gagal mencatat audit penghapusan akun.');
+      return { success: true as const, user: { id: target.id, username: target.username, name: target.name } };
+    }, { maxWait: 10000, timeout: 30000 });
+    if (!result.success) return result;
     userPaths();
-    return { success: true, user };
-  } catch {
-    return { success: false, error: 'Gagal menghapus akun.' };
+    return result;
+  } catch (error) {
+    console.error('Failed to delete admin user:', error);
+    return { success: false, error: 'Gagal menghapus akun. Tidak ada perubahan yang disimpan.' };
   }
 }
