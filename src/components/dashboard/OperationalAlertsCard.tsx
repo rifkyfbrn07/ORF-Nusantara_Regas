@@ -42,7 +42,7 @@ export function OperationalAlertsCard({ alerts = [] }: OperationalAlertsCardProp
       description: 'Cuti - Andi Pratama',
       time: '1 jam lalu',
       dotColor: 'bg-[#0077C8]',
-      link: '/manager/requests',
+      link: '/approval-inbox',
     },
   ];
 

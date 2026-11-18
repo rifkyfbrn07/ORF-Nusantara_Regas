@@ -110,6 +110,7 @@ interface ManagerRequestsClientProps {
   shiftExchanges: ManagerShiftExchangeItem[];
   defaultTab: 'leave' | 'shift';
   currentUserRole?: 'ADMIN' | 'MANAGER' | 'OPERATOR';
+  onlyTab?: 'leave' | 'shift';
 }
 
 export function ManagerRequestsClient({
@@ -117,9 +118,10 @@ export function ManagerRequestsClient({
   shiftExchanges,
   defaultTab,
   currentUserRole = 'MANAGER',
+  onlyTab,
 }: ManagerRequestsClientProps) {
   const router = useRouter();
-  const [tab, setTab] = useState<'leave' | 'shift'>(defaultTab);
+  const [tab, setTab] = useState<'leave' | 'shift'>(onlyTab || defaultTab);
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -154,7 +156,7 @@ export function ManagerRequestsClient({
   };
 
   const canActOnStage = (r: ManagerLeaveRequestItem) => {
-    return currentUserRole === 'MANAGER' && r.status === 'PENDING' && r.canAct === true;
+    return !onlyTab && currentUserRole === 'MANAGER' && r.status === 'PENDING' && r.canAct === true;
   };
 
   // Proof Preview Modal State
@@ -346,7 +348,7 @@ export function ManagerRequestsClient({
 
       {/* Tabs & Quick Actions */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 pb-3">
-        <div className="flex items-center gap-2">
+        {!onlyTab && <div className="flex items-center gap-2">
           <button
             onClick={() => setTab('leave')}
             className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
@@ -376,7 +378,7 @@ export function ManagerRequestsClient({
               {shiftExchanges.filter((s) => s.status === 'PENDING').length} Baru)
             </span>
           </button>
-        </div>
+        </div>}
 
         {tab === 'leave' && currentUserRole === 'ADMIN' && (
           <button

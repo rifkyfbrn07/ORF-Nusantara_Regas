@@ -38,7 +38,7 @@ const MENUS: MenuEntry[] = [
   { label: 'Monitoring Manpower', href: '/manager/workforce', role: 'MANAGER', keywords: 'manpower monitoring tenaga kerja' },
   { label: 'Operator Roster', href: '/manager/operators', role: 'MANAGER', keywords: 'operator roster daftar personil' },
   { label: 'Absensi', href: '/manager/attendance', role: 'MANAGER', keywords: 'absensi attendance presensi' },
-  { label: 'Cuti & Izin', href: '/manager/requests', role: 'MANAGER', keywords: 'cuti izin leave request persetujuan' },
+  { label: 'Cuti & Izin', href: '/operator/requests', role: 'MANAGER', keywords: 'cuti izin leave request' },
   { label: 'Handover', href: '/manager/handover', role: 'MANAGER', keywords: 'handover serah terima shift' },
   { label: 'HSSE', href: '/manager/hsse', role: 'MANAGER', keywords: 'hsse safety checklist keselamatan' },
   { label: 'Pengumuman', href: '/manager/announcements', role: 'MANAGER', keywords: 'pengumuman announcement broadcast' },

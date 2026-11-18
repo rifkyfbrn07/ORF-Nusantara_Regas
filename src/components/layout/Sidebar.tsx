@@ -103,8 +103,8 @@ export function Sidebar({
     {
       title: 'REQUEST & OPS',
       items: [
-        ...(hasApprovalInbox ? [{ label: 'Inbox Persetujuan', href: '/operator/requests?tab=approvals', icon: UserCheck, badge: pendingApprovalCount }] : []),
-        { label: 'Cuti & Izin', href: '/manager/requests', icon: UserCheck },
+        ...(hasApprovalInbox ? [{ label: 'Inbox Persetujuan', href: '/approval-inbox', icon: UserCheck, badge: pendingApprovalCount }] : []),
+        { label: 'Cuti & Izin', href: '/operator/requests', icon: UserCheck },
         { label: 'Rekap & SPL Lembur', href: '/manager/lembur', icon: Clock },
         { label: 'Handover', href: '/manager/handover', icon: ClipboardList },
         { label: 'HSSE', href: '/manager/hsse', icon: ShieldCheck },
@@ -140,7 +140,7 @@ export function Sidebar({
         { label: 'Monitoring ORF', href: '/manager/monitoring-orf', icon: Activity },
         { label: 'Monitoring Manpower', href: '/manager/workforce', icon: Grid2X2 },
         { label: 'Operator Roster', href: '/manager/operators', icon: Users, hasSub: true },
-        { label: 'Pergantian Shift', href: '/manager/requests?tab=shift', icon: ArrowLeftRight },
+        { label: 'Pergantian Shift', href: '/manager/shift-exchange', icon: ArrowLeftRight },
       ],
     },
     {
@@ -152,8 +152,8 @@ export function Sidebar({
     {
       title: 'REQUEST & OPS',
       items: [
-        ...(hasApprovalInbox ? [{ label: 'Inbox Persetujuan', href: '/operator/requests?tab=approvals', icon: UserCheck, badge: pendingApprovalCount }] : []),
-        { label: 'Cuti & Izin', href: '/manager/requests', icon: UserCheck },
+        ...(hasApprovalInbox ? [{ label: 'Inbox Persetujuan', href: '/approval-inbox', icon: UserCheck, badge: pendingApprovalCount }] : []),
+        { label: 'Cuti & Izin', href: '/operator/requests', icon: UserCheck },
         { label: 'Rekap & SPL Lembur', href: '/manager/lembur', icon: Clock },
         { label: 'Handover', href: '/manager/handover', icon: ClipboardList },
         { label: 'HSSE', href: '/manager/hsse', icon: ShieldCheck },
@@ -200,7 +200,7 @@ export function Sidebar({
     {
       title: 'REQUEST & OPS',
       items: [
-        ...(hasApprovalInbox ? [{ label: 'Inbox Persetujuan', href: '/operator/requests?tab=approvals', icon: UserCheck, badge: pendingApprovalCount }] : []),
+        ...(hasApprovalInbox ? [{ label: 'Inbox Persetujuan', href: '/approval-inbox', icon: UserCheck, badge: pendingApprovalCount }] : []),
         { label: 'Cuti & Izin', href: '/operator/requests', icon: UserCheck },
         { label: 'Rekap & SPL Lembur', href: '/operator/lembur', icon: Clock },
         { label: 'Shift Handover', href: '/operator/handover', icon: ClipboardList },

@@ -100,7 +100,7 @@ export async function updateTeamApprovalConfigAction(input: {
             type: 'LEAVE_STATUS',
             title: `Pengajuan ${request.type} menunggu persetujuan Team Lead`,
             message: `Permohonan ${request.type} ${request.user.name} (${request.startDate} s/d ${request.endDate}) menunggu persetujuan Team Lead. Mapping tim kini tersedia.`,
-            link: '/operator/requests?tab=approvals',
+            link: '/approval-inbox',
           }, tx);
         }
       }

@@ -366,7 +366,7 @@ export async function respondShiftExchange(params: { exchangeId: string; targetU
       'SHIFT_EXCHANGE',
       'Permintaan Tukar Hari OFF menunggu persetujuan',
       `${exchange.targetUser.name} menerima permintaan tukar hari OFF dari ${exchange.requester.name} (${exchange.requesterSchedule.date} ↔ ${exchange.targetSchedule.date}).`,
-      '/manager/requests',
+      '/manager/shift-exchange',
       tx
     );
 
@@ -589,6 +589,34 @@ export async function getAllShiftExchanges(status?: RequestStatus) {
       requesterSchedule: { include: { shift: true, location: true } },
       targetSchedule: { include: { shift: true, location: true } },
       reviewedBy: { select: { name: true } },
+    },
+  });
+}
+
+export async function getPendingShiftExchangeApprovals() {
+  return prisma.shiftExchange.findMany({
+    where: {
+      status: RequestStatus.PENDING,
+      confirmationStatus: ACCEPTED_CONFIRMATION,
+      approvalStatus: PENDING_APPROVAL,
+    },
+    orderBy: { createdAt: 'desc' },
+    include: {
+      requester: { select: { name: true, employeeId: true, position: true } },
+      targetUser: { select: { name: true, employeeId: true, position: true } },
+      requesterSchedule: { include: { shift: true, location: true } },
+      targetSchedule: { include: { shift: true, location: true } },
+      reviewedBy: { select: { name: true } },
+    },
+  });
+}
+
+export async function getPendingShiftExchangeApprovalCount() {
+  return prisma.shiftExchange.count({
+    where: {
+      status: RequestStatus.PENDING,
+      confirmationStatus: ACCEPTED_CONFIRMATION,
+      approvalStatus: PENDING_APPROVAL,
     },
   });
 }

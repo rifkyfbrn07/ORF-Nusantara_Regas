@@ -367,7 +367,7 @@ export async function submitLeaveRequest(params: SubmitLeaveParams) {
       type: 'LEAVE_STATUS',
       title: `Pengajuan ${params.type}: ${requestor.name}`,
       message: `Operator ${requestor.name} (${requestor.employeeId}) mengajukan ${params.type} periode ${params.startDate} s/d ${params.endDate}. Mohon direview sebagai Reviewer tim Anda.`,
-      link: '/operator/requests?tab=approvals',
+      link: '/approval-inbox',
     }, tx);
 
     return request;
@@ -591,7 +591,7 @@ export async function processLeaveApproval(params: ProcessLeaveApprovalParams) {
         message: nextStage === 'TEAM_LEAD'
           ? `Permohonan ${existing.type} ${existing.user.name} (${existing.startDate} s/d ${existing.endDate}) telah disetujui Reviewer. Mohon diproses sebagai Team Lead.`
           : `Permohonan ${existing.type} ${existing.user.name} (${existing.startDate} s/d ${existing.endDate}) telah disetujui Team Lead. Mohon diberikan keputusan akhir.`,
-        link: '/operator/requests?tab=approvals',
+        link: '/approval-inbox',
       }, tx);
     }
 
@@ -686,10 +686,10 @@ async function getPendingLeaveApprovalWhereForUser(
     select: { code: true, reviewerId: true, teamLeadId: true, managerId: true },
   });
   for (const config of configs) {
-    if (config.reviewerId === user.id) {
+    if (user.role !== Role.MANAGER && config.reviewerId === user.id) {
       or.push({ approvalStage: 'REVIEWER', user: { team: config.code } });
     }
-    if (config.teamLeadId === user.id && config.teamLeadId !== config.managerId) {
+    if (user.role !== Role.MANAGER && config.teamLeadId === user.id && config.teamLeadId !== config.managerId) {
       or.push({ approvalStage: 'TEAM_LEAD', user: { team: config.code } });
     }
     if (user.role === Role.MANAGER && config.managerId === user.id) {

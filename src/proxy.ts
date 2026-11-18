@@ -76,11 +76,8 @@ export async function proxy(request: NextRequest) {
       (p) => pathname === p || pathname.startsWith(`${p}/`)
     );
 
-  // REGAS: MANAGER diizinkan mengakses HALAMAN APLIKASI (/operator/aplikasi) —
-  // kumpulan shortcut aplikasi eksternal yang sama dengan role lain. Hanya path
-  // ini yang diizinkan; area /operator/** lain tetap ditolak untuk MANAGER.
-  // Defense-in-depth: halaman tersebut tetap memverifikasi session via requireAuth().
-  const MANAGER_ALLOWED_OPERATOR_PATHS = ['/operator/aplikasi'];
+  // Manager may use personal leave requests and the shared applications page; inbox access is assignment-gated.
+  const MANAGER_ALLOWED_OPERATOR_PATHS = ['/operator/aplikasi', '/operator/requests'];
   const isManagerAllowedOperatorRoute =
     role === 'MANAGER' &&
     MANAGER_ALLOWED_OPERATOR_PATHS.some(

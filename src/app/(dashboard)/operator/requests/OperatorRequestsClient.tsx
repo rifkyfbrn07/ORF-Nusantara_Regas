@@ -117,6 +117,7 @@ interface OperatorRequestsClientProps {
   };
   hasApprovalInbox?: boolean;
   defaultTab?: 'mine' | 'approvals';
+  approvalInboxOnly?: boolean;
 }
 
 function parseReasonData(rawReason: string) {
@@ -364,6 +365,7 @@ export function OperatorRequestsClient({
   approvalConfiguration,
   hasApprovalInbox = false,
   defaultTab = 'mine',
+  approvalInboxOnly = false,
 }: OperatorRequestsClientProps) {
   const router = useRouter();
   const [tab, setTab] = useState<'mine' | 'approvals'>(defaultTab);
@@ -544,7 +546,7 @@ export function OperatorRequestsClient({
       )}
 
       {/* Tabs: Permohonan Saya / Antrian Persetujuan (Reviewer-Team Lead) */}
-      {hasApprovalInbox && (
+      {hasApprovalInbox && !approvalInboxOnly && (
         <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-2">
           <button
             onClick={() => setTab('mine')}
@@ -571,7 +573,7 @@ export function OperatorRequestsClient({
         </div>
       )}
 
-      {tab === 'mine' && (
+      {tab === 'mine' && !approvalInboxOnly && (
       <>
 
       {/* Action Header */}
@@ -748,7 +750,7 @@ export function OperatorRequestsClient({
       )}
 
       {/* Antrian Persetujuan Tim — Reviewer / Team Lead memproses tahap mereka */}
-      {tab === 'approvals' && (
+      {tab === 'approvals' && (hasApprovalInbox || approvalInboxOnly) && (
         <div className="bg-white dark:bg-[#0B1E32] rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-xs overflow-hidden">
           <div className="p-4 border-b border-slate-100 dark:border-slate-800">
             <h3 className="text-sm font-black text-[#0B3568] dark:text-[#38BDF8] uppercase tracking-wider">
@@ -783,7 +785,7 @@ export function OperatorRequestsClient({
       )}
 
       {/* Modal Form */}
-      <Modal
+      {!approvalInboxOnly && <Modal
         open={showModal}
         onClose={() => setShowModal(false)}
         title="Formulir Permohonan Cuti Resmi"
@@ -1004,7 +1006,7 @@ export function OperatorRequestsClient({
             />
           </div>
         </form>
-      </Modal>
+      </Modal>}
 
       {/* Proof Viewer Modal */}
       {previewItem && (
