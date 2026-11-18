@@ -68,28 +68,10 @@ export function Sidebar({
   const isManager = user.role === 'MANAGER';
   const isAdmin = user.role === 'ADMIN';
 
-  // IDAMAN External Shortcut Menu Item
-  const idamanNavItem: NavItem = {
-    label: 'PDH',
-    href: 'https://apps.pertamina.com/pdh/app',
-    imageSrc: '/images/idaman.png',
-    isExternal: true,
-  };
-
-  // i-AM Talent External Shortcut Menu Item
-  const iamTalentNavItem: NavItem = {
-    label: 'i-AM Talent',
-    href: 'https://apps.pertamina.com/mycareer',
-    imageSrc: '/images/iam-talent.png',
-    isExternal: true,
-  };
-
   const applicationsNavItem: NavItem = {
     label: 'Aplikasi',
     href: '/operator/aplikasi',
     icon: Grid2X2,
-    hasSub: true,
-    children: [idamanNavItem, iamTalentNavItem],
   };
 
   // Admin Navigation Structure
