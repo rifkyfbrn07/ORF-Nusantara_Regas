@@ -14,10 +14,7 @@ export default async function ManagerSchedulesPage() {
   const today = formatJakartaDate();
 
   const [schedules, shifts, operators, locations, holidayCalendar] = await Promise.all([
-    getManagerSchedules({
-      startDate: '2026-09-01',
-      endDate: '2026-09-30',
-    }),
+    getManagerSchedules({}),
     prisma.shift.findMany({ where: { isActive: true }, orderBy: { startTime: 'asc' } }),
     prisma.user.findMany({ where: { role: 'OPERATOR', isActive: true }, orderBy: { name: 'asc' } }),
     prisma.location.findMany(),

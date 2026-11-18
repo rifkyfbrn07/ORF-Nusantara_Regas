@@ -13,12 +13,11 @@ export async function getUserDeletionBlockers(
   userId: string,
   client: UserDeletionDbClient = prisma
 ): Promise<UserDeletionBlocker[]> {
-  const [schedules, attendances, attendanceVerifications, leaveRequests, leaveApprovalHistory, reviewedLeaves, requestedExchanges,
+  const [attendances, attendanceVerifications, leaveRequests, leaveApprovalHistory, reviewedLeaves, requestedExchanges,
     targetExchanges, reviewedExchanges, outgoingHandovers, incomingHandovers, hsseChecklists,
     notifications, auditLogs, programPics, programEvidenceUploads, programProgressLogs, programUpdates,
     programScheduleHistory, programRealizationLogs, taskCompletions, targetedAnnouncements, announcements, operationalReports, dataImports,
     infoOrfReports, cargoUpdates, teamAssignments] = await Promise.all([
-    client.schedule.count({ where: { userId } }),
     client.attendance.count({ where: { userId } }),
     client.attendance.count({ where: { verifiedBy: userId } }),
     client.leaveRequest.count({ where: { userId } }),
@@ -49,7 +48,7 @@ export async function getUserDeletionBlockers(
   ]);
 
   const counts: [string, number][] = [
-    ['jadwal operator', schedules], ['absensi', attendances], ['validasi absensi oleh akun', attendanceVerifications], ['pengajuan cuti/izin milik akun', leaveRequests],
+    ['absensi', attendances], ['validasi absensi oleh akun', attendanceVerifications], ['pengajuan cuti/izin milik akun', leaveRequests],
     ['riwayat peran approver pada pengajuan cuti/izin', leaveApprovalHistory], ['keputusan cuti/izin', reviewedLeaves],
     ['pengajuan pergantian shift sebagai pemohon', requestedExchanges], ['pengajuan pergantian shift sebagai target', targetExchanges],
     ['keputusan pergantian shift', reviewedExchanges], ['serah terima shift sebagai operator keluar', outgoingHandovers],

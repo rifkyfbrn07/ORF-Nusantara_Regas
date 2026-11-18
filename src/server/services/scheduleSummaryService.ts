@@ -66,13 +66,15 @@ export async function getScheduleSummary(year: number): Promise<ScheduleSummaryD
       date: true,
       status: true,
       userId: true,
+      operatorNameSnapshot: true,
+      operatorEmployeeIdSnapshot: true,
       shift: { select: { code: true, name: true } },
       user: { select: { id: true, name: true, employeeId: true, role: true } },
     },
   });
 
   // Peta cuti/izin/sakit APPROVED untuk seluruh operator yang memiliki jadwal.
-  const operatorIds = [...new Set(schedules.map((s) => s.userId))];
+  const operatorIds = [...new Set(schedules.flatMap((s) => s.userId ? [s.userId] : []))];
   const leaveOverlay =
     operatorIds.length > 0
       ? await getApprovedLeaveOverlay(operatorIds, start, end)
@@ -97,20 +99,24 @@ export async function getScheduleSummary(year: number): Promise<ScheduleSummaryD
 
   for (const s of schedules) {
     // Hanya operator (bukan manager/admin) yang dihitung dalam ringkasan tenaga kerja
-    if (s.user.role !== 'OPERATOR') continue;
+    if (s.user && s.user.role !== 'OPERATOR') continue;
+    if (!s.user && !s.operatorNameSnapshot) continue;
+    const operatorKey = s.userId ?? `archived:${s.operatorEmployeeIdSnapshot ?? s.operatorNameSnapshot ?? s.date}`;
+    const operatorName = s.user?.name ?? s.operatorNameSnapshot ?? 'Operator';
+    const operatorEmployeeId = s.user?.employeeId ?? s.operatorEmployeeIdSnapshot ?? '';
     const monthIdx = Number(s.date.slice(5, 7)) - 1;
     const kind = shiftKey(s.shift.code, s.shift.name);
 
     // Cuti/Izin/Sakit APPROVED menang atas status schedule (final).
-    const leaveKind = leaveOverlay.get(`${s.userId}|${s.date}`);
+    const leaveKind = s.userId ? leaveOverlay.get(`${s.userId}|${s.date}`) : undefined;
     if (leaveKind) {
       if (leaveKind === 'CUTI') perMonth[monthIdx].cuti += 1;
       else if (leaveKind === 'IZIN') perMonth[monthIdx].izin += 1;
       else perMonth[monthIdx].sakit += 1;
-      let opL = operatorMap.get(s.userId);
+      let opL = operatorMap.get(operatorKey);
       if (!opL) {
-        opL = { id: s.userId, name: s.user.name, employeeId: s.user.employeeId, totalScheduled: 0, pagi: 0, malam: 0, off: 0, cuti: 0, izin: 0, sakit: 0 };
-        operatorMap.set(s.userId, opL);
+        opL = { id: operatorKey, name: operatorName, employeeId: operatorEmployeeId, totalScheduled: 0, pagi: 0, malam: 0, off: 0, cuti: 0, izin: 0, sakit: 0 };
+        operatorMap.set(operatorKey, opL);
       }
       if (leaveKind === 'CUTI') opL.cuti += 1;
       else if (leaveKind === 'IZIN') opL.izin += 1;
@@ -128,10 +134,10 @@ export async function getScheduleSummary(year: number): Promise<ScheduleSummaryD
       perMonth[monthIdx].off += 1;
     }
 
-    let op = operatorMap.get(s.userId);
+    let op = operatorMap.get(operatorKey);
     if (!op) {
-      op = { id: s.userId, name: s.user.name, employeeId: s.user.employeeId, totalScheduled: 0, pagi: 0, malam: 0, off: 0, cuti: 0, izin: 0, sakit: 0 };
-      operatorMap.set(s.userId, op);
+      op = { id: operatorKey, name: operatorName, employeeId: operatorEmployeeId, totalScheduled: 0, pagi: 0, malam: 0, off: 0, cuti: 0, izin: 0, sakit: 0 };
+      operatorMap.set(operatorKey, op);
     }
     if (isWorkDay) {
       op.totalScheduled += 1;
@@ -145,7 +151,7 @@ export async function getScheduleSummary(year: number): Promise<ScheduleSummaryD
   // Pass tambahan: hitung cuti/izin/sakit APPROVED pada tanggal yang TIDAK
   // memiliki schedule row sama sekali (operator sepenuhnya tanpa jadwal).
   const scheduleDateSet = new Set(
-    schedules.filter((s) => s.user.role === 'OPERATOR').map((s) => `${s.userId}|${s.date}`)
+    schedules.filter((s) => s.user?.role === 'OPERATOR' && s.userId).map((s) => `${s.userId}|${s.date}`)
   );
   const missingIds = new Set<string>();
   for (const key of leaveOverlay.keys()) {

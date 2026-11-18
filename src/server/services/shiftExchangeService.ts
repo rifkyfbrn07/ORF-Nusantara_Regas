@@ -183,6 +183,10 @@ export async function submitShiftExchange(params: SubmitShiftExchangeParams) {
     if (!requesterSchedule || !targetSchedule) {
       throw new Error('Jadwal OFF tidak ditemukan.');
     }
+    if (!requesterSchedule.userId || !targetSchedule.userId) {
+      throw new Error('Jadwal arsip tidak dapat digunakan untuk pertukaran shift.');
+    }
+    const requesterName = requesterSchedule.user?.name ?? requesterSchedule.operatorNameSnapshot ?? 'Operator';
 
     const targetUser = await tx.user.findUnique({
       where: { id: params.targetUserId },
@@ -243,7 +247,7 @@ export async function submitShiftExchange(params: SubmitShiftExchangeParams) {
       entity: 'ShiftExchange',
       entityId: exchange.id,
       metadata: {
-        requester: requesterSchedule.user.name,
+        requester: requesterName,
         requesterOffDate: requesterSchedule.date,
         targetUser: targetUser.name,
         targetOffDate: targetSchedule.date,
@@ -255,8 +259,8 @@ export async function submitShiftExchange(params: SubmitShiftExchangeParams) {
     await createNotification({
       userId: params.targetUserId,
       type: 'SHIFT_EXCHANGE',
-      title: `Permintaan Tukar Hari OFF dari ${requesterSchedule.user.name}`,
-      message: `${requesterSchedule.user.name} mengajukan pertukaran hari OFF dengan Anda. Hari OFF Anda: ${targetSchedule.date}. Hari OFF paham: ${requesterSchedule.date}.${exchange.driveFileId ? ' Bukti surat tersedia.' : ''}`,
+      title: `Permintaan Tukar Hari OFF dari ${requesterName}`,
+      message: `${requesterName} mengajukan pertukaran hari OFF dengan Anda. Hari OFF Anda: ${targetSchedule.date}. Hari OFF paham: ${requesterSchedule.date}.${exchange.driveFileId ? ' Bukti surat tersedia.' : ''}`,
       link: '/operator/shift-exchange',
     }, tx);
 

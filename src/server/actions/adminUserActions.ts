@@ -262,11 +262,12 @@ export async function deleteAdminUserAction(id: string) {
       await tx.$queryRaw<{ id: string }[]>`SELECT "id" FROM "User" WHERE "id" = ${id} FOR UPDATE`;
       const target = await tx.user.findUnique({
         where: { id },
-        select: { id: true, isActive: true, email: true, username: true, name: true, role: true },
+        select: { id: true, isActive: true, email: true, username: true, name: true, role: true, employeeId: true },
       });
       if (!target) return { success: false as const, error: 'Akun tidak ditemukan.' };
       if (target.role === 'ADMIN') return { success: false as const, error: 'ADMIN utama tidak boleh dihapus.' };
 
+      const scheduleIds = await tx.schedule.findMany({ where: { userId: id }, select: { id: true } });
       const blockers = await getUserDeletionBlockers(id, tx);
       if (blockers.length > 0) {
         const details = blockers.map(({ label, count }) => `${label}: ${count}`).join('; ');
@@ -277,12 +278,28 @@ export async function deleteAdminUserAction(id: string) {
       }
 
       await tx.user.delete({ where: { id: target.id } });
+      const preservedScheduleCount = scheduleIds.length
+        ? await tx.schedule.count({
+            where: {
+              id: { in: scheduleIds.map(({ id: scheduleId }) => scheduleId) },
+              userId: null,
+              operatorNameSnapshot: target.name,
+              operatorEmployeeIdSnapshot: target.employeeId,
+            },
+          })
+        : 0;
+      if (preservedScheduleCount !== scheduleIds.length) {
+        throw new Error(`Penghapusan dibatalkan: arsip jadwal tidak lengkap (${preservedScheduleCount}/${scheduleIds.length}).`);
+      }
       const auditLog = await recordAuditLog({
         userId: admin.id,
         action: 'ADMIN_DELETE_USER',
         entity: 'User',
         entityId: target.id,
-        metadata: { mode: 'hard-delete', username: target.username, email: target.email, name: target.name, wasActive: target.isActive },
+        metadata: {
+          mode: 'hard-delete', username: target.username, email: target.email, name: target.name,
+          wasActive: target.isActive, archivedScheduleCount: preservedScheduleCount,
+        },
       }, tx);
       if (!auditLog) throw new Error('Gagal mencatat audit penghapusan akun.');
       return { success: true as const, user: { id: target.id, username: target.username, name: target.name } };
@@ -292,6 +309,9 @@ export async function deleteAdminUserAction(id: string) {
     return result;
   } catch (error) {
     console.error('Failed to delete admin user:', error);
+    if (error instanceof Error && error.message.startsWith('Penghapusan dibatalkan:')) {
+      return { success: false, error: error.message };
+    }
     return { success: false, error: 'Gagal menghapus akun. Tidak ada perubahan yang disimpan.' };
   }
 }

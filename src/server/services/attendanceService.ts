@@ -139,10 +139,11 @@ export async function performCheckIn(params: CheckInParams) {
 
   // 7. If late, notify manager
   if (lateMinutes > 0) {
+    const operatorName = schedule.user?.name ?? schedule.operatorNameSnapshot ?? 'Operator';
     await notifyAllManagers(
       'ATTENDANCE_ALERT',
-      `Operator Terlambat: ${schedule.user.name}`,
-      `Operator ${schedule.user.name} (${schedule.shift.name}) check-in terlambat ${lateMinutes} menit.`,
+      `Operator Terlambat: ${operatorName}`,
+      `Operator ${operatorName} (${schedule.shift.name}) check-in terlambat ${lateMinutes} menit.`,
       '/manager/attendance'
     );
   }

@@ -39,8 +39,8 @@ export async function ScheduleTimeline() {
               <tr key={schedule.id} className="hover:bg-[#F8FAFC]">
                 <td className="px-4 py-2.5 font-mono font-bold text-[#172033]">{schedule.date}</td>
                 <td className="px-4 py-2.5">
-                  <p className="font-bold text-[#0F2F63]">{schedule.user.name}</p>
-                  <p className="text-[10px] text-[#64748B] font-mono">{schedule.user.employeeId}</p>
+                  <p className="font-bold text-[#0F2F63]">{schedule.user?.name ?? schedule.operatorNameSnapshot ?? 'Operator'}</p>
+                  <p className="text-[10px] text-[#64748B] font-mono">{schedule.user?.employeeId ?? schedule.operatorEmployeeIdSnapshot ?? ''}</p>
                 </td>
                 <td className="px-4 py-2.5 font-semibold text-[#172033]">{schedule.shift.name}</td>
                 <td className="px-4 py-2.5 font-mono text-[#64748B]">{schedule.shift.startTime}–{schedule.shift.endTime}</td>

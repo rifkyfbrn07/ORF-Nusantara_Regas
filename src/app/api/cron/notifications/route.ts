@@ -25,6 +25,8 @@ export async function GET(request: NextRequest) {
     where: {
       date: today,
       status: 'WORK',
+      userId: { not: null },
+      user: { isActive: true },
     },
     include: {
       user: true,
@@ -36,6 +38,7 @@ export async function GET(request: NextRequest) {
   let notificationsGenerated = 0;
 
   for (const s of activeSchedules) {
+    if (!s.userId || !s.user) continue;
     const hasCheckedIn = s.attendances.some((a) => a.checkIn !== null);
 
     // If shift has started and operator hasn't checked in
@@ -65,7 +68,7 @@ export async function GET(request: NextRequest) {
   }
 
   // Check overall shift coverage for managers
-  const missingCount = activeSchedules.filter((s) => !s.attendances.some((a) => a.checkIn !== null)).length;
+  const missingCount = activeSchedules.filter((s) => s.userId && s.user && !s.attendances.some((a) => a.checkIn !== null)).length;
   if (missingCount > 0) {
     await notifyAllManagers(
       'ATTENDANCE_ALERT',

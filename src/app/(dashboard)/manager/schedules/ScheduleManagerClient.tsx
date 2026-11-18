@@ -15,6 +15,7 @@ import {
   MapPin,
   LayoutGrid,
   Table as TableIcon,
+  Download,
 } from 'lucide-react';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { isRedDate } from '@/lib/time';
@@ -29,19 +30,17 @@ import {
 
 export interface ScheduleManagerItem {
   id: string;
-  userId: string;
+  userId: string | null;
   shiftId: string;
   locationId: string;
   date: string;
   status: string;
   notes?: string | null;
-  user: {
-    id: string;
-    name: string;
-    employeeId: string;
-    position?: string | null;
-    avatarUrl?: string | null;
-  };
+  operatorName: string;
+  operatorEmployeeId: string;
+  operatorPosition: string | null;
+  operatorAvatarUrl: string | null;
+  operatorTeam: string | null;
   shift: {
     id: string;
     name: string;
@@ -135,9 +134,9 @@ export function ScheduleManagerClient({
     const matchOperator = selectedOperator === 'ALL' || s.userId === selectedOperator;
     const matchSearch =
       search === '' ||
-      s.user.name.toLowerCase().includes(search.toLowerCase()) ||
-      s.user.employeeId.toLowerCase().includes(search.toLowerCase()) ||
-      (s.user.position && s.user.position.toLowerCase().includes(search.toLowerCase()));
+      s.operatorName.toLowerCase().includes(search.toLowerCase()) ||
+      s.operatorEmployeeId.toLowerCase().includes(search.toLowerCase()) ||
+      (s.operatorPosition && s.operatorPosition.toLowerCase().includes(search.toLowerCase()));
 
     return matchDate && matchShift && matchOperator && matchSearch;
   });
@@ -158,7 +157,7 @@ export function ScheduleManagerClient({
   };
 
   const handleOpenEdit = (sched: ScheduleManagerItem) => {
-    if (!canEdit) return;
+    if (!canEdit || !sched.userId) return;
     setEditingSchedule(sched);
     setFormData({
       userId: sched.userId,
@@ -209,6 +208,33 @@ export function ScheduleManagerClient({
     } else {
       alert(res.error || 'Gagal menghapus jadwal');
     }
+  };
+
+  const exportFilteredSchedules = () => {
+    const quote = (value: string | number | null | undefined) => `"${String(value ?? '').replaceAll('"', '""')}"`;
+    const rows = [
+      ['Tanggal', 'Nama Operator', 'Employee ID', 'Tim', 'Posisi', 'Shift', 'Mulai', 'Selesai', 'Lokasi', 'Status', 'Catatan'],
+      ...filteredSchedules.map((schedule) => [
+        schedule.date,
+        schedule.operatorName,
+        schedule.operatorEmployeeId,
+        schedule.operatorTeam ?? '',
+        schedule.operatorPosition ?? '',
+        schedule.shift.name,
+        schedule.shift.startTime,
+        schedule.shift.endTime,
+        schedule.location.name,
+        schedule.status,
+        schedule.notes ?? '',
+      ]),
+    ];
+    const csv = `\uFEFF${rows.map((row) => row.map(quote).join(',')).join('\r\n')}`;
+    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = `jadwal-orf-${new Date().toISOString().slice(0, 10)}.csv`;
+    anchor.click();
+    URL.revokeObjectURL(url);
   };
 
   const handleDuplicate = async (e: React.FormEvent) => {
@@ -264,6 +290,15 @@ export function ScheduleManagerClient({
 
         {/* Action Buttons */}
         <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+          <button
+            type="button"
+            onClick={exportFilteredSchedules}
+            disabled={filteredSchedules.length === 0}
+            className="px-3.5 py-2 rounded-xl bg-white hover:bg-[#F8FAFC] border border-slate-200 text-[#0F315A] text-xs font-bold flex items-center gap-1.5 transition disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Download className="h-3.5 w-3.5 text-[#0066B3]" />
+            <span>Ekspor CSV ({filteredSchedules.length})</span>
+          </button>
           <button
             onClick={() => setShowDuplicateModal(true)} style={canEdit ? undefined : { display: 'none' }}
             className="px-3.5 py-2 rounded-xl bg-[#F8FAFC] hover:bg-[#F1F5F9] border border-slate-200 text-[#0F315A] text-xs font-bold flex items-center gap-1.5 transition cursor-pointer"
@@ -420,15 +455,16 @@ export function ScheduleManagerClient({
                         <div className="flex items-start justify-between gap-2">
                           <div className="flex items-center gap-2.5">
                             <UserAvatar
-                              name={s.user.name}
-                              avatarUrl={s.user.avatarUrl}
+                              name={s.operatorName}
+                              avatarUrl={s.operatorAvatarUrl}
                               size={34}
                               className="ring-1 ring-slate-200 shrink-0"
                             />
                             <div>
-                              <p className="text-xs font-bold text-[#0F315A] leading-tight">{s.user.name}</p>
-                              <p className="text-[10px] text-slate-400 font-medium">{s.user.position || 'Operator ORF'}</p>
-                              <p className="text-[10px] text-slate-400 font-mono mt-0.5">{s.user.employeeId}</p>
+                              <p className="text-xs font-bold text-[#0F315A] leading-tight">{s.operatorName}</p>
+                              <p className="text-[10px] text-slate-400 font-medium">{s.operatorPosition || 'Operator ORF'}</p>
+                              <p className="text-[10px] text-slate-400 font-mono mt-0.5">{s.operatorEmployeeId}</p>
+                              {!s.userId && <span className="mt-1 inline-flex rounded bg-slate-100 px-1.5 py-0.5 text-[8px] font-black text-slate-500">ARSIP OPERATOR</span>}
                             </div>
                           </div>
 
@@ -450,14 +486,14 @@ export function ScheduleManagerClient({
                             <button
                               onClick={() => handleOpenEdit(s)}
                               title="Ubah Jadwal"
-                              className="p-1 rounded-lg hover:bg-white hover:text-[#0066B3] text-slate-500 transition cursor-pointer" style={canEdit ? undefined : { display: 'none' }}
+                              className="p-1 rounded-lg hover:bg-white hover:text-[#0066B3] text-slate-500 transition cursor-pointer" style={canEdit && s.userId ? undefined : { display: 'none' }}
                             >
                               <Edit2 className="w-3.5 h-3.5" />
                             </button>
                             <button
-                              onClick={() => handleDeleteSchedule(s.id, s.user.name)}
+                              onClick={() => handleDeleteSchedule(s.id, s.operatorName)}
                               title="Hapus Jadwal"
-                              className="p-1 rounded-lg hover:bg-red-50 hover:text-red-600 text-slate-500 transition cursor-pointer" style={canEdit ? undefined : { display: 'none' }}
+                              className="p-1 rounded-lg hover:bg-red-50 hover:text-red-600 text-slate-500 transition cursor-pointer" style={canEdit && s.userId ? undefined : { display: 'none' }}
                             >
                               <Trash2 className="w-3.5 h-3.5" />
                             </button>
@@ -507,10 +543,11 @@ export function ScheduleManagerClient({
                       </td>
                       <td className="px-5 py-3.5">
                         <div className="flex items-center gap-2.5">
-                          <UserAvatar name={s.user.name} avatarUrl={s.user.avatarUrl} size={28} />
+                          <UserAvatar name={s.operatorName} avatarUrl={s.operatorAvatarUrl} size={28} />
                           <div>
-                            <p className="font-bold text-[#0F315A] leading-tight">{s.user.name}</p>
-                            <p className="text-[10px] text-slate-400 font-mono">{s.user.employeeId} · {s.user.position}</p>
+                            <p className="font-bold text-[#0F315A] leading-tight">{s.operatorName}</p>
+                            <p className="text-[10px] text-slate-400 font-mono">{s.operatorEmployeeId} · {s.operatorPosition}</p>
+                            {!s.userId && <span className="inline-flex rounded bg-slate-100 px-1.5 py-0.5 text-[8px] font-black text-slate-500">ARSIP OPERATOR</span>}
                           </div>
                         </div>
                       </td>
@@ -534,14 +571,14 @@ export function ScheduleManagerClient({
                           <button
                             onClick={() => handleOpenEdit(s)}
                             title="Ubah Jadwal"
-                            className="p-1.5 rounded-lg bg-slate-100 hover:bg-[#EAF4FC] hover:text-[#0066B3] text-slate-600 transition cursor-pointer" style={canEdit ? undefined : { display: 'none' }}
+                            className="p-1.5 rounded-lg bg-slate-100 hover:bg-[#EAF4FC] hover:text-[#0066B3] text-slate-600 transition cursor-pointer" style={canEdit && s.userId ? undefined : { display: 'none' }}
                           >
                             <Edit2 className="h-3.5 w-3.5" />
                           </button>
                           <button
-                            onClick={() => handleDeleteSchedule(s.id, s.user.name)}
+                            onClick={() => handleDeleteSchedule(s.id, s.operatorName)}
                             title="Hapus Jadwal"
-                            className="p-1.5 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 transition cursor-pointer" style={canEdit ? undefined : { display: 'none' }}
+                            className="p-1.5 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 transition cursor-pointer" style={canEdit && s.userId ? undefined : { display: 'none' }}
                           >
                             <Trash2 className="h-3.5 w-3.5" />
                           </button>
@@ -568,10 +605,11 @@ export function ScheduleManagerClient({
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2.5">
-                      <UserAvatar name={s.user.name} avatarUrl={s.user.avatarUrl} size={32} />
+                      <UserAvatar name={s.operatorName} avatarUrl={s.operatorAvatarUrl} size={32} />
                       <div>
-                        <p className="font-bold text-xs text-[#0F315A]">{s.user.name}</p>
-                        <p className="text-[10px] text-slate-400 font-mono">{s.user.employeeId} · {s.user.position}</p>
+                        <p className="font-bold text-xs text-[#0F315A]">{s.operatorName}</p>
+                        <p className="text-[10px] text-slate-400 font-mono">{s.operatorEmployeeId} · {s.operatorPosition}</p>
+                        {!s.userId && <span className="inline-flex rounded bg-slate-100 px-1.5 py-0.5 text-[8px] font-black text-slate-500">ARSIP OPERATOR</span>}
                       </div>
                     </div>
                     <StatusBadge status={s.status} label={s.status === 'WORK' ? 'KERJA' : 'OFF'} size="sm" />
@@ -598,13 +636,13 @@ export function ScheduleManagerClient({
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => handleOpenEdit(s)}
-                        className="px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 font-bold text-[11px]" style={canEdit ? undefined : { display: 'none' }}
+                        className="px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 font-bold text-[11px]" style={canEdit && s.userId ? undefined : { display: 'none' }}
                       >
                         Ubah
                       </button>
                       <button
-                        onClick={() => handleDeleteSchedule(s.id, s.user.name)}
-                        className="px-2.5 py-1 rounded-lg bg-red-50 text-red-600 font-bold text-[11px]" style={canEdit ? undefined : { display: 'none' }}
+                        onClick={() => handleDeleteSchedule(s.id, s.operatorName)}
+                        className="px-2.5 py-1 rounded-lg bg-red-50 text-red-600 font-bold text-[11px]" style={canEdit && s.userId ? undefined : { display: 'none' }}
                       >
                         Hapus
                       </button>

@@ -75,6 +75,7 @@ export async function getCoverageForShift(shiftId: string, dateStr: string = for
       shiftId,
       date: dateStr,
       status: ScheduleStatus.WORK,
+      user: { isActive: true },
     },
     include: {
       user: true,
@@ -83,18 +84,20 @@ export async function getCoverageForShift(shiftId: string, dateStr: string = for
   });
 
   const required = shift.requiredCount || 8;
-  const assigned = schedules.length;
+  const activeSchedules = schedules.filter((schedule) => schedule.user !== null);
+  const assigned = activeSchedules.length;
   let present = 0;
 
-  const assignedOperators = schedules.map((s) => {
+  const assignedOperators = activeSchedules.map((s) => {
     const att = s.attendances?.[0];
     const isPresent = att && att.checkIn !== null;
     if (isPresent) present++;
+    const operator = s.user!;
 
     return {
-      id: s.user.id,
-      name: s.user.name,
-      employeeId: s.user.employeeId,
+      id: operator.id,
+      name: operator.name,
+      employeeId: operator.employeeId,
       status: att?.status || AttendanceStatus.BELUM_ABSEN,
       checkInTime: formatJakartaTime(att?.checkIn),
     };

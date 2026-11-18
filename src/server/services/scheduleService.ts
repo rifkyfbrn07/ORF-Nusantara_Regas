@@ -27,6 +27,11 @@ export interface UpdateScheduleParams {
  * Creates or updates an operator's schedule for a specific date
  */
 export async function createOrUpdateSchedule(params: CreateScheduleParams) {
+  const operator = await prisma.user.findUnique({
+    where: { id: params.userId },
+    select: { name: true, employeeId: true, team: true, position: true },
+  });
+  if (!operator) throw new Error('Operator tidak ditemukan.');
   const schedule = await prisma.schedule.upsert({
     where: {
       userId_date: {
@@ -47,6 +52,10 @@ export async function createOrUpdateSchedule(params: CreateScheduleParams) {
       date: params.date,
       status: params.status || ScheduleStatus.WORK,
       notes: params.notes,
+      operatorNameSnapshot: operator.name,
+      operatorEmployeeIdSnapshot: operator.employeeId,
+      operatorTeamSnapshot: operator.team,
+      operatorPositionSnapshot: operator.position,
     },
     include: {
       user: { select: { name: true, employeeId: true } },
@@ -63,7 +72,7 @@ export async function createOrUpdateSchedule(params: CreateScheduleParams) {
     entityId: schedule.id,
     metadata: {
       targetUserId: params.userId,
-      targetUserName: schedule.user.name,
+      targetUserName: schedule.user?.name ?? schedule.operatorNameSnapshot ?? operator.name,
       date: params.date,
       shift: schedule.shift.name,
       status: schedule.status,
@@ -92,6 +101,7 @@ export async function updateSchedule(params: UpdateScheduleParams) {
   });
 
   if (!existing) throw new Error('Jadwal tidak ditemukan.');
+  if (!existing.userId) throw new Error('Jadwal arsip hanya dapat dilihat dan diekspor; jadwal tidak dapat diubah.');
 
   const schedule = await prisma.schedule.update({
     where: { id: params.id },
@@ -116,7 +126,7 @@ export async function updateSchedule(params: UpdateScheduleParams) {
     entityId: schedule.id,
     metadata: {
       targetUserId: schedule.userId,
-      targetUserName: schedule.user.name,
+      targetUserName: schedule.user?.name ?? schedule.operatorNameSnapshot ?? existing.user?.name ?? 'Operator',
       date: schedule.date,
       newShift: schedule.shift.name,
       newStatus: schedule.status,
@@ -136,6 +146,7 @@ export async function deleteSchedule(scheduleId: string, managerId: string) {
   });
 
   if (!existing) throw new Error('Jadwal tidak ditemukan.');
+  if (!existing.userId) throw new Error('Jadwal arsip dipertahankan dan tidak dapat dihapus.');
 
   await prisma.schedule.delete({
     where: { id: scheduleId },
@@ -148,7 +159,7 @@ export async function deleteSchedule(scheduleId: string, managerId: string) {
     entity: 'Schedule',
     entityId: scheduleId,
     metadata: {
-      deletedForUser: existing.user.name,
+      deletedForUser: existing.user?.name ?? existing.operatorNameSnapshot ?? 'Operator',
       date: existing.date,
       shift: existing.shift.name,
     },
@@ -163,6 +174,7 @@ export async function deleteSchedule(scheduleId: string, managerId: string) {
 export async function duplicateDaySchedules(sourceDate: string, targetDate: string, managerId: string) {
   const sourceSchedules = await prisma.schedule.findMany({
     where: { date: sourceDate },
+    include: { user: { select: { name: true, employeeId: true, team: true, position: true } } },
   });
 
   if (sourceSchedules.length === 0) {
@@ -171,6 +183,7 @@ export async function duplicateDaySchedules(sourceDate: string, targetDate: stri
 
   let count = 0;
   for (const s of sourceSchedules) {
+    if (!s.userId || !s.user) continue;
     await prisma.schedule.upsert({
       where: {
         userId_date: {
@@ -183,6 +196,10 @@ export async function duplicateDaySchedules(sourceDate: string, targetDate: stri
         locationId: s.locationId,
         status: s.status,
         notes: s.notes ? `Duplikasi dari ${sourceDate}: ${s.notes}` : `Duplikasi dari ${sourceDate}`,
+        operatorNameSnapshot: s.operatorNameSnapshot ?? s.user.name,
+        operatorEmployeeIdSnapshot: s.operatorEmployeeIdSnapshot ?? s.user.employeeId,
+        operatorTeamSnapshot: s.operatorTeamSnapshot ?? s.user.team,
+        operatorPositionSnapshot: s.operatorPositionSnapshot ?? s.user.position,
       },
       create: {
         userId: s.userId,
@@ -191,6 +208,10 @@ export async function duplicateDaySchedules(sourceDate: string, targetDate: stri
         date: targetDate,
         status: s.status,
         notes: s.notes ? `Duplikasi dari ${sourceDate}: ${s.notes}` : `Duplikasi dari ${sourceDate}`,
+        operatorNameSnapshot: s.operatorNameSnapshot ?? s.user.name,
+        operatorEmployeeIdSnapshot: s.operatorEmployeeIdSnapshot ?? s.user.employeeId,
+        operatorTeamSnapshot: s.operatorTeamSnapshot ?? s.user.team,
+        operatorPositionSnapshot: s.operatorPositionSnapshot ?? s.user.position,
       },
     });
     count++;
@@ -257,7 +278,7 @@ export async function getManagerSchedules(filters: {
     where.userId = filters.userId;
   }
 
-  return prisma.schedule.findMany({
+  const schedules = await prisma.schedule.findMany({
     where,
     orderBy: [{ date: 'asc' }, { shift: { startTime: 'asc' } }],
     include: {
@@ -268,6 +289,7 @@ export async function getManagerSchedules(filters: {
           employeeId: true,
           position: true,
           avatarUrl: true,
+          team: true,
         },
       },
       shift: true,
@@ -275,4 +297,12 @@ export async function getManagerSchedules(filters: {
       attendances: true,
     },
   });
+  return schedules.map((schedule) => ({
+    ...schedule,
+    operatorName: schedule.user?.name ?? schedule.operatorNameSnapshot ?? 'Operator',
+    operatorEmployeeId: schedule.user?.employeeId ?? schedule.operatorEmployeeIdSnapshot ?? '',
+    operatorPosition: schedule.user?.position ?? schedule.operatorPositionSnapshot ?? null,
+    operatorAvatarUrl: schedule.user?.avatarUrl ?? null,
+    operatorTeam: schedule.user?.team ?? schedule.operatorTeamSnapshot ?? null,
+  }));
 }

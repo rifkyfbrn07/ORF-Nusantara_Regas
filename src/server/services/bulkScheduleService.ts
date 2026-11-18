@@ -76,8 +76,15 @@ export async function bulkCreateSchedules(params: BulkAddParams): Promise<BulkSc
   const { created, updated } = await prisma.$transaction(async (tx) => {
     let created = 0;
     let updated = 0;
+    const operators = await tx.user.findMany({
+      where: { id: { in: params.operatorIds } },
+      select: { id: true, name: true, employeeId: true, team: true, position: true },
+    });
+    const operatorById = new Map(operators.map((operator) => [operator.id, operator]));
 
     for (const operatorId of params.operatorIds) {
+      const operator = operatorById.get(operatorId);
+      if (!operator) throw new Error('Operator yang dipilih tidak ditemukan.');
       const patternShifts = pattern
         ? generatePatternShifts(pattern, dates.length, params.patternOffset || 0)
         : null;
@@ -116,6 +123,10 @@ export async function bulkCreateSchedules(params: BulkAddParams): Promise<BulkSc
               locationId: params.locationId,
               status,
               notes: params.notes,
+              operatorNameSnapshot: operator.name,
+              operatorEmployeeIdSnapshot: operator.employeeId,
+              operatorTeamSnapshot: operator.team,
+              operatorPositionSnapshot: operator.position,
             },
           });
           created += 1;
@@ -192,7 +203,9 @@ function normalizeShift(raw: string, shiftList: { id: string; code: string; name
   return null;
 }
 
-async function resolveUsers(rows: ImportRowInput[]): Promise<Map<string, { id: string; name: string }>> {
+type ImportUser = { id: string; name: string; employeeId: string; team: string | null; position: string };
+
+async function resolveUsers(rows: ImportRowInput[]): Promise<Map<string, ImportUser>> {
   const identifiers = new Set<string>();
   for (const r of rows) {
     if (r.username) identifiers.add(r.username.toLowerCase());
@@ -210,14 +223,15 @@ async function resolveUsers(rows: ImportRowInput[]): Promise<Map<string, { id: s
         ...(names.length > 0 ? [{ name: { in: names, mode: 'insensitive' as const } }] : []),
       ],
     },
-    select: { id: true, name: true, username: true, employeeId: true, isActive: true },
+    select: { id: true, name: true, username: true, employeeId: true, team: true, position: true, isActive: true },
   });
 
-  const map = new Map<string, { id: string; name: string }>();
+  const map = new Map<string, ImportUser>();
   for (const u of users) {
-    if (u.username) map.set(`u:${u.username.toLowerCase()}`, { id: u.id, name: u.name });
-    if (u.employeeId) map.set(`e:${u.employeeId.toLowerCase()}`, { id: u.id, name: u.name });
-    if (u.name) map.set(`n:${u.name.toLowerCase()}`, { id: u.id, name: u.name });
+    const user: ImportUser = { id: u.id, name: u.name, employeeId: u.employeeId, team: u.team, position: u.position };
+    if (u.username) map.set(`u:${u.username.toLowerCase()}`, user);
+    if (u.employeeId) map.set(`e:${u.employeeId.toLowerCase()}`, user);
+    if (u.name) map.set(`n:${u.name.toLowerCase()}`, user);
   }
   return map;
 }
@@ -307,6 +321,10 @@ export async function _legacyConfirmImportRows(
           locationId,
           status: shift.status,
           notes: r.catatan || undefined,
+          operatorNameSnapshot: user.name,
+          operatorEmployeeIdSnapshot: user.employeeId,
+          operatorTeamSnapshot: user.team,
+          operatorPositionSnapshot: user.position,
         },
       });
       created += 1;
@@ -332,7 +350,7 @@ export async function _legacyConfirmImportRows(
 type ResolvedImportRow = {
   row: number;
   error?: string;
-  user?: { id: string; name: string };
+  user?: ImportUser;
   date?: string;
   shift?: { shiftId: string; status: ScheduleStatus; label: string } | null;
   note?: string;
@@ -342,7 +360,7 @@ type ResolvedImportRow = {
 function resolveImportRows(
   rows: ImportRowInput[],
   shiftList: { id: string; code: string; name: string }[],
-  userMap: Map<string, { id: string; name: string }>
+  userMap: Map<string, ImportUser>
 ): ResolvedImportRow[] {
   return rows.map((r): ResolvedImportRow => {
     const dateStr = String(r.tanggal || '').trim();
@@ -511,6 +529,10 @@ export async function confirmImportRows(
           locationId,
           status: item.shift.status,
           notes: item.note || undefined,
+          operatorNameSnapshot: item.user.name,
+          operatorEmployeeIdSnapshot: item.user.employeeId,
+          operatorTeamSnapshot: item.user.team,
+          operatorPositionSnapshot: item.user.position,
         },
       });
       results.push({ row: item.row, ok: true, kind: 'NEW', message: 'Dibuat', date: item.date, userName: item.user.name, shift: item.shift.label });

@@ -37,10 +37,10 @@ export async function createAnnouncementAction(input: AnnouncementInput) {
       if (!shift) return { success: false, error: 'Shift target tidak ditemukan.' };
 
       const schedules = await prisma.schedule.findMany({
-        where: { shiftId: targetId, date: startAt, status: 'WORK' },
+        where: { shiftId: targetId, date: startAt, status: 'WORK', userId: { not: null }, user: { isActive: true } },
         select: { userId: true },
       });
-      recipients = [...new Set(schedules.map((s) => s.userId))];
+      recipients = [...new Set(schedules.flatMap((schedule) => schedule.userId ? [schedule.userId] : []))];
     } else {
       if (!targetId) return { success: false, error: 'Operator target wajib dipilih.' };
       const operator = await prisma.user.findUnique({ where: { id: targetId } });

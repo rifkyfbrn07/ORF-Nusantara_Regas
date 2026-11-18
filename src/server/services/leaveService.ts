@@ -527,6 +527,10 @@ export async function processLeaveApproval(params: ProcessLeaveApprovalParams) {
             date,
             status: ScheduleStatus.OFF,
             notes: noteText,
+            operatorNameSnapshot: existing.user.name,
+            operatorEmployeeIdSnapshot: existing.user.employeeId,
+            operatorTeamSnapshot: existing.user.team,
+            operatorPositionSnapshot: existing.user.position,
           },
         });
       }

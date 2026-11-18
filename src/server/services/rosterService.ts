@@ -244,8 +244,10 @@ export async function getRosterMonth(options: {
   });
 
   // Distinct operator (urut employeeId = urut dokumen)
-  const userMap = new Map<string, (typeof schedules)[number]['user']>();
-  for (const s of schedules) userMap.set(s.user.id, s.user);
+  const userMap = new Map<string, NonNullable<(typeof schedules)[number]['user']>>();
+  for (const s of schedules) {
+    if (s.user) userMap.set(s.user.id, s.user);
+  }
 
   // Roster penuh (opsional): sertakan SELURUH operator aktif — termasuk yang
   // belum memiliki jadwal pada bulan terkait, agar tidak hilang dari roster
@@ -273,7 +275,7 @@ export async function getRosterMonth(options: {
       filteredOperators.map((op) =>
         buildOperatorRow({
           user: op,
-          schedules: schedules.filter((s) => s.user.id === op.id),
+          schedules: schedules.filter((s) => s.user?.id === op.id),
           daysInMonth,
           year,
           month,
