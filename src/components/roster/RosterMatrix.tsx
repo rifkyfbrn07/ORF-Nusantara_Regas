@@ -101,6 +101,11 @@ export function RosterMatrix({ operators, daysInMonth, showContacts, emptyLabel 
                         {op.team || '·'}
                       </span>
                       <span className="text-xs font-bold text-[#0B3568] truncate">{op.name}</span>
+                      {op.isTeamLead && (
+                        <span className="inline-flex shrink-0 items-center rounded border border-blue-200 bg-blue-50 px-1 py-0.5 text-[8px] font-black leading-none text-blue-800" aria-label="Team Lead">
+                          TEAM LEAD
+                        </span>
+                      )}
                       {op.hsseMarshall && (
                         <ShieldCheck className="h-3.5 w-3.5 text-[#F58220] shrink-0" aria-label="HSSE Marshall" />
                       )}
@@ -157,6 +162,11 @@ export function RosterMatrix({ operators, daysInMonth, showContacts, emptyLabel 
                   <span className="text-[9px] font-black text-white bg-[#0B3568] rounded px-1 py-0.5 leading-none">
                     TEAM {op.team || '·'}
                   </span>
+                  {op.isTeamLead && (
+                    <span className="inline-flex items-center gap-0.5 text-[8.5px] font-black text-blue-800 bg-blue-50 border border-blue-200 rounded px-1 py-0.5 leading-none" aria-label="Team Lead">
+                      TEAM LEAD
+                    </span>
+                  )}
                   {op.hsseMarshall && (
                     <span className="inline-flex items-center gap-0.5 text-[8.5px] font-black text-[#C2410C] bg-orange-50 border border-orange-200 rounded px-1 py-0.5 leading-none">
                       <ShieldCheck className="h-2.5 w-2.5" /> HSSE MARSHALL

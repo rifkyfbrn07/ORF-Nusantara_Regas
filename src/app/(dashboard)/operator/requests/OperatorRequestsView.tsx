@@ -29,12 +29,15 @@ export async function OperatorRequestsView({
     getLeaveEntitlement(sessionUser.id, today),
   ]);
 
-  const [pendingApprovals, approvalConfiguration] = mode === 'inbox'
-    ? await Promise.all([
-        getPendingLeaveApprovalsForUser(sessionUser.id),
-        getApprovalConfigurationStatus(dbUser?.team),
-      ])
-    : [[], await getApprovalConfigurationStatus(dbUser?.team)];
+  const pendingApprovals = mode === 'inbox'
+    ? await getPendingLeaveApprovalsForUser(sessionUser.id)
+    : [];
+  const approvalConfiguration = mode === 'requests'
+    ? await getApprovalConfigurationStatus(dbUser?.team)
+    : undefined;
+  const hasApprovalInbox = mode === 'inbox'
+    ? await hasApprovalInboxScope(sessionUser.id)
+    : false;
 
   const currentUser = {
     name: dbUser?.name || sessionUser.name,
@@ -69,7 +72,7 @@ export async function OperatorRequestsView({
         entitlement={entitlement}
         pendingApprovals={pendingApprovals}
         approvalConfiguration={approvalConfiguration}
-        hasApprovalInbox={mode === 'inbox' && await hasApprovalInboxScope(sessionUser.id)}
+        hasApprovalInbox={hasApprovalInbox}
         defaultTab={mode === 'inbox' ? 'approvals' : 'mine'}
         approvalInboxOnly={mode === 'inbox'}
       />
