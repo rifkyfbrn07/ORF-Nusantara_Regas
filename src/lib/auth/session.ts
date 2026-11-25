@@ -24,6 +24,7 @@ export interface SessionUser {
   departmentId?: string | null;
   avatarUrl?: string | null;
   isActive: boolean;
+  mustChangePassword: boolean;
 }
 
 export async function signSession(payload: SessionUser): Promise<string> {
@@ -47,7 +48,7 @@ export async function verifySession(token: string): Promise<SessionUser | null> 
       typeof payload.employeeId !== 'string' ||
       typeof payload.position !== 'string' ||
       typeof payload.isActive !== 'boolean' ||
-      (payload.role !== 'ADMIN' && payload.role !== 'MANAGER' && payload.role !== 'OPERATOR')
+      (payload.role !== 'ADMIN' && payload.role !== 'MANAGER' && payload.role !== 'LEAD_OPERATOR' && payload.role !== 'OPERATOR')
     ) {
       return null;
     }
@@ -62,6 +63,7 @@ export async function verifySession(token: string): Promise<SessionUser | null> 
       departmentId: typeof payload.departmentId === 'string' ? payload.departmentId : null,
       avatarUrl: typeof payload.avatarUrl === 'string' ? payload.avatarUrl : null,
       isActive: payload.isActive,
+      mustChangePassword: payload.mustChangePassword === true,
     };
   } catch {
     return null;
@@ -84,7 +86,11 @@ export async function getSession(): Promise<SessionUser | null> {
   const cookieStore = await cookies();
   const token = cookieStore.get(SESSION_COOKIE_NAME)?.value;
   if (!token) return null;
-  return verifySession(token);
+  const session = await verifySession(token);
+  if (!session) return null;
+  const account = await prisma.user.findUnique({ where: { id: session.id }, select: { isActive: true, mustChangePassword: true } });
+  if (!account?.isActive) return null;
+  return { ...session, mustChangePassword: account.mustChangePassword };
 }
 
 export async function clearSessionCookie() {
@@ -109,10 +115,22 @@ export async function requireAuth(): Promise<SessionUser> {
       departmentId: true,
       avatarUrl: true,
       isActive: true,
+      mustChangePassword: true,
     },
   });
   if (!user || !user.isActive) throw new Error('UNAUTHORIZED');
+  if (user.mustChangePassword) throw new Error('PASSWORD_CHANGE_REQUIRED');
+  return { ...user, mustChangePassword: false };
+}
 
+export async function requirePasswordChangeAuth(): Promise<SessionUser> {
+  const session = await getSession();
+  if (!session) throw new Error('UNAUTHORIZED');
+  const user = await prisma.user.findUnique({ where: { id: session.id }, select: {
+    id: true, name: true, username: true, email: true, employeeId: true, role: true,
+    position: true, departmentId: true, avatarUrl: true, isActive: true, mustChangePassword: true,
+  } });
+  if (!user || !user.isActive) throw new Error('UNAUTHORIZED');
   return user;
 }
 

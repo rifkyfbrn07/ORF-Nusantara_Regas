@@ -4,13 +4,13 @@ import { useMemo, useState, useTransition } from 'react';
 import { AlertCircle, CheckCircle, Save } from 'lucide-react';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
-import { updateTeamApprovalConfigAction } from '@/server/actions/approvalConfigActions';
+import { setGlobalTeamLeaderAction, updateTeamApprovalConfigAction } from '@/server/actions/approvalConfigActions';
 
 type ApprovalUser = {
   id: string;
   name: string;
   username: string | null;
-  role: 'ADMIN' | 'MANAGER' | 'OPERATOR';
+  role: 'ADMIN' | 'MANAGER' | 'LEAD_OPERATOR' | 'OPERATOR';
   isActive: boolean;
 };
 
@@ -20,12 +20,14 @@ type TeamConfig = {
   reviewerId: string | null;
   teamLeadId: string | null;
   managerId: string | null;
+  leadOperatorId: string | null;
 };
 
 type ConfigForm = {
   reviewerId: string;
   teamLeadId: string;
   managerId: string;
+  leadOperatorId: string;
 };
 
 function createForms(teamCodes: string[], configs: TeamConfig[]): Record<string, ConfigForm> {
@@ -36,6 +38,7 @@ function createForms(teamCodes: string[], configs: TeamConfig[]): Record<string,
       reviewerId: config?.reviewerId || '',
       teamLeadId: config?.teamLeadId || '',
       managerId: config?.managerId || '',
+      leadOperatorId: config?.leadOperatorId || '',
     }];
   }));
 }
@@ -56,16 +59,19 @@ export function ApprovalTeamConfigPanel({
   teamCodes,
   configs,
   users,
+  globalTeamLeaderId,
   unassignedOperatorCount,
 }: {
   teamCodes: string[];
   configs: TeamConfig[];
   users: ApprovalUser[];
+  globalTeamLeaderId: string | null;
   unassignedOperatorCount: number;
 }) {
   const router = useRouter();
   const [forms, setForms] = useState(() => createForms(teamCodes, configs));
   const [pending, startTransition] = useTransition();
+  const [globalLeaderValue, setGlobalLeaderValue] = useState(globalTeamLeaderId || '');
   const configByTeam = useMemo(() => new Map(configs.map((config) => [config.code, config])), [configs]);
   const approverOptions = useMemo(
     () => users.filter((user) => user.isActive && user.role !== 'ADMIN'),
@@ -75,6 +81,8 @@ export function ApprovalTeamConfigPanel({
     () => approverOptions.filter((user) => user.role === 'MANAGER'),
     [approverOptions]
   );
+  const globalLeaderOptions = useMemo(() => users.filter((user) => user.isActive && user.role !== 'ADMIN' && user.name.toLocaleLowerCase('id-ID').replace(/\./g, '').replace(/\s+/g, ' ').trim() === 'm t ibrahim'), [users]);
+  const leadOperatorOptions = useMemo(() => users.filter((user) => user.isActive && user.role === 'LEAD_OPERATOR'), [users]);
 
   const setField = (team: string, field: keyof ConfigForm, value: string) => {
     setForms((current) => ({
@@ -96,6 +104,13 @@ export function ApprovalTeamConfigPanel({
       router.refresh();
     });
   };
+
+  const saveGlobalLeader = () => startTransition(async () => {
+    const result = await setGlobalTeamLeaderAction(globalLeaderValue);
+    if (!result.success) { toast.error(result.error || 'Gagal memetakan Team Leader.'); return; }
+    toast.success('Global Team Leader berhasil dipetakan untuk seluruh tim.');
+    router.refresh();
+  });
 
   const renderSelect = (
     team: string,
@@ -140,6 +155,19 @@ export function ApprovalTeamConfigPanel({
         </p>
       </div>
 
+      <div className="rounded-xl border border-blue-200 bg-blue-50/60 p-3.5">
+        <h3 className="text-xs font-black text-[#092B57]">Global Team Leader — semua tim</h3>
+        <p className="mt-1 text-[10px] text-slate-600">Akun yang dipetakan harus bernama persis M. T. Ibrahim dan berstatus aktif non-Admin.</p>
+        <div className="mt-2 flex flex-col gap-2 sm:flex-row">
+          <select value={globalLeaderValue} onChange={(event) => setGlobalLeaderValue(event.target.value)} className="min-w-0 flex-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs">
+            <option value="">Belum dipetakan</option>
+            {globalLeaderOptions.map((user) => <option key={user.id} value={user.id}>{user.name} (@{user.username || 'tanpa-username'})</option>)}
+          </select>
+          <button type="button" disabled={pending || !globalLeaderValue} onClick={saveGlobalLeader} className="rounded-lg bg-[#0B3568] px-3 py-2 text-[10px] font-bold text-white disabled:opacity-50">Simpan Global Team Leader</button>
+        </div>
+        {globalLeaderOptions.length === 0 && <p className="mt-2 text-[10px] font-semibold text-amber-800">Akun M. T. Ibrahim tidak ditemukan pada daftar User Management. Pemetaan belum diubah.</p>}
+      </div>
+
       {unassignedOperatorCount > 0 && (
         <div className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-[11px] text-amber-900">
           <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
@@ -156,10 +184,10 @@ export function ApprovalTeamConfigPanel({
         <div className="grid gap-3 lg:grid-cols-2">
           {teamCodes.map((team) => {
             const config = configByTeam.get(team);
-            const form = forms[team] || { reviewerId: '', teamLeadId: '', managerId: '' };
+            const form = forms[team] || { reviewerId: '', teamLeadId: '', managerId: '', leadOperatorId: '' };
             const missing = [
-              !accountIsValid(form.reviewerId, 'reviewer', users) ? 'Reviewer' : null,
-              !accountIsValid(form.teamLeadId, 'teamLead', users, form.managerId) ? 'Team Lead' : null,
+              !globalTeamLeaderId || !globalLeaderOptions.some((user) => user.id === globalTeamLeaderId) ? 'Global Team Lead' : null,
+              !leadOperatorOptions.some((user) => user.id === form.leadOperatorId) ? 'Lead Operator' : null,
               !accountIsValid(form.managerId, 'manager', users) ? 'Manager' : null,
             ].filter((label): label is string => Boolean(label));
 
@@ -184,6 +212,7 @@ export function ApprovalTeamConfigPanel({
                   {renderSelect(team, 'reviewerId', 'Reviewer', approverOptions)}
                   {renderSelect(team, 'teamLeadId', 'Team Lead', approverOptions)}
                   {renderSelect(team, 'managerId', 'Manager (role MANAGER)', managerOptions)}
+                  {renderSelect(team, 'leadOperatorId', 'Lead Operator (role LEAD_OPERATOR)', leadOperatorOptions)}
                 </div>
                 {missing.length > 0 && (
                   <p className="mt-2 text-[10px] font-semibold text-amber-800">

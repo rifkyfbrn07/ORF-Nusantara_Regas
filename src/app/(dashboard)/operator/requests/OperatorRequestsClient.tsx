@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Plus,
   Send,
@@ -25,6 +25,7 @@ import { StatusBadge } from '@/components/ui/StatusBadge';
 import { Modal } from '@/components/ui/Modal';
 import { FileUploadProof } from '@/components/ui/FileUploadProof';
 import { submitLeaveAction, processLeaveApprovalAction } from '@/server/actions/leaveActions';
+import { getMyLeaveQuotaAvailabilityAction } from '@/server/actions/leaveQuotaActions';
 import { LeaveDocxViewer } from '@/components/leave/LeaveDocxViewer';
 import { useRouter } from 'next/navigation';
 
@@ -51,6 +52,9 @@ export interface LeaveRequestItem {
   teamLeadName?: string | null;
   teamLeadApprovedAt?: string | Date | null;
   teamLeadNote?: string | null;
+  leadOperatorName?: string | null;
+  leadOperatorApprovedAt?: string | Date | null;
+  leadOperatorNote?: string | null;
   managerName?: string | null;
   managerApprovedAt?: string | Date | null;
   managerNote?: string | null;
@@ -144,12 +148,16 @@ const STAGE_LABELS: Record<string, string> = {
   REVIEWER: 'Menunggu Reviewer',
   TEAM_LEAD: 'Menunggu Team Lead',
   MANAGER: 'Menunggu Manager',
+  GLOBAL_TEAM_LEAD: 'Menunggu Team Lead',
+  LEAD_OPERATOR: 'Menunggu Lead Operator',
 };
 
 const STAGE_NAMES: Record<string, string> = {
   REVIEWER: 'Reviewer',
   TEAM_LEAD: 'Team Lead',
   MANAGER: 'Manager',
+  GLOBAL_TEAM_LEAD: 'Team Lead',
+  LEAD_OPERATOR: 'Lead Operator',
 };
 
 /** Status tampilan pengajuan sesuai alur approval 3 tahap (mirror dari leaveService). */
@@ -174,11 +182,19 @@ function StageTimeline({ request }: { request: LeaveRequestItem }) {
   const approved = request.status === 'APPROVED';
   const rejected = request.status === 'REJECTED';
 
-  const decidedFlags = APPROVAL_STAGES.map((s) =>
+  const isLegacy = request.approvalStage === 'REVIEWER' || request.approvalStage === 'TEAM_LEAD' || Boolean(request.reviewerApprovedAt);
+  const stages = isLegacy ? APPROVAL_STAGES : [
+    { key: 'GLOBAL_TEAM_LEAD', label: 'Team Lead' },
+    { key: 'LEAD_OPERATOR', label: 'Lead Operator' },
+    { key: 'MANAGER', label: 'Manager' },
+  ];
+  const decidedFlags = stages.map((s) =>
     s.key === 'REVIEWER'
       ? Boolean(request.reviewerApprovedAt)
-      : s.key === 'TEAM_LEAD'
+      : s.key === 'TEAM_LEAD' || s.key === 'GLOBAL_TEAM_LEAD'
         ? Boolean(request.teamLeadApprovedAt)
+        : s.key === 'LEAD_OPERATOR'
+          ? Boolean(request.leadOperatorApprovedAt)
         : Boolean(request.managerApprovedAt)
   );
   // Penolakan bersifat terminal — tahap terakhir yang tercatat adalah tahap penolak.
@@ -186,18 +202,22 @@ function StageTimeline({ request }: { request: LeaveRequestItem }) {
 
   return (
     <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
-      {APPROVAL_STAGES.map((stage, idx) => {
+      {stages.map((stage, idx) => {
         const name =
           stage.key === 'REVIEWER'
             ? request.reviewerName
-            : stage.key === 'TEAM_LEAD'
+            : stage.key === 'TEAM_LEAD' || stage.key === 'GLOBAL_TEAM_LEAD'
               ? request.teamLeadName
+              : stage.key === 'LEAD_OPERATOR'
+                ? request.leadOperatorName
               : request.managerName;
         const at =
           stage.key === 'REVIEWER'
             ? request.reviewerApprovedAt
-            : stage.key === 'TEAM_LEAD'
+            : stage.key === 'TEAM_LEAD' || stage.key === 'GLOBAL_TEAM_LEAD'
               ? request.teamLeadApprovedAt
+              : stage.key === 'LEAD_OPERATOR'
+                ? request.leadOperatorApprovedAt
               : request.managerApprovedAt;
 
         let state: 'done' | 'rejected' | 'current' | 'waiting' = 'waiting';
@@ -384,6 +404,7 @@ export function OperatorRequestsClient({
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [quotaDays, setQuotaDays] = useState<{ date: string; maxOperators: number | null; approvedCount: number | null; remaining: number | null; full: boolean }[]>([]);
 
   // Proof Viewer Modal State
   const [previewItem, setPreviewItem] = useState<LeaveRequestItem | null>(null);
@@ -408,6 +429,16 @@ export function OperatorRequestsClient({
     storageProvider: '',
     storagePath: '',
   });
+
+  useEffect(() => {
+    if (!showModal || formData.type !== 'LEAVE' || !formData.startDate || !formData.endDate) return;
+    let active = true;
+    void getMyLeaveQuotaAvailabilityAction(formData.startDate, formData.endDate).then((result) => {
+      if (active && result.success) setQuotaDays(result.days);
+      else if (active) setQuotaDays([]);
+    });
+    return () => { active = false; };
+  }, [showModal, formData.type, formData.startDate, formData.endDate]);
 
   // Calculate days for the selected range
   const calculateDays = () => {
@@ -486,7 +517,7 @@ export function OperatorRequestsClient({
 
     const res = await processLeaveApprovalAction({
       requestId: approvalReview.id,
-      stage: approvalReview.stage as 'REVIEWER' | 'TEAM_LEAD' | 'MANAGER',
+      stage: approvalReview.stage as 'REVIEWER' | 'TEAM_LEAD' | 'GLOBAL_TEAM_LEAD' | 'LEAD_OPERATOR' | 'MANAGER',
       status: approvalReview.decision,
       note: approvalNote.trim() || undefined,
     });
@@ -910,6 +941,15 @@ export function OperatorRequestsClient({
               />
             </div>
           </div>
+
+          {formData.type === 'LEAVE' && quotaDays.some((day) => day.maxOperators !== null) && (
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs">
+              <p className="font-bold text-slate-800">Ketersediaan kuota Tim {currentUser?.team || 'Anda'}</p>
+              <ul className="mt-1 space-y-1 text-slate-600">
+                {quotaDays.filter((day) => day.maxOperators !== null).map((day) => <li key={day.date} className={day.full ? 'font-semibold text-red-700' : ''}>{day.date}: {day.approvedCount}/{day.maxOperators} disetujui · sisa {day.remaining}{day.full ? ' · kuota penuh' : ''}</li>)}
+              </ul>
+            </div>
+          )}
 
           <div>
             <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">

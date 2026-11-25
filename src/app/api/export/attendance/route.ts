@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   const session = await getSession();
-  if (!session || session.role !== 'MANAGER') {
+  if (!session || session.mustChangePassword || session.role !== 'MANAGER') {
     return new NextResponse('Unauthorized: Manager role required', { status: 403 });
   }
 

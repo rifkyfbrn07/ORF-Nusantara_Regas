@@ -110,7 +110,7 @@ function buildResponseHeaders(fileName: string | null, mimeType: string | null, 
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string[] }> }) {
   const session = await getSession();
-  if (!session) return NextResponse.json({ error: 'UNAUTHORIZED' }, { status: 401 });
+  if (!session || session.mustChangePassword) return NextResponse.json({ error: 'UNAUTHORIZED' }, { status: 401 });
 
   const segments = (await params).id;
   const id = segments.map((s) => decodeURIComponent(s)).join('/');

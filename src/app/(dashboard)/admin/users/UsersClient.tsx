@@ -10,7 +10,7 @@ import { Modal } from '@/components/ui/Modal';
 import { createAdminUserAction, deleteAdminUserAction, resetAdminUserPasswordAction, toggleAdminUserStatusAction, updateAdminUserAction } from '@/server/actions/adminUserActions';
 import { ApprovalTeamConfigPanel } from './ApprovalTeamConfigPanel';
 
-type UserRole = 'ADMIN' | 'MANAGER' | 'OPERATOR';
+type UserRole = 'ADMIN' | 'MANAGER' | 'LEAD_OPERATOR' | 'OPERATOR';
 
 type UserItem = {
   id: string;
@@ -24,6 +24,7 @@ type UserItem = {
   phone: string | null;
   departmentId: string | null;
   isActive: boolean;
+  mustChangePassword: boolean;
   avatarUrl?: string | null;
   createdAt: Date | string;
   department: { name: string } | null;
@@ -36,6 +37,7 @@ type TeamApprovalConfig = {
   reviewerId: string | null;
   teamLeadId: string | null;
   managerId: string | null;
+  leadOperatorId: string | null;
 };
 
 type UserForm = {
@@ -123,10 +125,12 @@ export default function UsersClient({
   users,
   departments,
   teamConfigs,
+  globalTeamLeaderId,
 }: {
   users: UserItem[];
   departments: Department[];
   teamConfigs: TeamApprovalConfig[];
+  globalTeamLeaderId: string | null;
 }) {
   const [query, setQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
@@ -314,13 +318,15 @@ const resetPasswordSubmit = (event: React.FormEvent<HTMLFormElement>) => {
         teamCodes={approvalTeams}
         configs={teamConfigs}
         users={approverUsers}
+        globalTeamLeaderId={globalTeamLeaderId}
         unassignedOperatorCount={users.filter((user) => user.role === 'OPERATOR' && !user.team).length}
       />
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-7">
         <KpiCard label="Total User" value={users.length} icon={Users} variant="total" />
         <KpiCard label="Admin" value={users.filter((u) => u.role === 'ADMIN').length} icon={Shield} variant="navy" />
         <KpiCard label="Manager" value={users.filter((u) => u.role === 'MANAGER').length} icon={UserCog} variant="blue" />
+        <KpiCard label="Lead Operator" value={users.filter((u) => u.role === 'LEAD_OPERATOR').length} icon={UserCheck} variant="blue" />
         <KpiCard label="Operator" value={users.filter((u) => u.role === 'OPERATOR').length} icon={HardHat} variant="blue" />
         <KpiCard label="Aktif" value={users.filter((u) => u.isActive).length} icon={UserCheck} variant="green" />
         <KpiCard label="Nonaktif" value={users.filter((u) => !u.isActive).length} icon={UserX} variant="red" />
@@ -391,6 +397,7 @@ const resetPasswordSubmit = (event: React.FormEvent<HTMLFormElement>) => {
                   </td>
                   <td className="px-4 py-3">
                     <span className="font-mono text-xs font-bold text-[#1769AA]">@{user.username}</span>
+                    {user.mustChangePassword && <span className="mt-1 block w-fit rounded bg-amber-50 px-1.5 py-0.5 text-[9px] font-bold text-amber-800">WAJIB GANTI PASSWORD</span>}
                   </td>
                   <td className="px-4 py-3">
                     <span className="font-mono text-xs font-bold text-slate-700">{user.employeeId}</span>
@@ -402,11 +409,14 @@ const resetPasswordSubmit = (event: React.FormEvent<HTMLFormElement>) => {
                           ? 'bg-purple-50 text-purple-700 border-purple-200'
                           : user.role === 'MANAGER'
                           ? 'bg-amber-50 text-amber-800 border-amber-200'
+                          : user.role === 'LEAD_OPERATOR'
+                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                           : 'bg-blue-50 text-[#0066B3] border-blue-200'
                       }`}
                     >
                       {user.role === 'ADMIN' && <Shield className="h-3 w-3" />}
                       {user.role === 'MANAGER' && <UserCog className="h-3 w-3" />}
+                      {user.role === 'LEAD_OPERATOR' && <UserCheck className="h-3 w-3" />}
                       {user.role === 'OPERATOR' && <HardHat className="h-3 w-3" />}
                       <span>{user.role}</span>
                     </span>
@@ -497,11 +507,14 @@ const resetPasswordSubmit = (event: React.FormEvent<HTMLFormElement>) => {
               />
             </div>
             <div className="mt-2 flex flex-wrap gap-1.5">
+              {u.mustChangePassword && <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[9px] font-black text-amber-800">WAJIB GANTI PASSWORD</span>}
               <span className={`inline-flex items-center gap-1 text-[9.5px] font-black px-2 py-0.5 rounded-full border ${
                 u.role === 'ADMIN'
                   ? 'bg-purple-50 text-purple-700 border-purple-200'
                   : u.role === 'MANAGER'
                   ? 'bg-amber-50 text-amber-800 border-amber-200'
+                  : u.role === 'LEAD_OPERATOR'
+                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                   : 'bg-blue-50 text-[#0066B3] border-blue-200'
               }`}>{u.role}</span>
               <span className="text-[10px] text-slate-500">{u.department?.name || '—'}</span>
@@ -618,6 +631,7 @@ const resetPasswordSubmit = (event: React.FormEvent<HTMLFormElement>) => {
                 className="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm"
               >
                 <option value="OPERATOR">OPERATOR (Personil Lapangan)</option>
+                <option value="LEAD_OPERATOR">LEAD_OPERATOR (Persetujuan Cuti)</option>
                 <option value="MANAGER">MANAGER (Pengawas Operasional)</option>
                 {editingUser && <option value="ADMIN">ADMIN</option>}
               </select>

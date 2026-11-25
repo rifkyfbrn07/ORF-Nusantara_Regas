@@ -7,7 +7,7 @@ import { recordAuditLog } from '@/server/services/auditService';
 export async function GET(req: NextRequest) {
   try {
     const session = await getSession();
-    if (!session) {
+    if (!session || session.mustChangePassword) {
       return new NextResponse('Unauthorized', { status: 401 });
     }
 

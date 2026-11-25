@@ -53,6 +53,7 @@ export async function loginAction(formData: LoginInput) {
     departmentId: user.departmentId,
     avatarUrl: user.avatarUrl,
     isActive: user.isActive,
+    mustChangePassword: user.mustChangePassword,
   });
 
   // Record audit log
@@ -71,7 +72,7 @@ export async function loginAction(formData: LoginInput) {
       name: user.name,
       role: user.role,
     },
-    redirectTo: user.role === 'ADMIN' ? '/admin/dashboard' : user.role === 'MANAGER' ? '/manager/dashboard' : '/operator/dashboard',
+    redirectTo: user.mustChangePassword ? '/change-password' : user.role === 'ADMIN' ? '/admin/dashboard' : user.role === 'MANAGER' ? '/manager/dashboard' : '/operator/dashboard',
   };
 }
 

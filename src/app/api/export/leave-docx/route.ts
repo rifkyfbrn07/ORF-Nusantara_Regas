@@ -10,7 +10,7 @@ import { assertApprovalAuthority, type ApprovalStage } from '@/server/services/l
 export async function GET(req: NextRequest) {
   try {
     const sessionToken = await getSession();
-    if (!sessionToken) {
+    if (!sessionToken || sessionToken.mustChangePassword) {
       return new NextResponse('Unauthorized', { status: 401 });
     }
     const session = await prisma.user.findUnique({
@@ -41,14 +41,16 @@ export async function GET(req: NextRequest) {
       return new NextResponse('Permohonan cuti tidak ditemukan', { status: 404 });
     }
 
-    // Operators may preview their own request or one actively assigned to them.
-    // Team Lead/Reviewer assignments are explicit in TeamConfig; role OPERATOR
-    // alone never grants access to another operator's document.
-    if (session.role === 'OPERATOR' && leaveRequest.userId !== session.id) {
-      const activeStages: ApprovalStage[] = ['REVIEWER', 'TEAM_LEAD'];
+    // Non-manager approvers may access only their own request or a request explicitly assigned to them.
+    if (!['ADMIN', 'MANAGER'].includes(session.role) && leaveRequest.userId !== session.id) {
       const stage = leaveRequest.approvalStage as ApprovalStage;
-      if (leaveRequest.status !== RequestStatus.PENDING || !activeStages.includes(stage)) {
+      const activeStages: ApprovalStage[] = ['REVIEWER', 'TEAM_LEAD', 'GLOBAL_TEAM_LEAD', 'LEAD_OPERATOR'];
+      const previouslyApprovedByUser = [leaveRequest.reviewerId, leaveRequest.teamLeadId, leaveRequest.leadOperatorId].includes(session.id);
+      if ((leaveRequest.status !== RequestStatus.PENDING || !activeStages.includes(stage)) && !previouslyApprovedByUser) {
         return new NextResponse('Forbidden: Anda tidak berhak mengunduh dokumen cuti operator lain', { status: 403 });
+      }
+      if (leaveRequest.status === RequestStatus.PENDING && !activeStages.includes(stage)) {
+        return new NextResponse('Forbidden: Tahap persetujuan tidak aktif', { status: 403 });
       }
       const approver = await prisma.user.findUnique({
         where: { id: session.id },
@@ -57,10 +59,12 @@ export async function GET(req: NextRequest) {
       if (!approver) {
         return new NextResponse('Forbidden: Akun approver tidak ditemukan', { status: 403 });
       }
-      try {
-        await assertApprovalAuthority({ userId: leaveRequest.userId }, approver, stage);
-      } catch {
-        return new NextResponse('Forbidden: Pengajuan ini bukan bagian dari inbox persetujuan Anda', { status: 403 });
+      if (leaveRequest.status === RequestStatus.PENDING) {
+        try {
+          await assertApprovalAuthority({ userId: leaveRequest.userId }, approver, stage);
+        } catch {
+          return new NextResponse('Forbidden: Pengajuan ini bukan bagian dari inbox persetujuan Anda', { status: 403 });
+        }
       }
     }
 
@@ -83,16 +87,17 @@ export async function GET(req: NextRequest) {
       ? await prisma.teamConfig.findUnique({ where: { code: leaveRequest.user.team } })
       : null;
     const reviewerApproverId = leaveRequest.reviewerId || teamConfig?.reviewerId || null;
-    const assignedTeamLeadId = teamConfig?.teamLeadId && teamConfig.teamLeadId !== teamConfig.managerId
-      ? teamConfig.teamLeadId
-      : null;
-    const teamLeadApproverId = leaveRequest.teamLeadId || assignedTeamLeadId;
+    const globalConfig = await prisma.globalApprovalConfig.findFirst({ select: { teamLeadId: true } });
+    const isLegacyWorkflow = leaveRequest.approvalStage === 'REVIEWER' || leaveRequest.approvalStage === 'TEAM_LEAD' || Boolean(leaveRequest.reviewerApprovedAt);
+    const assignedTeamLeadId = teamConfig?.teamLeadId && teamConfig.teamLeadId !== teamConfig.managerId ? teamConfig.teamLeadId : null;
+    const teamLeadApproverId = leaveRequest.teamLeadId || (isLegacyWorkflow ? assignedTeamLeadId : globalConfig?.teamLeadId || null);
+    const leadOperatorApproverId = leaveRequest.leadOperatorId || teamConfig?.leadOperatorId || null;
     const managerApproverId = leaveRequest.managerId || teamConfig?.managerId || null;
-    const approverIds = [reviewerApproverId, teamLeadApproverId, managerApproverId]
+    const approverIds = [reviewerApproverId, teamLeadApproverId, leadOperatorApproverId, managerApproverId]
       .filter((id): id is string => Boolean(id));
     const approverAccounts = await prisma.user.findMany({
       where: { id: { in: approverIds } },
-      select: { id: true, name: true, position: true },
+      select: { id: true, name: true, position: true, role: true },
     });
     const approverById = new Map(approverAccounts.map((account) => [account.id, account]));
 
@@ -122,12 +127,9 @@ export async function GET(req: NextRequest) {
       return `${formatIndoDate(startStr)} s/d ${formatIndoDate(endStr)}`;
     };
     const formatApprovalTimestamp = (value: Date | null) => value
-      ? new Intl.DateTimeFormat('id-ID', {
-          day: 'numeric',
-          month: 'long',
-          year: 'numeric',
-          timeZone: 'Asia/Jakarta',
-        }).format(value)
+      ? `${new Intl.DateTimeFormat('id-ID', {
+          timeZone: 'Asia/Jakarta', dateStyle: 'long', timeStyle: 'short',
+        }).format(value)} WIB`
       : '-';
 
     // Parse extra metadata if stored in reason (or fallback)
@@ -151,7 +153,7 @@ export async function GET(req: NextRequest) {
 
     const approvalDate = formatApprovalTimestamp(leaveRequest.managerApprovedAt);
 
-    const approvalDecision = (stage: 'REVIEWER' | 'TEAM_LEAD' | 'MANAGER', decidedAt: Date | null) => {
+    const approvalDecision = (stage: ApprovalStage, decidedAt: Date | null) => {
       if (decidedAt) {
         return leaveRequest.status === RequestStatus.REJECTED && leaveRequest.approvalStage === stage
           ? 'DITOLAK'
@@ -165,22 +167,37 @@ export async function GET(req: NextRequest) {
     };
     const approvalSummary = (
       label: string,
-      stage: 'REVIEWER' | 'TEAM_LEAD' | 'MANAGER',
+      stage: ApprovalStage,
       approverId: string | null,
       decidedAt: Date | null,
+      note?: string | null,
+      roleSnapshot?: string | null,
     ) => {
       const approver = approverId ? approverById.get(approverId) : null;
       const approverName = approver?.name || (approverId ? 'Akun approver tidak tersedia' : 'Belum ditetapkan');
-      const position = approver?.position ? ` (${approver.position})` : '';
+      const position = approver?.position || '-';
       const date = formatApprovalTimestamp(decidedAt);
-      return `${label}: ${approverName}${position}\n${approvalDecision(stage, decidedAt)} • ${date}`;
+      const status = approvalDecision(stage, decidedAt);
+      const ref = `${leaveRequest.id}-${stage}`;
+      const stampHeading = leaveRequest.status === RequestStatus.APPROVED && status === 'DISETUJUI'
+        ? 'APPROVED'
+        : leaveRequest.status === RequestStatus.REJECTED ? 'REJECTED' : 'MENUNGGU PERSETUJUAN';
+      const actionLine = leaveRequest.status === RequestStatus.APPROVED && status === 'DISETUJUI'
+        ? 'Disetujui secara elektronik oleh:'
+        : status === 'DITOLAK' ? 'Keputusan ditolak oleh:' : 'Tahap persetujuan oleh:';
+      return `${stampHeading}\n${actionLine}\n${approverName}\nJabatan: ${position}\nRole approval: ${label} · Role akun: ${roleSnapshot || approver?.role || '-'}\n${date}\n${status}\nRef: ${ref}${note ? `\nCatatan: ${note}` : ''}`;
     };
     const managerName = managerApproverId ? approverById.get(managerApproverId)?.name : null;
     const managerDecision = approvalDecision('MANAGER', leaveRequest.managerApprovedAt);
     const managerPosition = managerApproverId ? approverById.get(managerApproverId)?.position : null;
+    const managerSummary = approvalSummary('Manager', 'MANAGER', managerApproverId, leaveRequest.managerApprovedAt, leaveRequest.managerNote, leaveRequest.managerRole);
+    const approvalStatus = leaveRequest.status === RequestStatus.APPROVED
+      ? 'APPROVED' as const
+      : leaveRequest.status === RequestStatus.REJECTED ? 'REJECTED' as const : 'MENUNGGU PERSETUJUAN' as const;
 
     const docData: LeaveDocData = {
       isDraft: leaveRequest.status !== RequestStatus.APPROVED,
+      approvalStatus,
       namaPekerja: leaveRequest.user.name,
       nip: leaveRequest.user.employeeId,
       jabatan: leaveRequest.user.position || 'Penunjang Pengoperasian ORF',
@@ -206,8 +223,14 @@ export async function GET(req: NextRequest) {
       menyetujuiNama: leaveRequest.managerName || managerName || 'Belum ditetapkan',
       managerRoleLine: `Manager • ${managerDecision}`,
       managerDateLine: `${managerPosition || 'Jabatan: -'} • Tanggal: ${approvalDate}`,
-      reviewerSummary: approvalSummary('Team Reviewer', 'REVIEWER', reviewerApproverId, leaveRequest.reviewerApprovedAt),
-      teamLeadSummary: approvalSummary('Team Lead', 'TEAM_LEAD', teamLeadApproverId, leaveRequest.teamLeadApprovedAt),
+      managerSummary,
+      approvalReference: leaveRequest.id,
+      reviewerSummary: isLegacyWorkflow
+        ? approvalSummary('Reviewer', 'REVIEWER', reviewerApproverId, leaveRequest.reviewerApprovedAt, leaveRequest.reviewerNote, leaveRequest.reviewerRole)
+        : approvalSummary('Team Lead', 'GLOBAL_TEAM_LEAD', teamLeadApproverId, leaveRequest.teamLeadApprovedAt, leaveRequest.teamLeadNote, leaveRequest.teamLeadRole),
+      teamLeadSummary: isLegacyWorkflow
+        ? approvalSummary('Team Lead', 'TEAM_LEAD', teamLeadApproverId, leaveRequest.teamLeadApprovedAt, leaveRequest.teamLeadNote, leaveRequest.teamLeadRole)
+        : approvalSummary('Lead Operator', 'LEAD_OPERATOR', leadOperatorApproverId, leaveRequest.leadOperatorApprovedAt, leaveRequest.leadOperatorNote, leaveRequest.leadOperatorRole),
     };
 
     const docxBuffer = await generateLeaveDocx(docData);

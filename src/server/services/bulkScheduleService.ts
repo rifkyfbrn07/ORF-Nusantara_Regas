@@ -164,6 +164,8 @@ export interface ImportRowInput {
   username?: string;
   nama?: string;
   employeeId?: string;
+  team?: string;
+  lokasi?: string;
   shift: string; // Pg / Mlm / Off / nama shift
   status?: string; // WORK / OFF (opsional, default ikut shift)
   catatan?: string;
@@ -203,7 +205,7 @@ function normalizeShift(raw: string, shiftList: { id: string; code: string; name
   return null;
 }
 
-type ImportUser = { id: string; name: string; employeeId: string; team: string | null; position: string };
+type ImportUser = { id: string; name: string; employeeId: string; team: string | null; position: string; isActive: boolean };
 
 async function resolveUsers(rows: ImportRowInput[]): Promise<Map<string, ImportUser>> {
   const identifiers = new Set<string>();
@@ -228,7 +230,7 @@ async function resolveUsers(rows: ImportRowInput[]): Promise<Map<string, ImportU
 
   const map = new Map<string, ImportUser>();
   for (const u of users) {
-    const user: ImportUser = { id: u.id, name: u.name, employeeId: u.employeeId, team: u.team, position: u.position };
+    const user: ImportUser = { id: u.id, name: u.name, employeeId: u.employeeId, team: u.team, position: u.position, isActive: u.isActive };
     if (u.username) map.set(`u:${u.username.toLowerCase()}`, user);
     if (u.employeeId) map.set(`e:${u.employeeId.toLowerCase()}`, user);
     if (u.name) map.set(`n:${u.name.toLowerCase()}`, user);
@@ -355,16 +357,20 @@ type ResolvedImportRow = {
   shift?: { shiftId: string; status: ScheduleStatus; label: string } | null;
   note?: string;
   statusLabel?: string;
+  locationId?: string;
 };
 
 function resolveImportRows(
   rows: ImportRowInput[],
   shiftList: { id: string; code: string; name: string }[],
-  userMap: Map<string, ImportUser>
+  userMap: Map<string, ImportUser>,
+  locations: { id: string; name: string; code: string }[],
+  defaultLocationId: string | null,
 ): ResolvedImportRow[] {
   return rows.map((r): ResolvedImportRow => {
     const dateStr = String(r.tanggal || '').trim();
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+    const parsedDate = /^\d{4}-\d{2}-\d{2}$/.test(dateStr) ? new Date(`${dateStr}T00:00:00.000Z`) : null;
+    if (!parsedDate || Number.isNaN(parsedDate.getTime()) || parsedDate.toISOString().slice(0, 10) !== dateStr) {
       return { row: r.row, error: 'Format tanggal harus YYYY-MM-DD' };
     }
     const user =
@@ -375,16 +381,25 @@ function resolveImportRows(
     if (!user) {
       return { row: r.row, error: 'User tidak ditemukan (periksa username/nama/employee ID)' };
     }
+    if (!user.isActive) return { row: r.row, error: 'Akun operator tidak aktif.' };
+    if (r.team?.trim() && r.team.trim().toUpperCase() !== (user.team || '').toUpperCase()) {
+      return { row: r.row, error: `Tim ${r.team} tidak sesuai dengan data operator (${user.team || 'belum dipetakan'})` };
+    }
     const requestedStatus = (r.status || '').trim().toUpperCase();
     const shift = normalizeShift(r.shift, shiftList);
     if (!shift) {
       return { row: r.row, error: `Shift tidak dikenal: "${r.shift}" (gunakan Pg / Mlm / Off)` };
     }
+    const location = r.lokasi?.trim()
+      ? locations.find((item) => item.code.toLowerCase() === r.lokasi!.trim().toLowerCase() || item.name.toLowerCase() === r.lokasi!.trim().toLowerCase())
+      : locations.find((item) => item.id === defaultLocationId);
+    if (!location) return { row: r.row, error: r.lokasi ? `Lokasi tidak ditemukan: ${r.lokasi}` : 'Lokasi default ORF-MKG tidak ditemukan.' };
     // Kolom Status (WORK/OFF) pada file boleh overriding status default shift
     // (mis. baris "Off" tetap WORK). Validasi agar tidak saling bertentangan.
     let status = shift.status;
-    if (requestedStatus === 'WORK' || requestedStatus === 'OFF') {
-      status = requestedStatus === 'WORK' ? ScheduleStatus.WORK : ScheduleStatus.OFF;
+    if (!['', 'WORK', 'ON', 'OFF'].includes(requestedStatus)) return { row: r.row, error: 'Status jadwal harus ON/WORK atau OFF.' };
+    if (requestedStatus === 'WORK' || requestedStatus === 'ON' || requestedStatus === 'OFF') {
+      status = requestedStatus === 'OFF' ? ScheduleStatus.OFF : ScheduleStatus.WORK;
     }
     return {
       row: r.row,
@@ -392,24 +407,27 @@ function resolveImportRows(
       date: dateStr,
       shift: { shiftId: shift.shiftId, status, label: shift.label },
       note: (r.catatan || '').trim() || undefined,
+      locationId: location.id,
     };
   });
 }
 
 /** Tahap 1: validasi & klasifikasi preview — TIDAK menulis ke database. */
 export async function validateImportRows(rows: ImportRowInput[]): Promise<ImportRowResult[]> {
-  const [shiftList, userMap, existing] = await Promise.all([
+  const [shiftList, userMap, existing, locations, defaultLocation] = await Promise.all([
     prisma.shift.findMany({ where: { isActive: true }, select: { id: true, code: true, name: true } }),
     resolveUsers(rows),
     prisma.schedule.findMany({
-      select: { id: true, userId: true, date: true, shiftId: true, status: true, notes: true },
+      select: { id: true, userId: true, date: true, shiftId: true, locationId: true, status: true, notes: true },
     }),
+    prisma.location.findMany({ select: { id: true, name: true, code: true } }),
+    prisma.location.findFirst({ where: { code: 'ORF-MKG' }, select: { id: true } }),
   ]);
 
-  const existingByKey = new Map<string, { id: string; shiftId: string; status: ScheduleStatus; notes: string | null }>();
+  const existingByKey = new Map<string, { id: string; shiftId: string; locationId: string; status: ScheduleStatus; notes: string | null }>();
   for (const s of existing) existingByKey.set(`${s.userId}|${s.date}`, s);
 
-  const resolved = resolveImportRows(rows, shiftList, userMap);
+  const resolved = resolveImportRows(rows, shiftList, userMap, locations, defaultLocation?.id || null);
 
   // Duplikat user+tanggal DI DALAM SATU FILE → CONFLICT (roster ganda tak jelas).
   const keyCount = new Map<string, number>();
@@ -439,7 +457,7 @@ export async function validateImportRows(rows: ImportRowInput[]): Promise<Import
     if (!existingRow) {
       return { row: item.row, ok: true, kind: 'NEW', message: 'Jadwal baru', date: item.date, userName: item.user.name, shift: item.shift.label };
     }
-    const sameShift = existingRow.shiftId === item.shift.shiftId && existingRow.status === item.shift.status;
+    const sameShift = existingRow.shiftId === item.shift.shiftId && existingRow.locationId === item.locationId && existingRow.status === item.shift.status;
     const sameNotes = (existingRow.notes || '') === (item.note || '');
     if (sameShift && sameNotes) {
       return { row: item.row, ok: true, kind: 'UNCHANGED', message: 'Tidak ada perubahan', date: item.date, userName: item.user.name, shift: item.shift.label };
@@ -450,23 +468,25 @@ export async function validateImportRows(rows: ImportRowInput[]): Promise<Import
 /** Tahap 2: konfirmasi import — validasi ulang, lalu tulis hanya NEW/UPDATED. */
 export async function confirmImportRows(
   rows: ImportRowInput[],
-  creatorId: string
+  creatorId: string,
+  existingMode: 'SKIP' | 'UPDATE' = 'SKIP'
 ): Promise<{ results: ImportRowResult[]; created: number; updated: number; skippedConflict: number; skippedInvalid: number }> {
-  const [shiftList, userMap, defaultLocation, existing] = await Promise.all([
+  const [shiftList, userMap, defaultLocation, existing, locations] = await Promise.all([
     prisma.shift.findMany({ where: { isActive: true }, select: { id: true, code: true, name: true } }),
     resolveUsers(rows),
     prisma.location.findFirst({ where: { code: 'ORF-MKG' }, select: { id: true } }),
     prisma.schedule.findMany({
-      select: { id: true, userId: true, date: true, shiftId: true, status: true, notes: true },
+      select: { id: true, userId: true, date: true, shiftId: true, locationId: true, status: true, notes: true },
     }),
+    prisma.location.findMany({ select: { id: true, name: true, code: true } }),
   ]);
   const locationId = defaultLocation?.id;
   if (!locationId) throw new Error('Lokasi default ORF Muara Karang tidak ditemukan.');
 
-  const existingByKey = new Map<string, { id: string; shiftId: string; status: ScheduleStatus; notes: string | null }>();
+  const existingByKey = new Map<string, { id: string; shiftId: string; locationId: string; status: ScheduleStatus; notes: string | null }>();
   for (const s of existing) existingByKey.set(`${s.userId}|${s.date}`, s);
 
-  const resolved = resolveImportRows(rows, shiftList, userMap);
+  const resolved = resolveImportRows(rows, shiftList, userMap, locations, locationId);
   const keyCount = new Map<string, number>();
   for (const item of resolved) {
     if (!item.user || !item.date) continue;
@@ -506,19 +526,24 @@ export async function confirmImportRows(
       }
       const existingRow = existingByKey.get(key);
       if (existingRow) {
-        const sameShift = existingRow.shiftId === item.shift.shiftId && existingRow.status === item.shift.status;
+        const sameShift = existingRow.shiftId === item.shift.shiftId && existingRow.locationId === item.locationId && existingRow.status === item.shift.status;
         const sameNotes = (existingRow.notes || '') === (item.note || '');
         if (sameShift && sameNotes) {
           results.push({ row: item.row, ok: true, kind: 'UNCHANGED', message: 'Tidak ada perubahan', date: item.date, userName: item.user.name, shift: item.shift.label });
           continue;
         }
+        if (existingMode === 'SKIP') {
+          results.push({ row: item.row, ok: true, kind: 'UNCHANGED', message: 'Jadwal sudah ada; dilewati sesuai pilihan.', date: item.date, userName: item.user.name, shift: item.shift.label });
+          skippedConflict += 1;
+          continue;
+        }
         await tx.schedule.update({
           where: { id: existingRow.id },
-          data: { shiftId: item.shift.shiftId, locationId, status: item.shift.status, notes: item.note || undefined },
+          data: { shiftId: item.shift.shiftId, locationId: item.locationId || locationId, status: item.shift.status, notes: item.note || undefined },
         });
         results.push({ row: item.row, ok: true, kind: 'UPDATED', message: 'Diperbarui', date: item.date, userName: item.user.name, shift: item.shift.label });
         updated += 1;
-        existingByKey.set(key, { id: existingRow.id, shiftId: item.shift.shiftId, status: item.shift.status, notes: item.note || null });
+        existingByKey.set(key, { id: existingRow.id, shiftId: item.shift.shiftId, locationId: item.locationId || locationId, status: item.shift.status, notes: item.note || null });
         continue;
       }
       await tx.schedule.create({
@@ -526,7 +551,7 @@ export async function confirmImportRows(
           userId: item.user.id,
           date: item.date,
           shiftId: item.shift.shiftId,
-          locationId,
+          locationId: item.locationId || locationId,
           status: item.shift.status,
           notes: item.note || undefined,
           operatorNameSnapshot: item.user.name,

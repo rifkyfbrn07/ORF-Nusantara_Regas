@@ -10,6 +10,7 @@ datasource db {
 enum Role {
   ADMIN
   MANAGER
+  LEAD_OPERATOR
   OPERATOR
 }
 
@@ -125,6 +126,12 @@ model Department {
   updatedAt              DateTime            @updatedAt
 }
 
+model SystemSetting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}
+
 model Location {
   id             String          @id @default(cuid())
   name           String          @unique
@@ -160,6 +167,7 @@ model User {
   name                   String
   email                  String?             @unique
   passwordHash           String
+  mustChangePassword     Boolean             @default(false)
   role                   Role                @default(OPERATOR)
   position               String
   phone                  String?
@@ -259,6 +267,8 @@ model LeaveRequest {
   id               String        @id @default(cuid())
   userId           String
   user             User          @relation("OperatorLeaves", fields: [userId], references: [id], onDelete: Cascade)
+  teamSnapshot     String?
+  requesterRoleSnapshot String?
   type             LeaveType     @default(LEAVE)
   startDate        String
   endDate          String
@@ -284,16 +294,24 @@ model LeaveRequest {
   // Tahap 1 — Reviewer (tim sendiri)
   reviewerId       String?
   reviewerName     String?
+  reviewerRole     String?
   reviewerApprovedAt DateTime?
   reviewerNote     String?
   // Tahap 2 — Team Lead
   teamLeadId       String?
   teamLeadName     String?
+  teamLeadRole     String?
   teamLeadApprovedAt DateTime?
   teamLeadNote     String?
+  leadOperatorId String?
+  leadOperatorName String?
+  leadOperatorRole String?
+  leadOperatorApprovedAt DateTime?
+  leadOperatorNote String?
   // Tahap 3 — Manager (keputusan akhir)
   managerId        String?
   managerName      String?
+  managerRole      String?
   managerApprovedAt DateTime?
   managerNote      String?
   /** Waktu evidence difinalisasi (setelah approval Manager). */
@@ -323,8 +341,27 @@ model TeamConfig {
   reviewerId String?
   teamLeadId String?
   managerId  String?
+  leadOperatorId String?
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
+}
+
+model GlobalApprovalConfig {
+  id         String   @id @default(cuid())
+  teamLeadId String?
+  updatedAt  DateTime @updatedAt
+}
+
+model LeaveQuota {
+  id           String   @id @default(cuid())
+  team         String
+  date         String
+  maxOperators Int
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([team, date])
+  @@index([date, team])
 }
 
 model ShiftExchange {

@@ -3,6 +3,7 @@
 import React, { useState, useTransition, useEffect } from 'react';
 import Link from 'next/link';
 import { toast } from 'sonner';
+import { setStandardInitialPasswordAction } from '@/server/actions/adminUserActions';
 import {
   Settings,
   Database,
@@ -59,6 +60,20 @@ export default function SettingsClient({ stats: initialStats }: SettingsClientPr
   const [isCleaning, setCleaning] = useState(false);
   const [cleanupResult, setCleanupResult] = useState<string | null>(null);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+  const [standardPassword, setStandardPassword] = useState('');
+  const [confirmStandardPassword, setConfirmStandardPassword] = useState('');
+  const [settingPassword, setSettingPassword] = useState(false);
+
+  const handleSetStandardPassword = async () => {
+    setSettingPassword(true);
+    try {
+      const result = await setStandardInitialPasswordAction({ password: standardPassword, confirmPassword: confirmStandardPassword });
+      if (!result.success) throw new Error(result.error || 'Pengaturan gagal.');
+      toast.success(`Password awal diterapkan ke ${result.affected ?? 0} akun. Semua akun wajib menggantinya saat login.`);
+      setStandardPassword(''); setConfirmStandardPassword('');
+    } catch (error) { toast.error(error instanceof Error ? error.message : 'Pengaturan gagal.'); }
+    finally { setSettingPassword(false); }
+  };
 
   const handleScanStorage = async () => {
     setScanning(true);
@@ -144,6 +159,14 @@ export default function SettingsClient({ stats: initialStats }: SettingsClientPr
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto pb-12">
+      <section className="rounded-2xl border border-amber-200 bg-amber-50/70 p-5 sm:p-6 space-y-3">
+        <div><h2 className="text-sm font-bold text-[#0F315A]">Password awal standar</h2><p className="mt-1 text-xs text-slate-600">Password dimasukkan, langsung di-hash, dan diterapkan ke seluruh akun. Setiap pengguna diwajibkan menggantinya saat login. Jangan gunakan password yang sudah dipakai di layanan lain.</p></div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <input type="password" autoComplete="new-password" minLength={8} value={standardPassword} onChange={(e) => setStandardPassword(e.target.value)} placeholder="Password standar (min. 8 karakter)" className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm" />
+          <input type="password" autoComplete="new-password" minLength={8} value={confirmStandardPassword} onChange={(e) => setConfirmStandardPassword(e.target.value)} placeholder="Ulangi password standar" className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm" />
+        </div>
+        <button type="button" disabled={settingPassword || standardPassword.length < 8 || !confirmStandardPassword} onClick={handleSetStandardPassword} className="rounded-lg bg-[#0F315A] px-4 py-2 text-xs font-bold text-white disabled:opacity-50">{settingPassword ? 'Menerapkan…' : 'Atur dan terapkan ke semua akun'}</button>
+      </section>
       {/* Top Breadcrumb & Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>

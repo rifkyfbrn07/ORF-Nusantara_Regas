@@ -23,6 +23,13 @@ export function getRoleInfo(role: Role | string): RoleInfo {
         fullLabel: 'Operations Manager',
         badgeClass: 'bg-blue-50 text-[#0066B3] border-blue-200',
       };
+    case 'LEAD_OPERATOR':
+      return {
+        code: 'LEAD_OPERATOR' as Role,
+        shortLabel: 'Lead Operator',
+        fullLabel: 'Lead Operator',
+        badgeClass: 'bg-amber-50 text-amber-700 border-amber-200',
+      };
     case 'OPERATOR':
     default:
       return {

@@ -4,6 +4,7 @@ import JSZip from 'jszip';
 
 export interface LeaveDocData {
   isDraft?: boolean;
+  approvalStatus?: 'APPROVED' | 'MENUNGGU PERSETUJUAN' | 'REJECTED';
   namaPekerja: string;
   nip: string;
   jabatan: string;
@@ -29,6 +30,8 @@ export interface LeaveDocData {
   managerDateLine?: string;
   reviewerSummary?: string;
   teamLeadSummary?: string;
+  managerSummary?: string;
+  approvalReference?: string;
   /** @deprecated Retained for existing document verification scripts. */
   mengetahuiNama?: string;
 }
@@ -91,8 +94,8 @@ export async function generateLeaveDocx(data: LeaveDocData): Promise<Buffer> {
     // Strip XML tags to get raw text of paragraph
     const rawText = pXml.replace(/<[^>]+>/g, '').trim();
 
-    if (rawText === 'Formulir Permohonan Cuti' && data.isDraft) {
-      return replaceParagraphText(pXml, 'Formulir Permohonan Cuti (DRAFT)');
+    if (rawText === 'Formulir Permohonan Cuti' && (data.isDraft || data.approvalStatus)) {
+      return replaceParagraphText(pXml, `Formulir Permohonan Cuti (${data.approvalStatus || 'DRAFT'})`);
     }
     // 1. Nama Pekerja
     if (rawText === 'Nurman Assauri') {
@@ -180,7 +183,7 @@ export async function generateLeaveDocx(data: LeaveDocData): Promise<Buffer> {
       return replaceParagraphText(pXml, `(${data.managerRoleLine})`);
     }
     if (rawText === '(Isa Taufiq)' && data.menyetujuiNama) {
-      return replaceParagraphText(pXml, `(${data.menyetujuiNama}\n${data.managerDateLine || 'Tanggal: -'})`);
+      return replaceParagraphText(pXml, data.managerSummary || `(${data.menyetujuiNama}\n${data.managerDateLine || 'Tanggal: -'})`);
     }
     // Reviewer and Team Lead are represented in the template's direct-supervisor
     // sign-off area without changing its table or page layout.

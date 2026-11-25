@@ -58,7 +58,7 @@ const MENUS_PART2: MenuEntry[] = [
 
 export async function GET(request: NextRequest) {
   const session = await getSession();
-  if (!session) {
+  if (!session || session.mustChangePassword) {
     return NextResponse.json({ error: 'UNAUTHORIZED' }, { status: 401 });
   }
 

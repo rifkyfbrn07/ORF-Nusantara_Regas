@@ -41,7 +41,9 @@ export async function createOperator(params: CreateOperatorParams) {
   const existingEmp = await prisma.user.findUnique({ where: { employeeId: params.employeeId } });
   if (existingEmp) throw new Error('Nomor Induk Pegawai (Employee ID) sudah digunakan.');
 
-  const passwordHash = await bcrypt.hash(params.password || 'Operator123!', 10);
+  const standardPassword = await prisma.systemSetting.findUnique({ where: { key: 'initialPasswordHash' }, select: { value: true } });
+  if (!standardPassword && !params.password) throw new Error('Password awal standar belum diatur. Hubungi Admin.');
+  const passwordHash = standardPassword?.value || await bcrypt.hash(params.password!, 12);
 
   // Username login wajib & unique: gebruik opgegeven username of sla van naam.
   const baseUsername = (params.username || slugifyUsername(params.name)).toLowerCase();
@@ -63,6 +65,7 @@ export async function createOperator(params: CreateOperatorParams) {
       email: params.email || null,
       employeeId: params.employeeId,
       passwordHash,
+      mustChangePassword: true,
       position: params.position,
       team: params.team?.trim().toUpperCase() || null,
       departmentId: params.departmentId || null,
@@ -116,6 +119,7 @@ export async function updateOperator(params: UpdateOperatorParams) {
     phone: string | null;
     isActive?: boolean;
     passwordHash?: string;
+    mustChangePassword?: boolean;
   } = {
     name: params.name,
     position: params.position,
@@ -131,6 +135,7 @@ export async function updateOperator(params: UpdateOperatorParams) {
 
   if (params.newPassword && params.newPassword.length >= 6) {
     data.passwordHash = await bcrypt.hash(params.newPassword, 10);
+    data.mustChangePassword = true;
   }
 
   const updated = await prisma.user.update({

@@ -77,7 +77,7 @@ export const reviewLeaveSchema = z.object({
 
 export const leaveApprovalSchema = z.object({
   requestId: z.string().min(1, 'ID Pengajuan wajib disertakan'),
-  stage: z.enum(['REVIEWER', 'TEAM_LEAD', 'MANAGER'] as const, {
+  stage: z.enum(['REVIEWER', 'TEAM_LEAD', 'GLOBAL_TEAM_LEAD', 'LEAD_OPERATOR', 'MANAGER'] as const, {
     message: 'Tahap approval tidak valid',
   }),
   status: z.enum(['APPROVED', 'REJECTED'] as const),
@@ -219,7 +219,7 @@ const adminUserBaseSchema = z.object({
   username: usernameSchema,
   password: z.string().min(8, 'Kata sandi minimal 8 karakter'),
   confirmPassword: z.string(),
-  role: z.enum(['MANAGER', 'OPERATOR'] as const).default('OPERATOR'),
+  role: z.enum(['MANAGER', 'LEAD_OPERATOR', 'OPERATOR'] as const).default('OPERATOR'),
   position: z.string().min(2, 'Jabatan minimal 2 karakter'),
   departmentId: z.string().optional(),
   team: z.union([
@@ -240,7 +240,7 @@ export const adminUserUpdateSchema = adminUserBaseSchema
   .omit({ password: true, confirmPassword: true })
   .extend({
     id: z.string().min(1),
-    role: z.enum(['ADMIN', 'MANAGER', 'OPERATOR'] as const).optional(),
+    role: z.enum(['ADMIN', 'MANAGER', 'LEAD_OPERATOR', 'OPERATOR'] as const).optional(),
   });
 export const adminPasswordResetSchema = z.object({ id: z.string().min(1), password: z.string().min(8, 'Kata sandi minimal 8 karakter') });
 export type AdminUserCreateInput = z.infer<typeof adminUserCreateSchema>;

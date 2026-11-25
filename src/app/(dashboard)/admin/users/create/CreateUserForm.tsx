@@ -32,7 +32,7 @@ export default function CreateUserForm({ departments }: CreateUserFormProps) {
   const [isPending, startTransition] = useTransition();
   const [formData, setFormData] = useState({
     name: '', username: '', email: '', employeeId: '', password: '', confirmPassword: '',
-    role: 'OPERATOR' as 'MANAGER' | 'OPERATOR', position: '', departmentId: departments[0]?.id || '', phone: '', isActive: true,
+    role: 'OPERATOR' as 'MANAGER' | 'LEAD_OPERATOR' | 'OPERATOR', position: '', departmentId: departments[0]?.id || '', phone: '', isActive: true,
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -41,6 +41,7 @@ export default function CreateUserForm({ departments }: CreateUserFormProps) {
   const roleConfigs = [
     { role: 'OPERATOR' as const, label: 'Operator Lapangan', icon: HardHat, badgeColor: 'bg-emerald-50 text-emerald-700 border-emerald-200', description: 'Akses mobile/desktop untuk shift, jadwal kerja, absensi, cuti, handover, dan pelaporan HSSE.' },
     { role: 'MANAGER' as const, label: 'Operations Manager', icon: UserCog, badgeColor: 'bg-blue-50 text-[#0066B3] border-blue-200', description: 'Akses supervisi operasional, approval izin & cuti, plotting jadwal, monitoring manpower & HSSE.' },
+    { role: 'LEAD_OPERATOR' as const, label: 'Lead Operator', icon: UserCheck, badgeColor: 'bg-amber-50 text-amber-700 border-amber-200', description: 'Menerima tahap persetujuan cuti setelah Team Lead sesuai pemetaan tim.' },
   ];
 
   const validate = () => {
@@ -82,7 +83,7 @@ export default function CreateUserForm({ departments }: CreateUserFormProps) {
           password: formData.password,
           confirmPassword: formData.confirmPassword,
           role: formData.role,
-          position: formData.position.trim() || (formData.role === 'OPERATOR' ? 'Operator' : 'Manager'),
+          position: formData.position.trim() || (formData.role === 'OPERATOR' ? 'Operator' : formData.role === 'LEAD_OPERATOR' ? 'Lead Operator' : 'Manager'),
           departmentId: formData.departmentId || undefined,
           phone: formData.phone.trim() || undefined,
           isActive: formData.isActive,

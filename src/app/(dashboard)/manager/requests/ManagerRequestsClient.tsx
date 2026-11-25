@@ -53,6 +53,9 @@ export interface ManagerLeaveRequestItem {
   managerName?: string | null;
   managerApprovedAt?: string | Date | null;
   managerNote?: string | null;
+  leadOperatorName?: string | null;
+  leadOperatorApprovedAt?: string | Date | null;
+  leadOperatorNote?: string | null;
   user: {
     id?: string;
     name: string;
@@ -109,7 +112,7 @@ interface ManagerRequestsClientProps {
   leaveRequests: ManagerLeaveRequestItem[];
   shiftExchanges: ManagerShiftExchangeItem[];
   defaultTab: 'leave' | 'shift';
-  currentUserRole?: 'ADMIN' | 'MANAGER' | 'OPERATOR';
+  currentUserRole?: 'ADMIN' | 'MANAGER' | 'LEAD_OPERATOR' | 'OPERATOR';
   onlyTab?: 'leave' | 'shift';
 }
 
@@ -150,6 +153,8 @@ export function ManagerRequestsClient({
     const map: Record<string, string> = {
       REVIEWER: 'Menunggu Reviewer',
       TEAM_LEAD: 'Menunggu Team Lead',
+      GLOBAL_TEAM_LEAD: 'Menunggu Team Lead',
+      LEAD_OPERATOR: 'Menunggu Lead Operator',
       MANAGER: 'Menunggu Manager',
     };
     return map[r.approvalStage || 'REVIEWER'] || 'Menunggu Reviewer';
@@ -218,7 +223,7 @@ export function ManagerRequestsClient({
       if (reviewItem.type === 'leave') {
         const res = await processLeaveApprovalAction({
           requestId: reviewItem.id,
-          stage: (reviewItem.stage as 'REVIEWER' | 'TEAM_LEAD' | 'MANAGER') || 'MANAGER',
+          stage: (reviewItem.stage as 'REVIEWER' | 'TEAM_LEAD' | 'GLOBAL_TEAM_LEAD' | 'LEAD_OPERATOR' | 'MANAGER') || 'MANAGER',
           status: reviewItem.decision,
           note: reviewerNote.trim() || undefined,
         });
@@ -582,11 +587,15 @@ export function ManagerRequestsClient({
                           </td>
                           <td className="px-5 py-3.5 text-[10px] text-slate-500 max-w-xs">
                             <div className="space-y-1">
-                              {([
+                              {(r.approvalStage === 'REVIEWER' || r.approvalStage === 'TEAM_LEAD' || r.reviewerApprovedAt ? [
                                 { key: 'REVIEWER', label: 'Reviewer', name: r.reviewerName, at: r.reviewerApprovedAt, note: r.reviewerNote },
                                 { key: 'TEAM_LEAD', label: 'Team Lead', name: r.teamLeadName, at: r.teamLeadApprovedAt, note: r.teamLeadNote },
                                 { key: 'MANAGER', label: 'Manager', name: r.managerName, at: r.managerApprovedAt, note: r.managerNote },
-                              ] as const).map((stage) => {
+                              ] : [
+                                { key: 'GLOBAL_TEAM_LEAD', label: 'Team Lead', name: r.teamLeadName, at: r.teamLeadApprovedAt, note: r.teamLeadNote },
+                                { key: 'LEAD_OPERATOR', label: 'Lead Operator', name: r.leadOperatorName, at: r.leadOperatorApprovedAt, note: r.leadOperatorNote },
+                                { key: 'MANAGER', label: 'Manager', name: r.managerName, at: r.managerApprovedAt, note: r.managerNote },
+                              ]).map((stage) => {
                                 const decided = Boolean(stage.at);
                                 const rejected = r.status === 'REJECTED' && r.approvalStage === stage.key;
                                 const date = stage.at ? new Date(stage.at).toLocaleString('id-ID') : null;
@@ -755,7 +764,7 @@ export function ManagerRequestsClient({
           open={Boolean(reviewItem)}
           onClose={() => setReviewItem(null)}
           title={`Konfirmasi ${reviewItem.decision === 'APPROVED' ? 'Persetujuan' : 'Penolakan'} — Tahap ${
-            reviewItem.stage === 'REVIEWER' ? 'Reviewer' : reviewItem.stage === 'TEAM_LEAD' ? 'Team Lead' : 'Manager'
+            reviewItem.stage === 'REVIEWER' ? 'Reviewer' : reviewItem.stage === 'TEAM_LEAD' || reviewItem.stage === 'GLOBAL_TEAM_LEAD' ? 'Team Lead' : reviewItem.stage === 'LEAD_OPERATOR' ? 'Lead Operator' : 'Manager'
           }`}
           eyebrow="REVIEW DECISION"
           size="md"

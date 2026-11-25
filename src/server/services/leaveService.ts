@@ -3,6 +3,7 @@ import { LeaveType, Prisma, RequestStatus, Role, ScheduleStatus } from '@prisma/
 import { recordAuditLog } from './auditService';
 import { createNotification } from './notificationService';
 import { deleteEvidenceForRejectedRecord } from './evidenceCleanupService';
+import { assertLeaveQuotaAvailable, getLeaveQuotaAvailability } from './leaveQuotaService';
 
 export interface SubmitLeaveParams {
   userId: string;
@@ -23,14 +24,16 @@ export interface SubmitLeaveParams {
   storagePath?: string;
 }
 
-export type ApprovalStage = 'REVIEWER' | 'TEAM_LEAD' | 'MANAGER';
+export type ApprovalStage = 'REVIEWER' | 'TEAM_LEAD' | 'GLOBAL_TEAM_LEAD' | 'LEAD_OPERATOR' | 'MANAGER';
 
-export const APPROVAL_STAGES: ApprovalStage[] = ['REVIEWER', 'TEAM_LEAD', 'MANAGER'];
+export const APPROVAL_STAGES: ApprovalStage[] = ['GLOBAL_TEAM_LEAD', 'LEAD_OPERATOR', 'MANAGER'];
 
 /** Tahap berikutnya setelah tahap tertentu disetujui (null = tahap akhir). */
 export const NEXT_APPROVAL_STAGE: Record<ApprovalStage, ApprovalStage | null> = {
   REVIEWER: 'TEAM_LEAD',
   TEAM_LEAD: 'MANAGER',
+  GLOBAL_TEAM_LEAD: 'LEAD_OPERATOR',
+  LEAD_OPERATOR: 'MANAGER',
   MANAGER: null,
 };
 
@@ -38,6 +41,8 @@ export const NEXT_APPROVAL_STAGE: Record<ApprovalStage, ApprovalStage | null> = 
 export const APPROVAL_STAGE_LABELS: Record<ApprovalStage, string> = {
   REVIEWER: 'Menunggu Reviewer',
   TEAM_LEAD: 'Menunggu Team Lead',
+  GLOBAL_TEAM_LEAD: 'Menunggu Team Lead',
+  LEAD_OPERATOR: 'Menunggu Lead Operator',
   MANAGER: 'Menunggu Manager',
 };
 
@@ -136,36 +141,33 @@ export async function getApprovalConfigurationStatus(team?: string | null): Prom
     return {
       team: null,
       complete: false,
-      missing: ['Tim operator', 'Reviewer', 'Team Lead', 'Manager'],
+      missing: ['Tim operator', 'Global Team Lead', 'Lead Operator', 'Manager'],
     };
   }
 
-  const config = await getApprovalConfigForTeam(team);
-  if (!config) return { team, complete: false, missing: ['Reviewer', 'Team Lead', 'Manager'] };
-
-  const ids = [config.reviewerId, config.teamLeadId, config.managerId].filter(
-    (id): id is string => Boolean(id)
-  );
+  const [config, globalConfig] = await Promise.all([
+    getApprovalConfigForTeam(team),
+    prisma.globalApprovalConfig.findFirst(),
+  ]);
+  const ids = [globalConfig?.teamLeadId, config?.leadOperatorId, config?.managerId].filter((id): id is string => Boolean(id));
   const accounts = await prisma.user.findMany({
     where: { id: { in: ids } },
     select: { id: true, role: true, isActive: true },
   });
   const byId = new Map(accounts.map((account) => [account.id, account]));
-  const validAssignment = (id: string | null, stage: 'reviewer' | 'teamLead' | 'manager') => {
+  const validAssignment = (id: string | null, stage: 'global' | 'leadOperator' | 'manager') => {
     if (!id) return false;
-    if (stage === 'teamLead' && id === config.managerId) return false;
+    if (stage !== 'global' && id === globalConfig?.teamLeadId) return false;
     const account = byId.get(id);
     if (!account || !account.isActive) return false;
-    return stage === 'manager' ? account.role === Role.MANAGER : account.role !== Role.ADMIN;
+    if (stage === 'manager') return account.role === Role.MANAGER;
+    if (stage === 'leadOperator') return account.role === Role.LEAD_OPERATOR;
+    return account.role !== Role.ADMIN;
   };
   const missing: string[] = [];
-  if (!validAssignment(config.reviewerId, 'reviewer')) missing.push('Reviewer');
-  if (!validAssignment(config.teamLeadId, 'teamLead')) {
-    missing.push(config.teamLeadId && config.teamLeadId === config.managerId
-      ? 'Team Lead (harus akun berbeda dari Manager)'
-      : 'Team Lead');
-  }
-  if (!validAssignment(config.managerId, 'manager')) missing.push('Manager');
+  if (!validAssignment(globalConfig?.teamLeadId || null, 'global')) missing.push('Global Team Lead');
+  if (!validAssignment(config?.leadOperatorId || null, 'leadOperator')) missing.push('Lead Operator');
+  if (!validAssignment(config?.managerId || null, 'manager')) missing.push('Manager');
   return { team, complete: missing.length === 0, missing };
 }
 
@@ -192,6 +194,18 @@ export async function assertApprovalAuthority(
   if (stage === 'REVIEWER') {
     if (config?.reviewerId === approver.id) return;
     throw new Error('Hanya Reviewer dari tim operator yang berwenang memproses tahap ini.');
+  }
+
+  if (stage === 'GLOBAL_TEAM_LEAD') {
+    const mapping = await tx.globalApprovalConfig.findFirst({ select: { teamLeadId: true } });
+    if (mapping?.teamLeadId === approver.id) return;
+    throw new Error('Hanya Global Team Lead yang berwenang memproses tahap ini.');
+  }
+
+  if (stage === 'LEAD_OPERATOR') {
+    const config = await tx.teamConfig.findUnique({ where: { code: operator.team } });
+    if (approver.role === Role.LEAD_OPERATOR && config?.leadOperatorId === approver.id) return;
+    throw new Error('Hanya Lead Operator yang dipetakan untuk tim ini yang berwenang memproses tahap ini.');
   }
 
   if (stage === 'TEAM_LEAD') {
@@ -235,6 +249,7 @@ export async function submitLeaveRequest(params: SubmitLeaveParams) {
       employeeId: true,
       position: true,
       team: true,
+      role: true,
       isActive: true,
       department: { select: { name: true } },
     },
@@ -251,9 +266,10 @@ export async function submitLeaveRequest(params: SubmitLeaveParams) {
       `Konfigurasi persetujuan tim ${user.team || 'belum dipetakan'} belum lengkap (${approvalConfig.missing.join(', ')}). Minta Admin melengkapi pemetaan approver sebelum mengajukan cuti.`
     );
   }
-  const teamConfig = await getApprovalConfigForTeam(user.team);
-  if (!teamConfig?.reviewerId) {
-    throw new Error(`Konfigurasi Reviewer tim ${user.team} berubah. Muat ulang halaman dan hubungi Admin.`);
+  if (params.type === LeaveType.LEAVE && user.team) {
+    const availability = await getLeaveQuotaAvailability(user.team, params.startDate, params.endDate);
+    const fullDates = availability.filter((day) => day.full).map((day) => day.date);
+    if (fullDates.length) throw new Error(`Kuota cuti Tim ${user.team} penuh pada tanggal: ${fullDates.join(', ')}.`);
   }
 
   // Cegah konflik sejak pengajuan: jika sudah ada CUTI/IZIN yang APPROVED pada
@@ -287,26 +303,30 @@ export async function submitLeaveRequest(params: SubmitLeaveParams) {
     // change cannot send this request to an outdated reviewer.
     const requestor = await tx.user.findUnique({
       where: { id: params.userId },
-      select: { id: true, name: true, employeeId: true, team: true, isActive: true },
+      select: { id: true, name: true, employeeId: true, team: true, role: true, isActive: true },
     });
     if (!requestor?.isActive || requestor.team !== user.team) {
       throw new Error('Data akun atau tim berubah saat pengajuan diproses. Muat ulang halaman lalu coba lagi.');
     }
-    const currentConfig = await tx.teamConfig.findUnique({ where: { code: user.team || '' } });
-    const approverIds = [currentConfig?.reviewerId, currentConfig?.teamLeadId, currentConfig?.managerId]
+    const [currentConfig, globalConfig] = await Promise.all([
+      tx.teamConfig.findUnique({ where: { code: user.team || '' } }),
+      tx.globalApprovalConfig.findFirst(),
+    ]);
+    const approverIds = [globalConfig?.teamLeadId, currentConfig?.leadOperatorId, currentConfig?.managerId]
       .filter((id): id is string => Boolean(id));
     const approvers = await tx.user.findMany({
       where: { id: { in: approverIds } },
       select: { id: true, role: true, isActive: true },
     });
     const approverById = new Map(approvers.map((approver) => [approver.id, approver]));
-    const reviewer = currentConfig?.reviewerId ? approverById.get(currentConfig.reviewerId) : null;
-    const teamLead = currentConfig?.teamLeadId ? approverById.get(currentConfig.teamLeadId) : null;
+    const teamLead = globalConfig?.teamLeadId ? approverById.get(globalConfig.teamLeadId) : null;
+    const leadOperator = currentConfig?.leadOperatorId ? approverById.get(currentConfig.leadOperatorId) : null;
     const manager = currentConfig?.managerId ? approverById.get(currentConfig.managerId) : null;
     if (
       !currentConfig
-      || !reviewer?.isActive || reviewer.role === Role.ADMIN
-      || !teamLead?.isActive || teamLead.role === Role.ADMIN || currentConfig.teamLeadId === currentConfig.managerId
+      || !teamLead?.isActive || teamLead.role === Role.ADMIN
+      || !leadOperator?.isActive || leadOperator.role !== Role.LEAD_OPERATOR
+      || globalConfig?.teamLeadId === currentConfig.leadOperatorId
       || !manager?.isActive || manager.role !== Role.MANAGER
     ) {
       throw new Error(`Konfigurasi persetujuan tim ${user.team || 'belum dipetakan'} berubah atau belum lengkap. Hubungi Admin.`);
@@ -315,6 +335,8 @@ export async function submitLeaveRequest(params: SubmitLeaveParams) {
     const request = await tx.leaveRequest.create({
       data: {
         userId: params.userId,
+        teamSnapshot: requestor.team,
+        requesterRoleSnapshot: requestor.role,
         type: params.type,
         startDate: params.startDate,
         endDate: params.endDate,
@@ -329,7 +351,7 @@ export async function submitLeaveRequest(params: SubmitLeaveParams) {
         storagePath: params.storagePath || null,
         uploadedAt: (params.attachmentUrl || params.driveFileId || params.storagePath) ? new Date() : null,
         status: RequestStatus.PENDING,
-        approvalStage: 'REVIEWER',
+        approvalStage: 'GLOBAL_TEAM_LEAD',
       },
       include: {
         user: {
@@ -356,17 +378,17 @@ export async function submitLeaveRequest(params: SubmitLeaveParams) {
         endDate: params.endDate,
         hasProof: Boolean(request.driveFileId || request.attachmentUrl || request.storagePath),
         team: requestor.team,
-        approvalStage: 'REVIEWER',
-        assignedApproverId: currentConfig.reviewerId,
+        approvalStage: 'GLOBAL_TEAM_LEAD',
+        assignedApproverId: globalConfig?.teamLeadId,
       },
     }, tx);
     if (!auditLog) throw new Error('Pengajuan tidak dapat dicatat pada audit log; perubahan dibatalkan.');
 
     await createNotification({
-      userId: currentConfig.reviewerId!,
+      userId: globalConfig!.teamLeadId!,
       type: 'LEAVE_STATUS',
       title: `Pengajuan ${params.type}: ${requestor.name}`,
-      message: `Operator ${requestor.name} (${requestor.employeeId}) mengajukan ${params.type} periode ${params.startDate} s/d ${params.endDate}. Mohon direview sebagai Reviewer tim Anda.`,
+      message: `Operator ${requestor.name} (${requestor.employeeId}) dari Tim ${requestor.team} mengajukan ${params.type} periode ${params.startDate} s/d ${params.endDate}. Mohon diproses sebagai Global Team Lead.`,
       link: '/approval-inbox',
     }, tx);
 
@@ -415,6 +437,16 @@ export async function processLeaveApproval(params: ProcessLeaveApprovalParams) {
     const note = params.note?.trim() || null;
     const nextStage = NEXT_APPROVAL_STAGE[params.stage];
 
+    const quotaTeam = existing.teamSnapshot || existing.user.team;
+    if (decision === 'APPROVED' && !nextStage && existing.type === LeaveType.LEAVE && quotaTeam) {
+      await assertLeaveQuotaAvailable(tx, {
+        team: quotaTeam,
+        startDate: existing.startDate,
+        endDate: existing.endDate,
+        excludeRequestId: existing.id,
+      });
+    }
+
     // Bangun payload tahap (identitas approver + waktu keputusan).
     // Tipe `Record<string, unknown>` karena updateMany tidak menerima kolom relasi
     // (reviewedById dipakai sebagai kompatibilitas kolom lama).
@@ -422,16 +454,31 @@ export async function processLeaveApproval(params: ProcessLeaveApprovalParams) {
     if (params.stage === 'REVIEWER') {
       data.reviewerId = approver.id;
       data.reviewerName = approver.name;
+      data.reviewerRole = approver.role;
       data.reviewerApprovedAt = now;
       data.reviewerNote = note;
     } else if (params.stage === 'TEAM_LEAD') {
       data.teamLeadId = approver.id;
       data.teamLeadName = approver.name;
+      data.teamLeadRole = approver.role;
       data.teamLeadApprovedAt = now;
       data.teamLeadNote = note;
+    } else if (params.stage === 'GLOBAL_TEAM_LEAD') {
+      data.teamLeadId = approver.id;
+      data.teamLeadName = approver.name;
+      data.teamLeadRole = approver.role;
+      data.teamLeadApprovedAt = now;
+      data.teamLeadNote = note;
+    } else if (params.stage === 'LEAD_OPERATOR') {
+      data.leadOperatorId = approver.id;
+      data.leadOperatorName = approver.name;
+      data.leadOperatorRole = approver.role;
+      data.leadOperatorApprovedAt = now;
+      data.leadOperatorNote = note;
     } else if (params.stage === 'MANAGER') {
       data.managerId = approver.id;
       data.managerName = approver.name;
+      data.managerRole = approver.role;
       data.managerApprovedAt = now;
       data.managerNote = note;
       // Kompatibilitas kolom lama.
@@ -571,9 +618,9 @@ export async function processLeaveApproval(params: ProcessLeaveApprovalParams) {
     // Approver berikutnya di tahap selanjutnya.
     if (decision === 'APPROVED' && nextStage) {
       const teamConfig = await tx.teamConfig.findUnique({ where: { code: existing.user.team || '' } });
-      const nextApproverId = nextStage === 'TEAM_LEAD' ? teamConfig?.teamLeadId : teamConfig?.managerId;
-      if (!nextApproverId || (nextStage === 'TEAM_LEAD' && nextApproverId === teamConfig?.managerId)) {
-        throw new Error(`Konfigurasi ${nextStage === 'TEAM_LEAD' ? 'Team Lead' : 'Manager'} tim operator tidak tersedia.`);
+      const nextApproverId = nextStage === 'LEAD_OPERATOR' ? teamConfig?.leadOperatorId : teamConfig?.managerId;
+      if (!nextApproverId || (nextStage === 'LEAD_OPERATOR' && nextApproverId === teamConfig?.managerId)) {
+        throw new Error(`Konfigurasi ${nextStage === 'LEAD_OPERATOR' ? 'Lead Operator' : 'Manager'} tim operator tidak tersedia.`);
       }
       const nextApprover = await tx.user.findUnique({
         where: { id: nextApproverId },
@@ -582,6 +629,7 @@ export async function processLeaveApproval(params: ProcessLeaveApprovalParams) {
       if (
         !nextApprover?.isActive
         || nextApprover.role === Role.ADMIN
+        || (nextStage === 'LEAD_OPERATOR' && nextApprover.role !== Role.LEAD_OPERATOR)
         || (nextStage === 'MANAGER' && nextApprover.role !== Role.MANAGER)
       ) {
         throw new Error(`Konfigurasi ${nextStage === 'TEAM_LEAD' ? 'Team Lead' : 'Manager'} tim operator tidak valid atau akun tidak aktif.`);
@@ -589,12 +637,12 @@ export async function processLeaveApproval(params: ProcessLeaveApprovalParams) {
       await createNotification({
         userId: nextApproverId,
         type: 'LEAVE_STATUS',
-        title: nextStage === 'TEAM_LEAD'
-          ? `Pengajuan ${existing.type} menunggu persetujuan Team Lead`
+        title: nextStage === 'LEAD_OPERATOR'
+          ? `Pengajuan ${existing.type} menunggu persetujuan Lead Operator`
           : `Pengajuan ${existing.type} menunggu keputusan Manager`,
-        message: nextStage === 'TEAM_LEAD'
-          ? `Permohonan ${existing.type} ${existing.user.name} (${existing.startDate} s/d ${existing.endDate}) telah disetujui Reviewer. Mohon diproses sebagai Team Lead.`
-          : `Permohonan ${existing.type} ${existing.user.name} (${existing.startDate} s/d ${existing.endDate}) telah disetujui Team Lead. Mohon diberikan keputusan akhir.`,
+        message: nextStage === 'LEAD_OPERATOR'
+          ? `Permohonan ${existing.type} ${existing.user.name} (${existing.startDate} s/d ${existing.endDate}) telah disetujui Team Lead. Mohon diproses sebagai Lead Operator.`
+          : `Permohonan ${existing.type} ${existing.user.name} (${existing.startDate} s/d ${existing.endDate}) telah disetujui Lead Operator. Mohon diberikan keputusan akhir.`,
         link: '/approval-inbox',
       }, tx);
     }
@@ -686,9 +734,11 @@ async function getPendingLeaveApprovalWhereForUser(
 
   const or: Prisma.LeaveRequestWhereInput[] = [];
   const configs = await prisma.teamConfig.findMany({
-    where: { OR: [{ reviewerId: user.id }, { teamLeadId: user.id }, { managerId: user.id }] },
-    select: { code: true, reviewerId: true, teamLeadId: true, managerId: true },
+    where: { OR: [{ reviewerId: user.id }, { teamLeadId: user.id }, { leadOperatorId: user.id }, { managerId: user.id }] },
+    select: { code: true, reviewerId: true, teamLeadId: true, leadOperatorId: true, managerId: true },
   });
+  const globalConfig = await prisma.globalApprovalConfig.findFirst({ where: { teamLeadId: user.id }, select: { id: true } });
+  if (globalConfig) or.push({ approvalStage: 'GLOBAL_TEAM_LEAD' });
   for (const config of configs) {
     if (user.role !== Role.MANAGER && config.reviewerId === user.id) {
       or.push({ approvalStage: 'REVIEWER', user: { team: config.code } });
@@ -698,6 +748,9 @@ async function getPendingLeaveApprovalWhereForUser(
     }
     if (user.role === Role.MANAGER && config.managerId === user.id) {
       or.push({ approvalStage: 'MANAGER', user: { team: config.code } });
+    }
+    if (user.role === Role.LEAD_OPERATOR && config.leadOperatorId === user.id) {
+      or.push({ approvalStage: 'LEAD_OPERATOR', user: { team: config.code } });
     }
   }
 
@@ -735,12 +788,12 @@ export async function getPendingLeaveApprovalsForUser(userId: string) {
 }
 
 export async function hasApprovalInboxScope(userId: string): Promise<boolean> {
-  const assignments = await prisma.teamConfig.count({
+  const [assignments, global] = await Promise.all([prisma.teamConfig.count({
     where: {
-      OR: [{ reviewerId: userId }, { teamLeadId: userId }, { managerId: userId }],
+      OR: [{ reviewerId: userId }, { teamLeadId: userId }, { leadOperatorId: userId }, { managerId: userId }],
     },
-  });
-  return assignments > 0;
+  }), prisma.globalApprovalConfig.count({ where: { teamLeadId: userId } })]);
+  return assignments > 0 || global > 0;
 }
 
 

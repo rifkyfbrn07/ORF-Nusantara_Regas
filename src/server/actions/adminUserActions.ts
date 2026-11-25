@@ -54,6 +54,7 @@ export async function createAdminUserAction(input: AdminUserCreateInput) {
       return { success: false, error: `Username @${username} sudah digunakan. Pilih username lain.` };
     }
 
+    const standardPassword = await prisma.systemSetting.findUnique({ where: { key: 'initialPasswordHash' }, select: { value: true } });
     const user = await prisma.user.create({
       data: {
         name: data.name.trim(),
@@ -67,7 +68,8 @@ export async function createAdminUserAction(input: AdminUserCreateInput) {
         team: data.team?.trim().toUpperCase() || null,
         phone: data.phone?.trim() || null,
         avatarUrl: data.avatarUrl || null,
-        passwordHash: await bcrypt.hash(password, 12),
+        passwordHash: standardPassword?.value || await bcrypt.hash(password, 12),
+        mustChangePassword: true,
       },
     });
 
@@ -229,7 +231,7 @@ export async function resetAdminUserPasswordAction(input: { id: string; password
       if (!target) throw new Error('Akun tidak ditemukan.');
       await tx.user.update({
         where: { id: target.id },
-        data: { passwordHash },
+        data: { passwordHash, mustChangePassword: true },
       });
       const auditLog = await recordAuditLog({
         userId: admin.id,
@@ -250,6 +252,35 @@ export async function resetAdminUserPasswordAction(input: { id: string; password
         ? error.message
         : 'Gagal mereset kata sandi.',
     };
+  }
+}
+
+export async function setStandardInitialPasswordAction(input: { password: string; confirmPassword: string }) {
+  try {
+    const admin = await requireAdmin();
+    if (input.password.length < 8) return { success: false, error: 'Kata sandi standar minimal 8 karakter.' };
+    if (input.password !== input.confirmPassword) return { success: false, error: 'Konfirmasi kata sandi tidak sama.' };
+    const passwordHash = await bcrypt.hash(input.password, 12);
+    const affected = await prisma.$transaction(async (tx) => {
+      await tx.systemSetting.upsert({
+        where: { key: 'initialPasswordHash' },
+        create: { key: 'initialPasswordHash', value: passwordHash },
+        update: { value: passwordHash },
+      });
+      const result = await tx.user.updateMany({ data: { passwordHash, mustChangePassword: true } });
+      const audit = await recordAuditLog({
+        userId: admin.id,
+        action: 'ADMIN_SET_STANDARD_INITIAL_PASSWORD',
+        entity: 'User',
+        metadata: { affectedAccounts: result.count },
+      }, tx);
+      if (!audit) throw new Error('Audit gagal.');
+      return result.count;
+    });
+    userPaths();
+    return { success: true, affected };
+  } catch (error) {
+    return { success: false, error: error instanceof Error && error.message === 'Audit gagal.' ? error.message : 'Gagal menerapkan password awal standar.' };
   }
 }
 

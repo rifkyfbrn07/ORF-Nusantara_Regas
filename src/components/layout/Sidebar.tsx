@@ -118,6 +118,7 @@ export function Sidebar({
         { label: 'Laporan', href: '/manager/reports', icon: ClipboardList },
         { label: 'Audit Log', href: '/manager/audit-logs', icon: ShieldCheck },
         { label: 'Pengaturan', href: '/admin/settings', icon: Settings },
+        { label: 'Kuota Cuti', href: '/admin/leave-quotas', icon: CalendarClock },
         applicationsNavItem,
       ],
     },

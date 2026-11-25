@@ -4,7 +4,7 @@ import UsersClient from './UsersClient';
 
 export default async function AdminUsersPage() {
   await requireAdmin();
-  const [users, departments, teamConfigs] = await Promise.all([
+  const [users, departments, teamConfigs, globalConfig] = await Promise.all([
     prisma.user.findMany({
       select: {
         id: true,
@@ -17,6 +17,7 @@ export default async function AdminUsersPage() {
         position: true,
         phone: true,
         isActive: true,
+        mustChangePassword: true,
         avatarUrl: true,
         createdAt: true,
         updatedAt: true,
@@ -33,10 +34,12 @@ export default async function AdminUsersPage() {
         reviewerId: true,
         teamLeadId: true,
         managerId: true,
+        leadOperatorId: true,
       },
       orderBy: { code: 'asc' },
     }),
+    prisma.globalApprovalConfig.findFirst({ select: { teamLeadId: true } }),
   ]);
 
-  return <UsersClient users={users} departments={departments} teamConfigs={teamConfigs} />;
+  return <UsersClient users={users} departments={departments} teamConfigs={teamConfigs} globalTeamLeaderId={globalConfig?.teamLeadId || null} />;
 }

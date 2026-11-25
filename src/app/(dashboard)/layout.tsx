@@ -20,6 +20,7 @@ export default async function DashboardLayout({
     if (error instanceof Error && error.message === 'UNAUTHORIZED') {
       redirect('/login?session=expired');
     }
+    if (error instanceof Error && error.message === 'PASSWORD_CHANGE_REQUIRED') redirect('/change-password');
     throw error;
   }
 

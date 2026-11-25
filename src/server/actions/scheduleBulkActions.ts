@@ -79,7 +79,7 @@ export async function validateImportAction(rows: ImportRowInput[]) {
   }
 }
 
-export async function confirmImportAction(rows: ImportRowInput[]) {
+export async function confirmImportAction(rows: ImportRowInput[], existingMode: 'SKIP' | 'UPDATE' = 'SKIP') {
   try {
     const user = await requireRole([...ROLES]);
     if (!Array.isArray(rows) || rows.length === 0) {
@@ -88,7 +88,7 @@ export async function confirmImportAction(rows: ImportRowInput[]) {
     if (rows.length > 2000) {
       return { success: false as const, error: 'Maksimal 2000 baris per import.' };
     }
-    const result = await confirmImportRows(rows, user.id);
+    const result = await confirmImportRows(rows, user.id, existingMode);
     revalidateSchedules();
     return { success: true as const, ...result };
   } catch (error: unknown) {

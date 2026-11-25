@@ -3,6 +3,7 @@
 import React, { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import * as XLSX from 'xlsx';
+import JSZip from 'jszip';
 import { FileUp, Download, Loader2, AlertCircle, CheckCircle2, Trash2 } from 'lucide-react';
 import { Modal } from '@/components/ui/Modal';
 import { validateImportAction, confirmImportAction } from '@/server/actions/scheduleBulkActions';
@@ -13,6 +14,8 @@ export interface ImportRow {
   username?: string;
   nama?: string;
   employeeId?: string;
+  team?: string;
+  lokasi?: string;
   shift: string;
   status?: string;
   catatan?: string;
@@ -29,9 +32,10 @@ interface ImportRowResult {
 }
 
 const TEMPLATE_ROWS = [
-  { Tanggal: '2026-09-10', Username: 'andi.pratama', Nama: 'Andi Pratama', 'Employee ID': 'OP-001', Shift: 'Pg', Status: 'WORK', Catatan: '' },
-  { Tanggal: '2026-09-10', Username: 'budi.santoso', Nama: 'Budi Santoso', 'Employee ID': 'OP-002', Shift: 'Mlm', Status: 'WORK', Catatan: '' },
-  { Tanggal: '2026-09-11', Username: 'citra.dewi', Nama: 'Citra Dewi', 'Employee ID': 'OP-003', Shift: 'Off', Status: 'OFF', Catatan: 'Libur rutin' },
+  { Tanggal: '', 'Nama Operator': '', 'Username / ID Operator': '', Tim: '', Shift: '', Status: '', Lokasi: '', Keterangan: '' },
+];
+const EXAMPLE_ROWS = [
+  { Tanggal: '2026-09-10', 'Nama Operator': 'Contoh Operator (ganti dengan data akun)', 'Username / ID Operator': 'username-atau-employee-id', Tim: 'A', Shift: 'Pg', Status: 'ON', Lokasi: 'ORF-MKG', Keterangan: 'Contoh pengisian — hapus sebelum impor' },
 ];
 
 const KIND_BADGE: Record<string, string> = {
@@ -50,12 +54,23 @@ const KIND_LABEL: Record<string, string> = {
   INVALID: 'INVALID',
 };
 
-function downloadTemplate() {
+async function downloadTemplate() {
   const ws = XLSX.utils.json_to_sheet(TEMPLATE_ROWS);
-  ws['!cols'] = [{ wch: 12 }, { wch: 16 }, { wch: 20 }, { wch: 12 }, { wch: 8 }, { wch: 8 }, { wch: 24 }];
+  ws['!cols'] = [{ wch: 14 }, { wch: 25 }, { wch: 26 }, { wch: 10 }, { wch: 12 }, { wch: 12 }, { wch: 16 }, { wch: 36 }];
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Template Jadwal');
-  XLSX.writeFile(wb, 'template-import-jadwal.xlsx');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(EXAMPLE_ROWS), 'Contoh Pengisian');
+  const output = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+  const zip = await JSZip.loadAsync(output);
+  const sheet = zip.file('xl/worksheets/sheet1.xml');
+  if (sheet) {
+    const xml = await sheet.async('string');
+    const validations = '<dataValidations count="4"><dataValidation type="date" operator="greaterThanOrEqual" allowBlank="1" sqref="A2:A2000"><formula1>DATE(2000,1,1)</formula1></dataValidation><dataValidation type="list" allowBlank="1" sqref="D2:D2000"><formula1>"A,B,C"</formula1></dataValidation><dataValidation type="list" allowBlank="1" sqref="E2:E2000"><formula1>"Pg,Mlm,Off"</formula1></dataValidation><dataValidation type="list" allowBlank="1" sqref="F2:F2000"><formula1>"ON,OFF"</formula1></dataValidation></dataValidations>';
+    zip.file('xl/worksheets/sheet1.xml', xml.replace('</sheetData>', `</sheetData>${validations}`));
+  }
+  const blob = await zip.generateAsync({ type: 'blob', mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a'); link.href = url; link.download = 'template-import-jadwal-orf.xlsx'; link.click(); URL.revokeObjectURL(url);
 }
 
 function toIsoDate(value: unknown): string {
@@ -76,6 +91,8 @@ export function ScheduleImportModal({ open, onClose }: { open: boolean; onClose:
   const [preview, setPreview] = useState<ImportRowResult[] | null>(null);
   const [importResult, setImportResult] = useState<{ created: number; updated: number; skippedConflict: number; skippedInvalid: number } | null>(null);
   const [loading, setLoading] = useState(false);
+  const [existingMode, setExistingMode] = useState<'SKIP' | 'UPDATE'>('SKIP');
+  const [allowPartialImport, setAllowPartialImport] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -84,6 +101,7 @@ export function ScheduleImportModal({ open, onClose }: { open: boolean; onClose:
     setFileName(null);
     setPreview(null);
     setImportResult(null);
+    setAllowPartialImport(false);
     setError(null);
     if (fileRef.current) fileRef.current.value = '';
   }
@@ -112,12 +130,14 @@ export function ScheduleImportModal({ open, onClose }: { open: boolean; onClose:
           .map((r, idx) => ({
             row: idx + 2,
             tanggal: toIsoDate(r['Tanggal'] ?? r['tanggal'] ?? r['Date']),
-            username: String(r['Username'] ?? r['username'] ?? '').trim() || undefined,
-            nama: String(r['Nama'] ?? r['nama'] ?? '').trim() || undefined,
-            employeeId: String(r['Employee ID'] ?? r['employeeId'] ?? '').trim() || undefined,
+            username: String(r['Username'] ?? r['username'] ?? r['Username / ID Operator'] ?? '').trim() || undefined,
+            nama: String(r['Nama Operator'] ?? r['Nama'] ?? r['nama'] ?? '').trim() || undefined,
+            employeeId: String(r['Employee ID'] ?? r['employeeId'] ?? r['Username / ID Operator'] ?? '').trim() || undefined,
+            team: String(r['Tim'] ?? r['Team'] ?? r['team'] ?? '').trim() || undefined,
+            lokasi: String(r['Lokasi'] ?? r['Area'] ?? r['lokasi'] ?? '').trim() || undefined,
             shift: String(r['Shift'] ?? r['shift'] ?? '').trim(),
             status: String(r['Status'] ?? r['status'] ?? '').trim() || undefined,
-            catatan: String(r['Catatan'] ?? r['catatan'] ?? '').trim() || undefined,
+            catatan: String(r['Keterangan'] ?? r['Catatan'] ?? r['catatan'] ?? '').trim() || undefined,
           }))
           .filter((r) => r.tanggal || r.username || r.nama || r.shift);
         if (parsed.length === 0) {
@@ -151,7 +171,7 @@ export function ScheduleImportModal({ open, onClose }: { open: boolean; onClose:
     setError(null);
     setLoading(true);
     try {
-      const res = await confirmImportAction(rows);
+      const res = await confirmImportAction(rows, existingMode);
       if (!res.success) {
         setError(res.error);
         return;
@@ -194,7 +214,7 @@ export function ScheduleImportModal({ open, onClose }: { open: boolean; onClose:
             <button
               type="button"
               onClick={handleConfirm}
-              disabled={loading || validCount === 0}
+              disabled={loading || validCount === 0 || (invalidRows.length > 0 && !allowPartialImport)}
               className="px-4 py-2 text-xs font-bold rounded-lg bg-[#123B6D] text-white hover:bg-[#0F315A] disabled:opacity-60 flex items-center justify-center gap-1.5 cursor-pointer"
             >
               {loading && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
@@ -287,6 +307,13 @@ export function ScheduleImportModal({ open, onClose }: { open: boolean; onClose:
         {/* Preview */}
         {preview && !importResult && (
           <div className="space-y-2">
+            <label className="flex flex-col gap-1 text-[11px] font-semibold text-slate-700 sm:flex-row sm:items-center sm:gap-2">
+              Jika jadwal operator/tanggal sudah tersedia:
+              <select value={existingMode} onChange={(e) => setExistingMode(e.target.value as 'SKIP' | 'UPDATE')} className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[11px]">
+                <option value="SKIP">Lewati jadwal lama</option>
+                <option value="UPDATE">Perbarui setelah konfirmasi impor</option>
+              </select>
+            </label>
             <div className="flex items-center gap-2 text-[11px] font-bold">
               <span className="text-emerald-700 bg-emerald-50 border border-emerald-200 rounded px-1.5 py-0.5">{validCount} valid</span>
               {preview.some((r) => r.kind === 'NEW') && <span className="bg-emerald-50 border border-emerald-200 text-emerald-700 rounded px-1.5 py-0.5">{preview.filter((r) => r.kind === 'NEW').length} NEW</span>}
@@ -331,10 +358,16 @@ export function ScheduleImportModal({ open, onClose }: { open: boolean; onClose:
               </table>
             </div>
             {invalidRows.length > 0 && (
-              <div className="flex items-start gap-2 text-[11px] font-semibold text-[#DC2626] bg-red-50 border border-red-200 rounded-lg px-3 py-2">
-                <AlertCircle className="h-4 w-4 shrink-0" />
-                Perbaiki file lalu upload ulang. Contoh: Baris {invalidRows[0].row} — {invalidRows[0].message}
-              </div>
+              <>
+                <div className="flex items-start gap-2 text-[11px] font-semibold text-[#DC2626] bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                  <AlertCircle className="h-4 w-4 shrink-0" />
+                  Perbaiki file lalu upload ulang. Contoh: Baris {invalidRows[0].row} — {invalidRows[0].message}
+                </div>
+                <label className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-2.5 text-[11px] text-amber-900">
+                  <input type="checkbox" checked={allowPartialImport} onChange={(event) => setAllowPartialImport(event.target.checked)} className="mt-0.5" />
+                  <span>Impor {validCount} baris valid dan lewati {invalidRows.length} baris bermasalah. Saya memahami baris bermasalah tidak akan disimpan.</span>
+                </label>
+              </>
             )}
           </div>
         )}
