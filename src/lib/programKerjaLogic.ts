@@ -285,12 +285,12 @@ export function getProgramMetrics(
     if (m.month === undefined) continue;
     if (scope && !scope.has(m.month)) continue;
     // Plan dihitung dari keberadaan target (sel biru/jadwal), BUKAN dari nilai 100.
-    if (m.target === null || m.target === undefined) continue;
-
-    plan += 1;
+    if (m.target !== null && m.target !== undefined) {
+      plan += Math.max(0, m.target);
+    }
     if (m.realization !== null && m.realization !== undefined) {
       // Nilai R dalam persen (0..100). 100 → 1 unit, 50 → 0.5 unit, 0 → 0 unit.
-      realization += Math.min(1, Math.max(0, m.realization / 100));
+      realization += Math.max(0, m.realization);
     }
   }
 
@@ -450,15 +450,12 @@ export function addRealizationUnits(
     .filter((m) => m.target !== null && m.target !== undefined)
     .sort((a, b) => ((a.month ?? 0) - (b.month ?? 0)) || ((a.week ?? 0) - (b.week ?? 0)));
 
-  const plan = planned.length;
+  const plan = planned.reduce((sum, m) => sum + Math.max(0, m.target ?? 0), 0);
   if (plan === 0) {
     throw new Error('Program tidak memiliki Plan untuk menerima realisasi.');
   }
 
-  const currentUnits = planned.reduce(
-    (sum, m) => sum + Math.min(1, Math.max(0, (m.realization ?? 0) / 100)),
-    0
-  );
+  const currentUnits = months.reduce((sum, m) => sum + Math.max(0, m.realization ?? 0), 0);
   const target = Math.min(plan, currentUnits + amount);
   const remaining = Math.max(plan - target, 0);
   const progress = plan > 0 ? (target / plan) * 100 : 0;
@@ -471,11 +468,12 @@ export function addRealizationUnits(
   const updates: RealizationPeriodUpdate[] = [];
   for (const m of planned) {
     if (toAdd <= 1e-9) break;
-    const currentUnitsPerPeriod = Math.min(1, Math.max(0, (m.realization ?? 0) / 100));
-    const capacity = 1 - currentUnitsPerPeriod;
+    const targetUnits = Math.max(0, m.target ?? 0);
+    const currentUnitsPerPeriod = Math.max(0, m.realization ?? 0);
+    const capacity = Math.max(0, targetUnits - currentUnitsPerPeriod);
     if (capacity <= 1e-9) continue;
     const add = Math.min(capacity, toAdd);
-    const newValue = Math.min(100, Math.round((currentUnitsPerPeriod + add) * 100));
+    const newValue = Math.round(currentUnitsPerPeriod + add);
     updates.push({ month: m.month ?? 1, week: m.week ?? 1, realization: newValue });
     toAdd -= add;
   }

@@ -11,6 +11,7 @@ import {
   getAggregateProgramMetrics,
   getMonthlyBreakdown,
   getProgramCurrentStatus,
+  getProgramMetrics,
 } from '@/lib/programKerjaLogic';
 
 // ============================================================================
@@ -695,12 +696,12 @@ export async function addProgramRealization(
     orderBy: [{ month: 'asc' }, { week: 'asc' }],
   });
 
-  const planUnits = months.filter((m) => m.target !== null).length;
+  const planUnits = months.reduce((sum, m) => sum + Math.max(0, m.target ?? 0), 0);
   if (planUnits === 0) {
     throw new Error('Program tidak memiliki Plan untuk menerima realisasi.');
   }
   const currentUnits = months.reduce(
-    (sum, m) => (m.target === null ? 0 : sum + Math.min(1, Math.max(0, (m.realization ?? 0) / 100))),
+    (sum, m) => sum + Math.max(0, m.realization ?? 0),
     0
   );
   if (currentUnits >= planUnits) {
@@ -873,42 +874,45 @@ export async function setProgramRealization(
 ): Promise<ProgramKerjaDTO> {
   const program = await prisma.programKerja.findUnique({
     where: { id: programId },
-    select: { id: true, year: true, planTarget: true },
+    select: { id: true, year: true },
   });
   if (!program) throw new Error('Program tidak ditemukan.');
 
-  if (realization < 0 || realization > 100) {
-    throw new Error('Nilai realisasi harus antara 0 dan 100.');
+  if (!Number.isInteger(realization) || realization < 0) {
+    throw new Error('Nilai realisasi harus berupa bilangan bulat positif atau nol.');
   }
 
   const existing = await prisma.programKerjaMonth.findUnique({
     where: { programId_month_week: { programId, month, week } },
   });
 
-  const oldRealization = existing?.realization ?? null;
+  if (!existing || existing.target === null) {
+    throw new Error('Tidak ada plan pada periode tersebut. Buat plan terlebih dahulu.');
+  }
+  const oldRealization = existing.realization;
+  const allMonths = await prisma.programKerjaMonth.findMany({ where: { programId } });
+  const updatedMetrics = getProgramMetrics({
+    months: allMonths.map((period) =>
+      period.month === month && period.week === week ? { ...period, realization } : period
+    ),
+  });
+  const progress = Math.round(updatedMetrics.progress);
+  const status = getProgramCurrentStatus({ progress: updatedMetrics.progress });
 
   const tx: Prisma.PrismaPromise<unknown>[] = [];
 
-  if (existing) {
-    tx.push(
-      prisma.programKerjaMonth.update({
-        where: { id: existing.id },
-        data: { realization },
-      })
-    );
-  } else {
-    const planEntry = await prisma.programKerjaMonth.findUnique({
-      where: { programId_month_week: { programId, month, week } },
-    });
-    if (!planEntry || planEntry.target === null) {
-      throw new Error('Tidak ada plan pada periode tersebut. Buat plan terlebih dahulu.');
-    }
-    tx.push(
-      prisma.programKerjaMonth.create({
-        data: { programId, month, week, target: planEntry.target, realization },
-      })
-    );
-  }
+  tx.push(
+    prisma.programKerjaMonth.update({
+      where: { id: existing.id },
+      data: { realization },
+    })
+  );
+  tx.push(
+    prisma.programKerja.update({
+      where: { id: programId },
+      data: { progress, status, updatedAt: new Date() },
+    })
+  );
 
   tx.push(
     prisma.programKerjaRealizationLog.create({
@@ -929,7 +933,7 @@ export async function setProgramRealization(
 
   await recordAuditLog({
     userId: actorId,
-    action: existing ? 'EDIT_PROGRAM_REALIZATION' : 'ADD_PROGRAM_REALIZATION_PERIOD',
+    action: 'EDIT_PROGRAM_REALIZATION',
     entity: 'ProgramKerja',
     entityId: programId,
     metadata: { year, month, week, oldRealization, newRealization: realization, note },

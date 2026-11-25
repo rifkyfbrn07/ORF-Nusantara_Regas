@@ -5,7 +5,9 @@ import { useRouter } from 'next/navigation';
 import { CalendarRange, Download, Eye, FileText, History, Info, Plus, Send } from 'lucide-react';
 import { Modal } from '@/components/ui/Modal';
 import { EvidenceViewer } from '@/components/ui/EvidenceViewer';
-import type { ProgramKerjaDTO, ProgramUpdateDTO, ProgramKerjaScheduleHistoryDTO, ProgramKerjaRealizationLogDTO } from '@/server/services/programKerjaService';
+import { setProgramRealizationAction } from '@/server/actions/programKerjaActions';
+import { toast } from 'sonner';
+import type { ProgramKerjaDTO, ProgramUpdateDTO } from '@/server/services/programKerjaService';
 import { CATEGORY_LABELS, MONTH_SHORT, StatusBadge, fmtNumber, fmtPercent } from './shared';
 import { getProgramMetrics } from '@/lib/programKerjaLogic';
 import { ProgramUpdateFormModal } from './ProgramUpdateFormModal';
@@ -65,90 +67,120 @@ function Field({ label, value, span }: { label: string; value: string; span?: 2 
 
 /** Jadwal bulan program — Plan (biru) dan Realisasi (hijau) dari periode Excel. */
 function MonthSchedule({ program }: { program: ProgramKerjaDTO }) {
-  const [editingMonth, setEditingMonth] = useState<number | null>(null);
-  const [realizationValue, setRealizationValue] = useState<number | null>(null);
-  const [programb] = useState<ProgramKerjaDTO[]>([program]);
-  
-  // Type for month schedule data
-  interface MonthScheduleData {
-    b: number; // month number (1-12)
-    target: number | null; // plan target
-    realization: number | null; // current realization
-  }
-  
-  const months = Array.from({ length: 12 }, (_, i) => {
-    // Get entries for this month from programb
-    const entries = programb.filter((m) => (m as any).b === i + 1);
-    const plan = entries.some((e: any) => e.target !== null);
-    const realValues = entries.filter((e: any) => e.realization !== null).map((e: any) => e.realization as number);
-    const maxReal = realValues.length ? Math.max(...realValues) : null;
-    return { month: i + 1, entries, plan, maxReal };
+  const router = useRouter();
+  const [editingKey, setEditingKey] = useState<string | null>(null);
+  const [realizationValue, setRealizationValue] = useState('');
+  const [saving, setSaving] = useState(false);
+  const months = Array.from({ length: 12 }, (_, index) => {
+    const entries = program.months.filter((entry) => entry.month === index + 1 && entry.target !== null);
+    return {
+      month: index + 1,
+      entries,
+      plan: entries.reduce((sum, entry) => sum + (entry.target ?? 0), 0),
+      realization: entries.reduce((sum, entry) => sum + (entry.realization ?? 0), 0),
+    };
   });
+
+  const selected = editingKey
+    ? program.months.find((entry) => `${entry.month}-${entry.week}` === editingKey)
+    : undefined;
+
+  async function saveRealization() {
+    if (!selected) return;
+    const value = Number(realizationValue);
+    if (!Number.isInteger(value) || value < 0) {
+      toast.error('Realisasi harus berupa bilangan bulat nol atau lebih.');
+      return;
+    }
+    setSaving(true);
+    try {
+      const result = await setProgramRealizationAction({
+        programId: program.id,
+        year: program.year,
+        month: selected.month,
+        week: selected.week,
+        realization: value,
+      });
+      if (!result.success) {
+        toast.error(result.error);
+        return;
+      }
+      toast.success('Realisasi periode berhasil diperbarui.');
+      setEditingKey(null);
+      setRealizationValue('');
+      router.refresh();
+    } finally {
+      setSaving(false);
+    }
+  }
 
   return (
     <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-6">
       {months.map((m) => (
         <div
           key={m.month}
-          className="rounded-lg border border-[#E2E8F0] bg-[#FBFDFE] px-2 py-2 text-center cursor-pointer hover:border-[#0066B3] transition-colors"
-          onClick={() => setEditingMonth(m.month)}
+          className="rounded-lg border border-[#E2E8F0] bg-[#FBFDFE] px-2 py-2 text-center hover:border-[#0066B3] transition-colors"
         >
           <div className="text-[9px] font-black uppercase tracking-wide text-slate-400">{MONTH_SHORT[m.month - 1]}</div>
           <div className="mt-1.5 space-y-1">
             <div
-              className={`h-1.5 rounded-full ${m.plan ? 'bg-[#0088D8]' : 'bg-slate-200/70'}`}
+              className={`h-1.5 rounded-full ${m.plan > 0 ? 'bg-[#0088D8]' : 'bg-slate-200/70'}`}
               title="Plan (P)"
             />
             <div
-              className={`h-1.5 rounded-full ${m.maxReal === 0 ? 'bg-red-400' : m.maxReal && m.maxReal > 0 ? 'bg-emerald-500' : 'bg-slate-200/70'}`}
+              className={`h-1.5 rounded-full ${m.realization === 0 ? 'bg-red-400' : m.realization > 0 ? 'bg-emerald-500' : 'bg-slate-200/70'}`}
               title="Realisasi (R)"
             />
           </div>
           <div className="mt-1 text-[8.5px] font-black tabular-nums text-slate-500">
-            {m.maxReal !== null ? `${m.maxReal}%` : m.plan ? 'P' : '—'}
+            {m.plan > 0 ? `${fmtNumber(m.realization)} / ${fmtNumber(m.plan)}` : '—'}
           </div>
+          {m.entries.map((entry) => (
+            <button
+              key={`${entry.month}-${entry.week}`}
+              type="button"
+              onClick={() => {
+                setEditingKey(`${entry.month}-${entry.week}`);
+                setRealizationValue(String(entry.realization ?? 0));
+              }}
+              className="mt-1 rounded bg-white px-1.5 py-0.5 text-[8px] font-bold text-[#0066B3] hover:bg-blue-50"
+              title={`Edit realisasi minggu ${entry.week}`}
+            >
+              M{entry.week}: {fmtNumber(entry.realization ?? 0)}
+            </button>
+          ))}
         </div>
       ))}
-      {editingMonth && (
-        <div className="rounded-lg border border-[#DCE5EF] bg-[#F8FAFC] px-3 py-2.5">
+      {selected && (
+        <div className="col-span-full rounded-lg border border-[#DCE5EF] bg-[#F8FAFC] px-3 py-2.5">
           <span className="block text-[9px] font-black uppercase tracking-wide text-slate-400">
-            Realisasi Bulan {MONTH_SHORT[editingMonth - 1]}
+            Edit Realisasi {MONTH_SHORT[selected.month - 1]} · Minggu {selected.week}
           </span>
-          <p className="mt-0.5 whitespace-pre-wrap text-[11px] leading-relaxed text-slate-700">
-            {realizationValue !== null ? `${realizationValue}` : '—'}
-          </p>
           <div className="mt-3">
             <input
               type="number"
-              value={realizationValue !== null ? `${realizationValue}` : ''}
-              onChange={(e) => setRealizationValue(Number(e.target.value) || null)}
+              value={realizationValue}
+              onChange={(e) => setRealizationValue(e.target.value)}
               className="w-full px-2 py-1 border rounded text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#0066B3]"
               min={0}
-              max={100}
               step={1}
-              placeholder="0-100"
+              placeholder="Jumlah realisasi"
             />
           </div>
           <div className="mt-3 flex gap-2">
             <button
-              onClick={() => {
-                if (realizationValue !== null && realizationValue !== undefined) {
-                  const entryIndex = programb.findIndex((m: any) => m.b === editingMonth);
-                  if (entryIndex >= 0) {
-                    programb[entryIndex].realization = realizationValue as any;
-                  }
-                  setEditingMonth(null);
-                  setRealizationValue(null);
-                }
-              }}
+              type="button"
+              disabled={saving}
+              onClick={() => void saveRealization()}
               className="flex-1 bg-emerald-600 text-white py-1 rounded text-[9px] font-bold"
             >
-              Simpan
+              {saving ? 'Menyimpan…' : 'Simpan'}
             </button>
             <button
+              type="button"
               onClick={() => {
-                setEditingMonth(null);
-                setRealizationValue(null);
+                setEditingKey(null);
+                setRealizationValue('');
               }}
               className="flex-1 bg-slate-400 text-white py-1 rounded text-[9px] font-bold"
             >
