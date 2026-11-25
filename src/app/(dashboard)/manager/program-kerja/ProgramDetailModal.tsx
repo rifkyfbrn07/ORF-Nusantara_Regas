@@ -163,8 +163,9 @@ function MonthSchedule({ program }: { program: ProgramKerjaDTO }) {
               onChange={(e) => setRealizationValue(e.target.value)}
               className="w-full px-2 py-1 border rounded text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#0066B3]"
               min={0}
+              max={100}
               step={1}
-              placeholder="Jumlah realisasi"
+              placeholder="0-100%"
             />
           </div>
           <div className="mt-3 flex gap-2">

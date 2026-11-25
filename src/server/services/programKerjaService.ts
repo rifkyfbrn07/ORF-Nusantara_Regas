@@ -696,12 +696,12 @@ export async function addProgramRealization(
     orderBy: [{ month: 'asc' }, { week: 'asc' }],
   });
 
-  const planUnits = months.reduce((sum, m) => sum + Math.max(0, m.target ?? 0), 0);
+  const planUnits = months.filter((m) => m.target !== null).length;
   if (planUnits === 0) {
     throw new Error('Program tidak memiliki Plan untuk menerima realisasi.');
   }
   const currentUnits = months.reduce(
-    (sum, m) => sum + Math.max(0, m.realization ?? 0),
+    (sum, m) => sum + Math.min(1, Math.max(0, (m.realization ?? 0) / 100)),
     0
   );
   if (currentUnits >= planUnits) {
@@ -878,8 +878,8 @@ export async function setProgramRealization(
   });
   if (!program) throw new Error('Program tidak ditemukan.');
 
-  if (!Number.isInteger(realization) || realization < 0) {
-    throw new Error('Nilai realisasi harus berupa bilangan bulat positif atau nol.');
+  if (!Number.isInteger(realization) || realization < 0 || realization > 100) {
+    throw new Error('Nilai realisasi harus berupa bilangan bulat antara 0 dan 100.');
   }
 
   const existing = await prisma.programKerjaMonth.findUnique({

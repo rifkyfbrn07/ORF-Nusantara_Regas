@@ -555,7 +555,7 @@ export const programKerjaSetRealizationSchema = z.object({
   year: z.number().int().min(2020, 'Tahun minimal 2020').max(2100, 'Tahun maksimal 2100'),
   month: z.number().int().min(1, 'Bulan minimal 1').max(12, 'Bulan maksimal 12'),
   week: z.number().int().min(1, 'Minggu minimal 1').max(5, 'Minggu maksimal 5'),
-  realization: z.number().int().min(0, 'Realisasi minimal 0'),
+  realization: z.number().int().min(0, 'Realisasi minimal 0').max(100, 'Realisasi maksimal 100'),
   note: z.string().trim().max(500, 'Catatan maksimal 500 karakter').optional().nullable(),
 });
 
